@@ -223,6 +223,8 @@ stellar contract invoke \
 
 Stellar/Soroban utilizes State Archival to manage network storage footprint. Idle contracts and data entries will eventually be archived. Ahjoor handles state preservation automatically when members interact with it (e.g. `init` or `contribute`). However, if the contract goes unused for a long period, participants should occasionally call the `bump_storage()` function to manually extend the time-to-live (TTL) of the contract's instance storage and avoid sudden state archival.
 
+For step-by-step recovery when a group has already been archived, see [State Archival Troubleshooting](docs/state-archival.md).
+
 ## Technology Stack
 
 - **Blockchain**: Stellar (Soroban smart contracts)
@@ -255,7 +257,7 @@ A: After the configured timeout (default 7 days), anyone can call `enforce_dispu
 
 **Q: How do I prevent my contract state from being archived?**
 
-A: Call `bump_storage()` periodically (recommended every ~30 days of inactivity). If archival does occur, state can be restored via `stellar contract restore`.
+A: Call `bump_storage()` periodically (recommended every ~30 days of inactivity). If archival does occur, state can be restored via `stellar contract restore`. See [State Archival Troubleshooting](docs/state-archival.md) for CLI commands and what data is preserved.
 
 ## Resources
 
@@ -271,4 +273,4 @@ A: Call `bump_storage()` periodically (recommended every ~30 days of inactivity)
 
 - [Payments Authorization and Capture Flow](docs/payments-flow.md) - lifecycle guide for `authorize_payment`, `capture_payment`, missed capture expiry, and related events.
 - [Contract Error Codes](docs/errors.md) — consolidated reference of every numeric `#[contracterror]` code exposed by the Ahjoor contracts.
- - [Refund Contract](docs/refund.md) — refund flows, actors, key functions, and CLI examples for `ahjoor-refund`.
+- [State Archival Troubleshooting](docs/state-archival.md) — check archived status, restore a dormant ROSCA contract, and prevent future archival.
