@@ -223,6 +223,32 @@ stellar contract invoke \
 
 Stellar/Soroban utilizes State Archival to manage network storage footprint. Idle contracts and data entries will eventually be archived. Ahjoor handles state preservation automatically when members interact with it (e.g. `init` or `contribute`). However, if the contract goes unused for a long period, participants should occasionally call the `bump_storage()` function to manually extend the time-to-live (TTL) of the contract's instance storage and avoid sudden state archival.
 
+### Calling `bump_storage()`
+
+Use the Stellar CLI to extend the contract's TTL from any participant account:
+
+```bash
+stellar contract invoke \
+  --id <CONTRACT_ID> \
+  --source alice \
+  --network testnet \
+  -- bump_storage
+```
+
+Replace `<CONTRACT_ID>` with your deployed contract address and `alice` with the name of your configured Stellar CLI identity.
+
+**Recommended frequency:** Call `bump_storage()` at least once every **30 days** during periods of inactivity to keep the contract's instance storage live. Active groups that call `contribute` or other state-writing functions regularly do not need to call it manually — those interactions bump storage automatically.
+
+**If archival occurs:** Archived state is not lost permanently. You can restore it using:
+
+```bash
+stellar contract restore \
+  --id <CONTRACT_ID> \
+  --source alice \
+  --network testnet
+```
+
+After restoration, call `bump_storage()` immediately to reset the TTL and prevent the contract from being archived again in the short term.
 For step-by-step recovery when a group has already been archived, see [State Archival Troubleshooting](docs/state-archival.md).
 
 ## Technology Stack
