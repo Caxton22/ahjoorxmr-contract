@@ -3,7 +3,7 @@ use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env};
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
 
-use crate::{AhjoorPaymentsContract, AhjoorPaymentsContractClient, FailedDebitStatus, RecurringInvoice};
+use crate::{AhjoorPaymentsContract, AhjoorPaymentsContractClient, FailedDebitStatus, PaymentStatus, RecurringInvoice};
 
 fn setup_retry(
     env: &Env,
@@ -281,7 +281,9 @@ fn test_trigger_invoice_cycle_succeeds_at_due_ledger() {
 
     // Now trigger should succeed
     let payment_id = client.trigger_invoice_cycle(&invoice_id);
-    assert!(payment_id > 0);
+    let payment = client.get_payment(&payment_id);
+    assert_eq!(payment.status, PaymentStatus::Pending);
+    assert_eq!(payment.amount, 100);
 
     // Verify cycle was incremented
     let invoice_after: RecurringInvoice = client.get_recurring_invoice(&invoice_id);

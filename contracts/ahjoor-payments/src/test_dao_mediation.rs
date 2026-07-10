@@ -32,7 +32,6 @@ fn setup_with_payment() -> (
     token_admin.mint(&customer, &1_000_000);
 
     client.initialize(&admin, &fee_recipient, &0);
-    client.approve_merchant(&merchant);
 
     let payment_id = client.create_payment(
         &customer,
@@ -200,7 +199,6 @@ fn test_escalate_non_disputed_payment_panics() {
     token_admin.mint(&customer, &1_000_000);
 
     client.initialize(&admin, &fee_recipient, &0);
-    client.approve_merchant(&merchant);
 
     let payment_id = client.create_payment(
         &customer,

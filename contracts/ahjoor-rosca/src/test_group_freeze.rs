@@ -7,6 +7,10 @@ use soroban_sdk::{
 };
 
 fn setup_freeze_test<'a>() -> (Env, AhjoorContractClient<'a>, Address, Address, soroban_sdk::Vec<Address>) {
+    setup_freeze_test_with_round_duration(3600)
+}
+
+fn setup_freeze_test_with_round_duration<'a>(round_duration: u64) -> (Env, AhjoorContractClient<'a>, Address, Address, soroban_sdk::Vec<Address>) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -31,7 +35,7 @@ fn setup_freeze_test<'a>() -> (Env, AhjoorContractClient<'a>, Address, Address, 
         &members,
         &100,
         &token_admin,
-        &3600,
+        &round_duration,
         &RoscaConfig {
             strategy: PayoutStrategy::RoundRobin,
             custom_order: None,
@@ -168,7 +172,11 @@ fn test_freeze_log_appended() {
 
 #[test]
 fn test_member_freeze_proposal_executes_and_freezes_group() {
-    let (env, client, admin, _token_admin, members) = setup_freeze_test();
+    // Member-freeze proposals require the mandatory 24h voting window to
+    // elapse before execution, which alone outlasts the default 3600s round
+    // used by the other freeze tests — so this test needs a round long
+    // enough that the contribution window is still open once we get there.
+    let (env, client, admin, _token_admin, members) = setup_freeze_test_with_round_duration(200_000);
     let member1 = members.get(0).unwrap();
     let member2 = members.get(1).unwrap();
     let member3 = members.get(2).unwrap();

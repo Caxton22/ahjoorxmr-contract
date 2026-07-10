@@ -1114,6 +1114,7 @@ fn test_credit_score_oracle_readable_cross_contract() {
 
     // 2. Both members contribute on time (earns +10 credit score each)
     env.ledger().set_timestamp(100);
+    env.ledger().set_sequence_number(100);
     client.contribute(&m1, &token_admin, &100);
     client.contribute(&m2, &token_admin, &100);
 

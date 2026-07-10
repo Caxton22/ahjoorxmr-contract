@@ -2,7 +2,7 @@
 
 use crate::{AhjoorPaymentsContract, AhjoorPaymentsContractClient, Error, ExtError};
 use soroban_sdk::{
-    testutils::Address as _,
+    testutils::{Address as _, Ledger as _},
     token, Address, BytesN, Env, String,
 };
 

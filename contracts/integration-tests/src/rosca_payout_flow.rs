@@ -25,7 +25,7 @@ impl<'a> TestEnvironment<'a> {
         env.mock_all_auths();
         env.ledger().set(LedgerInfo {
             timestamp: 1_000_000,
-            protocol_version: 22,
+            protocol_version: 23,
             sequence_number: 100,
             network_id: Default::default(),
             base_reserve: 10,
@@ -151,10 +151,13 @@ fn test_rosca_round_completes_payout_on_full_contribution() {
 
     let recipient_balance_after = t.token_client.balance(&expected_recipient);
     let expected_pot = CONTRIBUTION * (MEMBER_COUNT as i128);
+    // The recipient is also a contributing member this round, so their net
+    // gain is the pot minus the contribution they themselves paid in.
+    let expected_net_gain = expected_pot - CONTRIBUTION;
     assert_eq!(
         recipient_balance_after - recipient_balance_before,
-        expected_pot,
-        "recipient should receive the full pot (no fee configured)"
+        expected_net_gain,
+        "recipient should net the full pot minus their own contribution (no fee configured)"
     );
 
     // Round history should record exactly one payout for round 0.

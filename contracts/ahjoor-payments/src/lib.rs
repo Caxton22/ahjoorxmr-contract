@@ -5765,10 +5765,11 @@ impl AhjoorPaymentsContract {
     // --- Merchant Withdrawal Queue (#126) ---
 
     /// Process up to max_count entries from the merchant's withdrawal queue.
-    /// Transfers funds from contract to merchant in FIFO order.
-    /// Merchant must authorize the call.
-    /// Returns the number of payments processed.
-    pub fn process_withdrawal_queue(env: Env, merchant: Address, max_count: u32) -> u32 {
+    /// Settlement funds were already paid to the merchant when each payment
+    /// completed (see `distribute_net_payment`); this just reconciles/clears
+    /// the queue entries in FIFO order. Merchant must authorize the call.
+    /// Returns the total amount reconciled.
+    pub fn process_withdrawal_queue(env: Env, merchant: Address, max_count: u32) -> i128 {
         Self::require_not_paused(&env);
         merchant.require_auth();
 
@@ -5785,12 +5786,14 @@ impl AhjoorPaymentsContract {
         let process_count = max_count.min(queue.len() as u32) as usize;
 
         let mut processed_count = 0u32;
+        let mut total_withdrawn: i128 = 0;
         let mut remaining_queue = Vec::new(&env);
 
         // Process the first process_count entries
         for i in 0..process_count {
             let (payment_id, amount) = queue.get(i as u32).unwrap();
             processed_count += 1;
+            total_withdrawn += amount;
 
             let payment: Payment = env
                 .storage()
@@ -5800,9 +5803,6 @@ impl AhjoorPaymentsContract {
             if payment.status != PaymentStatus::Completed {
                 panic!("Payment in queue is not completed");
             }
-
-            let token_client = token::Client::new(&env, &payment.token);
-            token_client.transfer(&env.current_contract_address(), &merchant, &amount);
         }
 
         // Remove processed entries from queue
@@ -5817,7 +5817,7 @@ impl AhjoorPaymentsContract {
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
 
-        processed_count
+        total_withdrawn
     }
 
     /// Move a specific payment to the front of the merchant's withdrawal queue.
@@ -6335,8 +6335,10 @@ impl AhjoorPaymentsContract {
                 panic_with_error!(env, Error::DynamicPaymentExpired);
             }
 
-            // Fetch the current price from the oracle
-            let oracle_client = oracle::OracleClient::new(env, &dp.oracle_address);
+            // Fetch the current price from the currently configured oracle (not the
+            // one frozen at creation time), so a stale/replaced price feed is caught.
+            let oracle_address: Address = env.storage().instance().get(&DataKey::OracleAddress).expect("Oracle not configured");
+            let oracle_client = oracle::OracleClient::new(env, &oracle_address);
             let usdc_token: Address = env.storage().instance().get(&DataKey::UsdcToken).expect("Oracle not configured");
             let current_price_data = oracle_client.lastprice(&dp.token, &usdc_token).expect("Oracle price unavailable");
             let current_price = current_price_data.price;

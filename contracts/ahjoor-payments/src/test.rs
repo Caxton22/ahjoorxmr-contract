@@ -27,7 +27,11 @@ struct TestSetup<'a> {
 
 fn setup<'a>() -> TestSetup<'a> {
     let env = Env::default();
-    env.mock_all_auths();
+    // `charge_subscription` authorizes the subscriber's transfer without the
+    // subscriber appearing in the call's own arguments (anyone can trigger a
+    // due charge), so plain `mock_all_auths` can't tie that auth to the root
+    // invocation.
+    env.mock_all_auths_allowing_non_root_auth();
 
     let contract_id = env.register(AhjoorPaymentsContract, ());
     let client = AhjoorPaymentsContractClient::new(&env, &contract_id);
@@ -59,6 +63,17 @@ impl<'a> TestSetup<'a> {
     fn init_with_fee(&self, fee_bps: u32) {
         self.client
             .initialize(&self.admin, &self.fee_recipient, &fee_bps);
+    }
+
+    /// Approves the contract to pull `amount` from `customer` (needed for
+    /// `authorize_payment`, which settles via `transfer_from`).
+    fn approve(&self, customer: &Address, amount: i128) {
+        self.token_client.approve(
+            customer,
+            &self.client.address,
+            &amount,
+            &(self.env.ledger().sequence() + 1000),
+        );
     }
 }
 
@@ -337,7 +352,7 @@ fn test_dispute_pending_payment() {
 }
 
 #[test]
-#[should_panic(expected = "Only pending payments can be disputed")]
+#[should_panic(expected = "Only pending or authorized payments can be disputed")]
 fn test_dispute_completed_payment_panics() {
     let s = setup();
     s.init();
@@ -362,7 +377,7 @@ fn test_dispute_completed_payment_panics() {
 }
 
 #[test]
-#[should_panic(expected = "Only pending payments can be disputed")]
+#[should_panic(expected = "Only pending or authorized payments can be disputed")]
 fn test_dispute_already_disputed_panics() {
     let s = setup();
     s.init();
@@ -4062,8 +4077,8 @@ fn test_bulk_expire_ineligible_payment_skipped() {
     let pid0 = s.client.create_payment(&customer, &merchant, &100, &s.token_addr, &None, &None, &None);
     let pid1 = s.client.create_payment(&customer, &merchant, &200, &s.token_addr, &None, &None, &None);
 
-    s.env.ledger().with_mut(|l| l.timestamp = 7 * 24 * 60 * 60 + 1);
     s.client.complete_payment(&pid1);
+    s.env.ledger().with_mut(|l| l.timestamp = 7 * 24 * 60 * 60 + 1);
 
     // pid1 is Completed (ineligible) — it should be skipped, pid0 expired
     let skipped = s.client.bulk_expire_payments(&s.admin, &vec![&s.env, pid0, pid1]);
@@ -4121,10 +4136,10 @@ fn test_bulk_expire_cap_enforced() {
         completed_ids.push_back(pid);
     }
 
-    s.env.ledger().with_mut(|l| l.timestamp = 7 * 24 * 60 * 60 + 1);
     for i in 0..3 {
         s.client.complete_payment(&completed_ids.get(i).unwrap());
     }
+    s.env.ledger().with_mut(|l| l.timestamp = 7 * 24 * 60 * 60 + 1);
 
     let mut all_ids = expired_ids.clone();
     for pid in completed_ids.iter() {
@@ -4161,6 +4176,7 @@ fn test_pause_subscription_blocks_charge() {
         s.client
             .create_subscription(&subscriber, &merchant, &100, &s.token_addr, &60, &10);
 
+    s.env.ledger().with_mut(|l| l.timestamp = 12_345);
     s.client.pause_subscription(&subscriber, &sub_id);
 
     let sub = s.client.get_subscription(&sub_id);
@@ -4280,6 +4296,7 @@ fn test_authorize_payment_succeeds() {
     let customer = Address::generate(&s.env);
     let merchant = Address::generate(&s.env);
     s.token_admin_client.mint(&customer, &1000);
+    s.approve(&customer, 1000);
 
     s.env.ledger().set_sequence_number(100);
     let pid = s
@@ -4329,6 +4346,7 @@ fn test_capture_authorized_payment_within_window() {
     let customer = Address::generate(&s.env);
     let merchant = Address::generate(&s.env);
     s.token_admin_client.mint(&customer, &1000);
+    s.approve(&customer, 1000);
 
     s.env.ledger().set_sequence_number(100);
     let pid = s
@@ -4351,6 +4369,7 @@ fn test_capture_after_deadline_panics() {
     let customer = Address::generate(&s.env);
     let merchant = Address::generate(&s.env);
     s.token_admin_client.mint(&customer, &1000);
+    s.approve(&customer, 1000);
 
     s.env.ledger().set_sequence_number(100);
     let pid = s
@@ -4390,6 +4409,7 @@ fn test_expire_authorized_payment_refunds_customer() {
     let customer = Address::generate(&s.env);
     let merchant = Address::generate(&s.env);
     s.token_admin_client.mint(&customer, &1000);
+    s.approve(&customer, 1000);
 
     s.env.ledger().set_sequence_number(100);
     let pid = s
@@ -4413,6 +4433,7 @@ fn test_dispute_authorized_payment() {
     let customer = Address::generate(&s.env);
     let merchant = Address::generate(&s.env);
     s.token_admin_client.mint(&customer, &1000);
+    s.approve(&customer, 1000);
 
     s.env.ledger().set_sequence_number(100);
     let pid = s
@@ -4433,6 +4454,7 @@ fn test_bulk_expire_authorized_payments() {
     let customer = Address::generate(&s.env);
     let merchant = Address::generate(&s.env);
     s.token_admin_client.mint(&customer, &1000);
+    s.approve(&customer, 1000);
 
     s.env.ledger().set_sequence_number(100);
     let pid0 = s
@@ -4458,6 +4480,7 @@ fn test_authorization_events_emitted() {
     let customer = Address::generate(&s.env);
     let merchant = Address::generate(&s.env);
     s.token_admin_client.mint(&customer, &1000);
+    s.approve(&customer, 1000);
 
     s.env.ledger().set_sequence_number(100);
     let pid = s
@@ -4478,6 +4501,7 @@ fn test_void_authorization_returns_funds_to_customer() {
     let customer = Address::generate(&s.env);
     let merchant = Address::generate(&s.env);
     s.token_admin_client.mint(&customer, &1000);
+    s.approve(&customer, 1000);
 
     s.env.ledger().set_sequence_number(100);
     let pid = s

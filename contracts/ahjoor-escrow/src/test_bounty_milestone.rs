@@ -217,7 +217,7 @@ fn test_replace_verifier_after_submission_is_rejected() {
 }
 
 #[test]
-#[should_panic(expected = "Only the buyer can replace a verifier")]
+#[should_panic(expected = "Only the bounty creator can replace a verifier")]
 fn test_non_buyer_cannot_replace_verifier() {
     let hx = setup();
     let id = create_two_milestone_bounty(&hx);

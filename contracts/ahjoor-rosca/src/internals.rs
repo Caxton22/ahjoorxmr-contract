@@ -556,9 +556,10 @@ pub(crate) fn reset_round_state(env: &Env, current_round: u32) {
         &DataKey::MemberContributions,
         &Map::<Address, i128>::new(env),
     );
-    env.storage()
-        .instance()
-        .set(&DataKey::Defaulters, &Vec::<Address>::new(env));
+    // Note: DataKey::Defaulters is deliberately left as-is here — close_round/
+    // finalize_round just populated it with the round that's ending, and
+    // penalise_defaulter/request_penalty_grace need it to survive into the
+    // next transaction. It gets overwritten fresh the next time a round closes.
     env.storage().instance().set(
         &DataKey::RoundDeadline,
         &(env.ledger().timestamp() + duration),

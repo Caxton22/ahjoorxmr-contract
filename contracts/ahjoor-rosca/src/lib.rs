@@ -9512,8 +9512,8 @@ impl AhjoorContract {
             .get(&DataKey2::QuorumConfig)
             .unwrap_or(Map::new(&env));
         let quorum_bps = quorum_config.get(ProposalType::RuleChange).unwrap_or(5_100);
-        let quorum_required = (members.len() as u32 * quorum_bps) / 10_000;
-        if proposal.votes_for >= quorum_required as i128 {
+        let quorum_required = ((members.len() as i128 * quorum_bps as i128) + 9999) / 10_000;
+        if proposal.votes_for >= quorum_required {
             proposal.confirmed = true;
             events::emit_treasury_round_confirmed(&env, round_index);
         }
