@@ -8502,7 +8502,7 @@ impl AhjoorContract {
         }
 
         if auth.used_rounds >= auth.max_rounds {
-            panic_with_error!(&env, ExtError2::ProxyRoundsExhausted);
+            panic_with_error!(&env, ExtError::ProxyRoundsExhausted);
         }
 
         let approved_tokens: Vec<Address> = env
@@ -10846,7 +10846,7 @@ impl AhjoorContract {
     }
 
     /// Admin funds the collective-goal reward pool. Tokens are transferred from admin
-    /// to the contract and credited to `DataKey3::GoalRewardPool`. This pool is
+    /// to the contract and credited to `DataKey5::GoalRewardPool`. This pool is
     /// distributed once when the group's `collective_goal` is reached (#454).
     pub fn fund_goal_reward_pool(env: Env, admin: Address, amount: i128) {
         internals::check_not_paused(&env);
@@ -10874,11 +10874,11 @@ impl AhjoorContract {
         let pool: i128 = env
             .storage()
             .instance()
-            .get(&DataKey3::GoalRewardPool)
+            .get(&DataKey5::GoalRewardPool)
             .unwrap_or(0);
         env.storage()
             .instance()
-            .set(&DataKey3::GoalRewardPool, &(pool + amount));
+            .set(&DataKey5::GoalRewardPool, &(pool + amount));
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
@@ -10888,7 +10888,7 @@ impl AhjoorContract {
     pub fn get_goal_reward_pool(env: Env) -> i128 {
         env.storage()
             .instance()
-            .get(&DataKey3::GoalRewardPool)
+            .get(&DataKey5::GoalRewardPool)
             .unwrap_or(0)
     }
 
@@ -10896,7 +10896,7 @@ impl AhjoorContract {
     pub fn is_goal_reward_distributed(env: Env) -> bool {
         env.storage()
             .instance()
-            .get(&DataKey3::GoalRewardDistributed)
+            .get(&DataKey5::GoalRewardDistributed)
             .unwrap_or(false)
     }
 
@@ -10907,7 +10907,7 @@ impl AhjoorContract {
         let already_distributed: bool = env
             .storage()
             .instance()
-            .get(&DataKey3::GoalRewardDistributed)
+            .get(&DataKey5::GoalRewardDistributed)
             .unwrap_or(false);
         if already_distributed {
             return;
@@ -10916,13 +10916,13 @@ impl AhjoorContract {
         let pool: i128 = env
             .storage()
             .instance()
-            .get(&DataKey3::GoalRewardPool)
+            .get(&DataKey5::GoalRewardPool)
             .unwrap_or(0);
 
         // Always gate, even if pool is empty, so this only ever fires once.
         env.storage()
             .instance()
-            .set(&DataKey3::GoalRewardDistributed, &true);
+            .set(&DataKey5::GoalRewardDistributed, &true);
 
         if pool <= 0 {
             return;
@@ -10968,7 +10968,7 @@ impl AhjoorContract {
         // since it's been "spent" against this milestone.
         env.storage()
             .instance()
-            .set(&DataKey3::GoalRewardPool, &0i128);
+            .set(&DataKey5::GoalRewardPool, &0i128);
     }
 
     /// Create a new savings goal for a group member.

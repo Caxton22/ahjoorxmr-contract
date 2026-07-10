@@ -3,8 +3,7 @@ use soroban_sdk::{
     token, Address, Env, Vec,
 };
 
-// Adjust this import to your actual rosca contract crate name / export path.
-use ahjoor_rosca_contract::{AhjoorContract, AhjoorContractClient, RoscaConfig, PayoutStrategy, VotingMode};
+use ahjoor_rosca::{AhjoorContract, AhjoorContractClient, RoscaConfig, PayoutStrategy, VotingMode};
 
 /// Shared test harness: deploys the ROSCA contract plus a mock token,
 /// and wires up funded member accounts so each test starts from a clean,

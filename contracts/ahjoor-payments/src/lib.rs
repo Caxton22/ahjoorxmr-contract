@@ -208,8 +208,6 @@ pub enum Error {
     DaoMinVotesNotMet = 58,
     /// Payment is not in Disputed status; cannot escalate.
     PaymentNotDisputed = 59,
-    /// Merchant has KYB on record, but it is now expired.
-    MerchantKYBExpired = 60,
 }
 
 /// Extension errors that overflow the 50-variant contracterror limit.
@@ -218,6 +216,8 @@ pub enum Error {
 pub enum ExtError {
     /// Batch size exceeds the allowed cap or amount is out of range.
     InvalidAmount = 71,
+    /// Merchant has KYB on record, but it is now expired.
+    MerchantKYBExpired = 72,
 }
 
 /// Per-merchant withdrawal rate limit config (#231).
@@ -901,8 +901,6 @@ pub enum DataKey {
     // --- Task 2: Multi-Sig ---
     /// Instance: per-merchant multi-sig policy
     MultisigPolicy(Address),
-    /// Instance: when true, merchant KYB checks are enforced on payment creation.
-    KYBRequired,
 }
 
 /// Overflow storage keys — split from DataKey because #[contracttype] is bounded to 50 variants.
@@ -1049,6 +1047,8 @@ pub enum DataKey3 {
     DaoMinVotes,
     /// Persistent: merchant-defined subscription billing plan
     SubscriptionPlan(u32),
+    /// Instance: when true, merchant KYB checks are enforced on payment creation.
+    KYBRequired,
 }
 
 mod events;
@@ -1211,7 +1211,7 @@ impl AhjoorPaymentsContract {
         env.storage()
             .instance()
             .set(&DataKey2::WithdrawalWindowCap, &i128::MAX);
-        env.storage().instance().set(&DataKey::KYBRequired, &false);
+        env.storage().instance().set(&DataKey3::KYBRequired, &false);
 
         env.storage()
             .instance()
@@ -1425,7 +1425,7 @@ impl AhjoorPaymentsContract {
                 panic_with_error!(&env, Error::KYBVerificationRequired);
             }
             if current_ledger > kyb.expiry_ledger {
-                panic_with_error!(&env, Error::MerchantKYBExpired);
+                panic_with_error!(&env, ExtError::MerchantKYBExpired);
             }
         }
 
@@ -8959,7 +8959,7 @@ impl AhjoorPaymentsContract {
 
         env.storage()
             .instance()
-            .set(&DataKey::KYBRequired, &enabled);
+            .set(&DataKey3::KYBRequired, &enabled);
         // Keep the legacy key in sync for backward compatibility across upgrades.
         env.storage()
             .instance()
@@ -9072,7 +9072,7 @@ impl AhjoorPaymentsContract {
     pub fn is_kyb_enforcement_enabled(env: Env) -> bool {
         env.storage()
             .instance()
-            .get::<_, bool>(&DataKey::KYBRequired)
+            .get::<_, bool>(&DataKey3::KYBRequired)
             .or_else(|| {
                 env.storage()
                     .instance()

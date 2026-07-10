@@ -124,7 +124,7 @@ fn test_proxy_authorization_expires_after_max_rounds() {
         .try_contribute_as_proxy(&proxy, &0, &member, &token_addr, &100)
         .unwrap_err()
         .unwrap();
-    assert_eq!(err, errors::ExtError2::ProxyRoundsExhausted.into());
+    assert_eq!(err, errors::ExtError::ProxyRoundsExhausted.into());
 }
 
 #[test]
@@ -148,7 +148,7 @@ fn test_proxy_round_limit_enforced() {
         .try_contribute_as_proxy(&proxy, &0, &member, &token_addr, &100)
         .unwrap_err()
         .unwrap();
-    assert_eq!(err, errors::ExtError2::ProxyRoundsExhausted.into());
+    assert_eq!(err, errors::ExtError::ProxyRoundsExhausted.into());
 }
 
 #[test]

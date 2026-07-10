@@ -265,13 +265,6 @@ pub enum DataKey2 {
     ActiveReinstatementProposal = 83,
     Waitlist = 84,
     CatchUpDebt = 85,
-    StartAt = 93,
-    GroupActivationEmitted = 94,
-    GracePeriodLedgers = 95,
-    PendingPenalties = 96,
-    LastRoundDeadline = 97,
-    CoSigners = 98,
-    CoSignerWindowLedgers = 99,
 }
 
 /// Overflow key enum for merge and round-duration keys (#230, #227).
@@ -285,6 +278,13 @@ pub enum DataKey4 {
     PendingRoundDuration = 90,
     MinRoundDuration = 91,
     MaxRoundDuration = 92,
+    StartAt = 93,
+    GroupActivationEmitted = 94,
+    GracePeriodLedgers = 95,
+    PendingPenalties = 96,
+    LastRoundDeadline = 97,
+    CoSigners = 98,
+    CoSignerWindowLedgers = 99,
 }
 
 /// Waitlist ordering mode (#456).
@@ -370,11 +370,15 @@ pub enum DataKey3 {
     MemberReceiptIds(Address),
     // #456: Waitlist priority ordering mode
     WaitlistPriorityMode,       // WaitlistMode — settable by admin
-        // #456: Waitlist priority ordering mode
-    WaitlistPriorityMode,       // WaitlistMode — settable by admin
+}
+
+/// Overflow key enum — DataKey3 is capped at 50 variants by the soroban XDR limit.
+#[derive(Clone)]
+#[contracttype]
+pub enum DataKey5 {
     // #454: Collective goal reward pool
     GoalRewardPool,             // i128 — funded by admin, distributed once collective_goal is reached
-    GoalRewardDistributed,  
+    GoalRewardDistributed,
 }
 
 

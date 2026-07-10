@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::{AhjoorPaymentsContract, AhjoorPaymentsContractClient, Error};
+use crate::{AhjoorPaymentsContract, AhjoorPaymentsContractClient, Error, ExtError};
 use soroban_sdk::{
     testutils::Address as _,
     token, Address, BytesN, Env, String,
@@ -102,7 +102,7 @@ fn test_create_payment_rejects_expired_kyb() {
     );
 
     assert!(result.is_err());
-    assert_eq!(result.unwrap_err().unwrap(), Error::MerchantKYBExpired.into());
+    assert_eq!(result.unwrap_err().unwrap(), ExtError::MerchantKYBExpired.into());
 }
 
 #[test]
@@ -131,7 +131,7 @@ fn test_renew_merchant_kyb_allows_payment_again() {
     );
     assert_eq!(
         expired_result.unwrap_err().unwrap(),
-        Error::MerchantKYBExpired.into()
+        ExtError::MerchantKYBExpired.into()
     );
 
     let renewed_expiry = u64::from(s.env.ledger().sequence()) + 1000;

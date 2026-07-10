@@ -8,11 +8,11 @@ publish = false
 crate-type = ["lib"]
 
 [dependencies]
-soroban-sdk = "21.0.0"  # match the version pinned in the rosca contract's Cargo.toml
+soroban-sdk = { workspace = true }
 
 [dev-dependencies]
-soroban-sdk = { version = "21.0.0", features = ["testutils"] }
-ahjoor-rosca-contract = { path = "../rosca", features = ["testutils"] }  # adjust path/name
+soroban-sdk = { workspace = true, features = ["testutils"] }
+ahjoor-rosca = { path = "../ahjoor-rosca" }
 
 [features]
 testutils = []
