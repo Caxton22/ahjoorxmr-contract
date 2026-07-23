@@ -38,6 +38,38 @@ Notes and implementation details
 
 - Arbiter timeout counter: Whenever a dispute is forced via `enforce_dispute_timeout` because the arbiter missed the deadline, the contract increments a per-arbiter counter. This counter can be used by off-chain governance or admin logic to suspend or penalize repeatedly inactive arbiters.
 
+## Timeout Resolution & Fund Distribution Mechanism
+
+When an arbiter fails to resolve a dispute within the allocated deadline, the contract provides an automatic resolution mechanism via `enforce_dispute_timeout(escrow_id)`.
+
+### 1. Timeout Deadline Calculation
+- **Deadline Start**: Recorded in persistent storage (`DataKey::DisputeDeadlineStart(escrow_id)`) as `ledger.timestamp()` when `dispute_escrow` is called.
+- **Effective Timeout Duration**:
+  - **Per-escrow override**: Specified via `create_escrow_w_timeout(...)` or `dispute_timeout_seconds` in `EscrowExtensions`.
+  - **Global default**: Configured via `update_default_dispute_timeout(admin, timeout_seconds)` (queried via `get_default_dispute_timeout()`), defaulting to 7 days (`604,800` seconds).
+- **Expiration Threshold**: Enforceable when `current_ledger_timestamp - deadline_start >= effective_timeout`.
+
+### 2. Default Winner Determination
+- **Global Configuration**: Admin configures global default via `set_default_dispute_winner(admin, winner)` and queries via `get_default_dispute_winner()`. Values are `DisputeDefaultWinner::Buyer` (`0`) or `DisputeDefaultWinner::Seller` (`1`). Defaults to `Buyer`.
+- **Per-escrow Override**: Configured at escrow creation via `dispute_default_winner` in `EscrowCreateRequest` or stored in `escrow.extensions.dispute_default_winner`.
+
+### 3. Fund Distribution & State Execution
+- **Buyer Default Winner (`DisputeDefaultWinner::Buyer`)**:
+  - The remaining disputed escrow amount is refunded to the buyer(s) via `Self::transfer_to_buyers(...)`.
+  - Escrow status transitions to `EscrowStatus::Refunded`.
+- **Seller Default Winner (`DisputeDefaultWinner::Seller`)**:
+  - The remaining disputed escrow amount is released to the seller via token transfer.
+  - Escrow status transitions to `EscrowStatus::Released`.
+- **Partial Dispute Timeout Handling**:
+  - For partial disputes (`dispute_amount < total_amount`), the undisputed portion was already transferred to the seller immediately when `dispute_escrow` was called.
+  - On timeout enforcement, only the locked disputed portion is transferred to the default winner, and the escrow status transitions from `PartiallyDisputed` to `Refunded` (or `Released`).
+- **Receipt NFT Burning**: If an NFT receipt was minted for the escrow, it is burned via `burn_receipt_if_exists`.
+- **Dispute Settlement**: The dispute record (`DataKey::Dispute(escrow_id)`) is updated with `resolved = true`.
+- **Arbiter Reputation Penalty**: The assigned arbiter's penalty counter (`DataKey::ArbiterTimeoutCount(escrow.arbiter)`) is incremented by `1`.
+- **Events Emitted**:
+  - `DisputeTimedOut(escrow_id, arbiter, default_winner, elapsed_seconds)`
+  - `ArbitersTimeoutPenaltyApplied(arbiter, new_timeout_count)`
+
 Examples
 
 - Typical flow with default timeout:
