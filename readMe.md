@@ -219,6 +219,19 @@ stellar contract invoke \
   -- is_whitelisted --token <TOKEN_ADDRESS>
 ```
 
+### Contract Allowlist
+
+In addition to the global token whitelist, the `ahjoor-token-whitelist` contract supports a **Contract Allowlist**.
+
+**Difference from Global Whitelist:**
+While the global token whitelist permits a token to be used across *all* Ahjoor groups (ROSCA, Escrow, and Payments), the contract allowlist permits a token to be used exclusively within a *specific* deployed group contract (e.g., a specific Escrow or ROSCA instance). Contract allowlist entries can also be configured with an optional `expiry_ledger` to restrict the token's usage to a certain timeframe.
+
+**Who Controls It:**
+Just like the global whitelist, only the **admin** of the `ahjoor-token-whitelist` contract can add or remove entries from the contract allowlist. This is done via the `set_contract_token` and `remove_contract_token` functions.
+
+**Gated Operations:**
+When a group contract (like an Escrow or ROSCA) checks if a token is permitted via the `is_token_allowed_for_contract` function, the whitelist contract first checks the contract allowlist. If the token is explicitly allowed for that specific group contract and the expiry ledger hasn't passed, the operation is permitted. Otherwise, it falls back to checking the global whitelist. This gating mechanism secures fund deposits, contributions, and any other token transfers managed by the group contracts.
+
 ## State Archival & TTL
 
 Stellar/Soroban utilizes State Archival to manage network storage footprint. Idle contracts and data entries will eventually be archived. Ahjoor handles state preservation automatically when members interact with it (e.g. `init` or `contribute`). However, if the contract goes unused for a long period, participants should occasionally call the `bump_storage()` function to manually extend the time-to-live (TTL) of the contract's instance storage and avoid sudden state archival.
