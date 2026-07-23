@@ -67,6 +67,24 @@ Claim (participant):
 stellar contract invoke --id <REFUND_CONTRACT_ID> --network testnet -- claim_refund --refund-id <ID>
 ```
 
+## Abuse Score
+
+The refund contract tracks an **Abuse Score** per customer to prevent spam and dispute abuse.
+
+### What actions increase the score
+- **Refund Rejection:** When an admin rejects a refund request (`reject_refund`), the customer's score increases by `+10`.
+- **Rapid Submission:** Submitting multiple refund requests within a very short timeframe (configured by `rapid_submission_window`) adds an immediate penalty of `+5` to the score.
+- **Flagged Abuse:** If an admin explicitly flags a refund as abusive (`flag_refund_abuse`), it adds an elevated penalty (an additional `+10` on top of the standard rejection penalty).
+
+### Thresholds and Restrictions
+- The contract maintains an `abuse_block_threshold` (e.g., typically `30`).
+- If a customer's score reaches or exceeds this threshold, they are temporarily blocked from submitting new refund requests (returning a `CustomerBlockedForAbuse` error).
+- The block duration is determined by `block_duration_ledgers`. Once this period elapses (or the score decays below the threshold), the customer can request refunds again.
+
+### Score Decay and Resets
+- **Decay over time:** The abuse score decays automatically as ledgers advance. By default, the score halves (`5000 bps` factor) every `10,000` ledgers. Both the decay period and the decay factor are configurable by the admin (`set_abuse_score_decay_params`).
+- **Manual Reset:** An admin can manually reset a customer's abuse score to zero using `reset_customer_abuse_score`.
+
 ## Notes for integrators
 
 - Originating contracts should set refund `owner` and `amount` precisely to avoid disputes.
