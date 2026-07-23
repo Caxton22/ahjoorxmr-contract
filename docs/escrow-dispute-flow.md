@@ -70,6 +70,17 @@ When an arbiter fails to resolve a dispute within the allocated deadline, the co
   - `DisputeTimedOut(escrow_id, arbiter, default_winner, elapsed_seconds)`
   - `ArbitersTimeoutPenaltyApplied(arbiter, new_timeout_count)`
 
+## Timeout Enforcement Caller & Execution Requirements
+
+- **Permissionless Trigger**: `enforce_dispute_timeout(escrow_id)` is a **public, unauthenticated** function (`pub fn`). Any account—including the buyer, seller, admin, or an automated off-chain bot/keeper—can trigger timeout enforcement once the deadline has passed.
+- **No Authentication Required**: The function does not call `require_auth()` for any role.
+- **Enforcement Validation Checks**:
+  1. **Pause Check**: Contract must not be paused (`require_not_paused`).
+  2. **Escrow Existence**: Escrow record must exist (`DataKey::Escrow(escrow_id)`).
+  3. **Active Dispute**: A dispute record must exist (`DataKey::Dispute(escrow_id)`) and `dispute.resolved` must be `false`.
+  4. **Valid Status**: Escrow status must be `EscrowStatus::Disputed` or `EscrowStatus::PartiallyDisputed`. Calls on `Active` or terminal states (`Resolved`, `Released`, `Refunded`) will panic with `"Escrow is not disputed"`.
+  5. **Deadline Expiration**: Ledger timestamp check requires `current_timestamp - deadline_start >= effective_timeout`. Invocations prior to deadline expiry revert with `"Dispute timeout deadline has not passed yet"`.
+
 Examples
 
 - Typical flow with default timeout:
