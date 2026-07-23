@@ -81,6 +81,20 @@ When an arbiter fails to resolve a dispute within the allocated deadline, the co
   4. **Valid Status**: Escrow status must be `EscrowStatus::Disputed` or `EscrowStatus::PartiallyDisputed`. Calls on `Active` or terminal states (`Resolved`, `Released`, `Refunded`) will panic with `"Escrow is not disputed"`.
   5. **Deadline Expiration**: Ledger timestamp check requires `current_timestamp - deadline_start >= effective_timeout`. Invocations prior to deadline expiry revert with `"Dispute timeout deadline has not passed yet"`.
 
+## Edge Cases & Auto-Resolution Special Behavior
+
+### 1. Single-Dispute Lifecycle & Prevention of Repeated Disputes
+- **Strict State Machine**: Calling `dispute_escrow` requires that the escrow be in an open state (`is_open_escrow_status`).
+- **Terminal Transitions**: Resolution by an arbiter (`resolve_dispute`) or auto-resolution via timeout (`enforce_dispute_timeout`) moves the escrow into terminal statuses (`Resolved`, `Released`, or `Refunded`).
+- **No Repeated Disputes**: Once an escrow reaches a terminal state, further calls to `dispute_escrow` revert with `"Escrow is not active"`. An escrow can only be disputed once in its lifecycle.
+- **Partial Dispute Edge Case**: When a partial dispute is raised, the undisputed portion is released to the seller immediately, leaving only the disputed portion in escrow under `EscrowStatus::PartiallyDisputed`. When this dispute resolves or times out, the disputed portion is transferred to the winner, transitioning the escrow to a terminal state (`Refunded` or `Released`). Neither party can initiate a second dispute for either the released or refunded funds.
+
+### 2. Arbiter Reassignment & Pool Removal Near Deadline
+- **Timer Continuity**: When an arbiter is removed from the pool via `remove_arbiter(admin, arbiter, escrow_ids)`, active escrows using that arbiter are flagged with `DataKey::ArbiterNeedsReplacement(escrow_id)`. **Removing or reassigning an arbiter does NOT pause, reset, or extend `DataKey::DisputeDeadlineStart(escrow_id)`**.
+- **Deadline Strictness**: The dispute deadline timer runs uninterrupted from the original `dispute_escrow` timestamp. If an arbiter is reassigned near the deadline, the newly assigned arbiter must issue a ruling before the original deadline expires.
+- **Enforcement Window**: If the deadline passes without resolution—even if arbiter reassignment was requested or pending—`enforce_dispute_timeout(escrow_id)` can be invoked by anyone to execute default fund distribution.
+- **Penalty Attribution**: When `enforce_dispute_timeout` is executed, the timeout penalty (`ArbiterTimeoutCount`) is credited against the address recorded in `escrow.arbiter` at the time of enforcement.
+
 Examples
 
 - Typical flow with default timeout:
