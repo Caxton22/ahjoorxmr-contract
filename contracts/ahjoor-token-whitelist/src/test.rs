@@ -1,6 +1,9 @@
 #![cfg(test)]
 
-use crate::{TokenWhitelistContract, TokenWhitelistContractClient};
+use crate::{
+    TokenWhitelistContract, TokenWhitelistContractClient, MAX_QUOTA_PERIOD_LEDGERS,
+    MAX_VOLUME_QUERY_RANGE,
+};
 use soroban_sdk::{
     testutils::{Address as _, Events, Ledger},
     Address, BytesN, Env,
@@ -398,4 +401,70 @@ fn test_suspend_nonwhitelisted_token_fails() {
 
     let reason = BytesN::from_array(&env, &[1u8; 32]);
     client.suspend_token_timed(&admin, &token, &50u32, &reason);
+}
+
+// ── #588: set_token_quota / update_token_quota period_ledgers upper bound ────
+
+#[test]
+#[should_panic(expected = "period_ledgers exceeds maximum allowed")]
+fn test_set_token_quota_rejects_oversized_period() {
+    let (env, admin, client) = setup_test();
+    let token = Address::generate(&env);
+    client.add_token(&admin, &token);
+
+    client.set_token_quota(&admin, &token, &1_000i128, &(MAX_QUOTA_PERIOD_LEDGERS + 1));
+}
+
+#[test]
+fn test_set_token_quota_accepts_max_period() {
+    let (env, admin, client) = setup_test();
+    let token = Address::generate(&env);
+    client.add_token(&admin, &token);
+
+    client.set_token_quota(&admin, &token, &1_000i128, &MAX_QUOTA_PERIOD_LEDGERS);
+    let quota = client.get_token_quota(&token).unwrap();
+    assert_eq!(quota.period_ledgers, MAX_QUOTA_PERIOD_LEDGERS);
+}
+
+#[test]
+#[should_panic(expected = "period_ledgers exceeds maximum allowed")]
+fn test_update_token_quota_rejects_oversized_period() {
+    let (env, admin, client) = setup_test();
+    let token = Address::generate(&env);
+    client.add_token(&admin, &token);
+    client.set_token_quota(&admin, &token, &1_000i128, &100u32);
+
+    client.update_token_quota(&admin, &token, &1_000i128, &(MAX_QUOTA_PERIOD_LEDGERS + 1));
+}
+
+// ── Companion: get_token_volume bounded range ────────────────────────────────
+
+#[test]
+#[should_panic(expected = "ledger range exceeds maximum allowed")]
+fn test_get_token_volume_rejects_oversized_range() {
+    let (env, admin, client) = setup_test();
+    let token = Address::generate(&env);
+    client.add_token(&admin, &token);
+
+    client.get_token_volume(&token, &0u32, &(MAX_VOLUME_QUERY_RANGE + 1));
+}
+
+#[test]
+fn test_get_token_volume_accepts_max_range() {
+    let (env, admin, client) = setup_test();
+    let token = Address::generate(&env);
+    client.add_token(&admin, &token);
+
+    let volume = client.get_token_volume(&token, &0u32, &MAX_VOLUME_QUERY_RANGE);
+    assert_eq!(volume, 0);
+}
+
+#[test]
+#[should_panic(expected = "from_ledger must not exceed to_ledger")]
+fn test_get_token_volume_rejects_inverted_range() {
+    let (env, admin, client) = setup_test();
+    let token = Address::generate(&env);
+    client.add_token(&admin, &token);
+
+    client.get_token_volume(&token, &10u32, &5u32);
 }
