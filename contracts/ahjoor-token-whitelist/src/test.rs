@@ -399,3 +399,81 @@ fn test_suspend_nonwhitelisted_token_fails() {
     let reason = BytesN::from_array(&env, &[1u8; 32]);
     client.suspend_token_timed(&admin, &token, &50u32, &reason);
 }
+
+#[test]
+fn test_is_token_allowed_cost_is_constant_at_scale() {
+    let (env, admin, client) = setup_test();
+
+    // Measure lookup cost against a small whitelist.
+    let small_token = Address::generate(&env);
+    client.add_token(&admin, &small_token);
+
+    env.cost_estimate().budget().reset_default();
+    assert!(client.is_token_allowed(&small_token));
+    let small_whitelist_cost = env.cost_estimate().budget().cpu_instruction_cost();
+
+    // Grow the whitelist substantially.
+    for _ in 0..500u32 {
+        let t = Address::generate(&env);
+        client.add_token(&admin, &t);
+    }
+    let large_token = Address::generate(&env);
+    client.add_token(&admin, &large_token);
+
+    // Measure lookup cost against the large whitelist, for both a token
+    // added early and a token added last.
+    env.cost_estimate().budget().reset_default();
+    assert!(client.is_token_allowed(&small_token));
+    let large_whitelist_cost_early = env.cost_estimate().budget().cpu_instruction_cost();
+
+    env.cost_estimate().budget().reset_default();
+    assert!(client.is_token_allowed(&large_token));
+    let large_whitelist_cost_last = env.cost_estimate().budget().cpu_instruction_cost();
+
+    // With an O(1) membership lookup, cost should not meaningfully grow as
+    // the whitelist grows from 1 to 502 entries. A linear scan would be
+    // roughly 500x more expensive here; allow a generous margin above 1x to
+    // avoid flakiness while still catching a regression to linear scans.
+    assert!(
+        large_whitelist_cost_early < small_whitelist_cost * 3,
+        "lookup cost grew with whitelist size: small={}, large_early={}",
+        small_whitelist_cost,
+        large_whitelist_cost_early
+    );
+    assert!(
+        large_whitelist_cost_last < small_whitelist_cost * 3,
+        "lookup cost grew with whitelist size: small={}, large_last={}",
+        small_whitelist_cost,
+        large_whitelist_cost_last
+    );
+}
+
+#[test]
+fn test_is_whitelisted_cost_is_constant_at_scale() {
+    let (env, admin, client) = setup_test();
+
+    let small_token = Address::generate(&env);
+    client.add_token(&admin, &small_token);
+
+    env.cost_estimate().budget().reset_default();
+    assert!(client.is_whitelisted(&small_token));
+    let small_whitelist_cost = env.cost_estimate().budget().cpu_instruction_cost();
+
+    for _ in 0..500u32 {
+        let t = Address::generate(&env);
+        client.add_token(&admin, &t);
+    }
+    let large_token = Address::generate(&env);
+    client.add_token(&admin, &large_token);
+
+    env.cost_estimate().budget().reset_default();
+    assert!(client.is_whitelisted(&large_token));
+    let large_whitelist_cost = env.cost_estimate().budget().cpu_instruction_cost();
+
+    assert!(
+        large_whitelist_cost < small_whitelist_cost * 3,
+        "lookup cost grew with whitelist size: small={}, large={}",
+        small_whitelist_cost,
+        large_whitelist_cost
+    );
+}
