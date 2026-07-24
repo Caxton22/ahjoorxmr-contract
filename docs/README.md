@@ -21,6 +21,7 @@ Welcome to the Ahjoor contract documentation directory. Below is a structured in
 ## 3. Escrow Contract (`ahjoor-escrow`)
 
 - [**Escrow Dispute Flow**](escrow-dispute-flow.md) — Multi-step escrow dispute lifecycle, arbiter assignment, timeout enforcement, default winner rules, and resolution cooling-off periods.
+- [**Inspector Role and Scoring System**](inspector-role.md) — How an inspector is assigned to an escrow, their responsibilities and powers over the inspection gate, and how their accuracy score is calculated, updated on rulings and appeals, and enforced as a threshold for high-value escrows.
 
 ---
 
