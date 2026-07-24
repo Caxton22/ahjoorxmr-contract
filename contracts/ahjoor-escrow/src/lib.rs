@@ -2827,8 +2827,14 @@ impl AhjoorEscrowContract {
             .unwrap_or(0);
         if collateral > 0 {
             if buyer_percent > 0 {
-                // Buyer-favour: forfeit collateral_forfeit_bps to buyer, return remainder to seller
-                let forfeit = (collateral * escrow.extensions.collateral_forfeit_bps as i128) / 10_000;
+                // Buyer-favour: forfeit collateral_forfeit_bps to buyer, return remainder to seller.
+                // Scale the forfeiture by how decisively the verdict went against the seller —
+                // a 1%-buyer verdict should not forfeit the same amount as a 100%-buyer verdict.
+                // Full configured bps applies only at buyer_percent == 100; smaller buyer shares
+                // forfeit proportionally less.
+                let forfeit = (collateral * escrow.extensions.collateral_forfeit_bps as i128
+                    * buyer_percent as i128)
+                    / (10_000 * 100);
                 let returned = collateral - forfeit;
                 if forfeit > 0 {
                     Self::transfer_to_buyers(env, &escrow, forfeit, escrow_id);

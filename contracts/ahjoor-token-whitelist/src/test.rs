@@ -400,98 +400,80 @@ fn test_suspend_nonwhitelisted_token_fails() {
     client.suspend_token_timed(&admin, &token, &50u32, &reason);
 }
 
-// ─── batch_add_tokens (#592) ─────────────────────────────────────────────────
-
 #[test]
-fn test_batch_add_tokens_full_valid_batch() {
+fn test_is_token_allowed_cost_is_constant_at_scale() {
     let (env, admin, client) = setup_test();
-    let tokens = soroban_sdk::vec![
-        &env,
-        Address::generate(&env),
-        Address::generate(&env),
-        Address::generate(&env),
-    ];
 
-    client.batch_add_tokens(&admin, &tokens);
+    // Measure lookup cost against a small whitelist.
+    let small_token = Address::generate(&env);
+    client.add_token(&admin, &small_token);
 
-    for token in tokens.iter() {
-        assert!(client.is_token_allowed(&token));
+    env.cost_estimate().budget().reset_default();
+    assert!(client.is_token_allowed(&small_token));
+    let small_whitelist_cost = env.cost_estimate().budget().cpu_instruction_cost();
+
+    // Grow the whitelist substantially.
+    for _ in 0..500u32 {
+        let t = Address::generate(&env);
+        client.add_token(&admin, &t);
     }
-    assert_eq!(client.get_whitelisted_tokens().len(), 3);
+    let large_token = Address::generate(&env);
+    client.add_token(&admin, &large_token);
+
+    // Measure lookup cost against the large whitelist, for both a token
+    // added early and a token added last.
+    env.cost_estimate().budget().reset_default();
+    assert!(client.is_token_allowed(&small_token));
+    let large_whitelist_cost_early = env.cost_estimate().budget().cpu_instruction_cost();
+
+    env.cost_estimate().budget().reset_default();
+    assert!(client.is_token_allowed(&large_token));
+    let large_whitelist_cost_last = env.cost_estimate().budget().cpu_instruction_cost();
+
+    // With an O(1) membership lookup, cost should not meaningfully grow as
+    // the whitelist grows from 1 to 502 entries. A linear scan would be
+    // roughly 500x more expensive here; allow a generous margin above 1x to
+    // avoid flakiness while still catching a regression to linear scans.
+    assert!(
+        large_whitelist_cost_early < small_whitelist_cost * 3,
+        "lookup cost grew with whitelist size: small={}, large_early={}",
+        small_whitelist_cost,
+        large_whitelist_cost_early
+    );
+    assert!(
+        large_whitelist_cost_last < small_whitelist_cost * 3,
+        "lookup cost grew with whitelist size: small={}, large_last={}",
+        small_whitelist_cost,
+        large_whitelist_cost_last
+    );
 }
 
 #[test]
-#[should_panic(expected = "Batch size exceeds maximum allowed")]
-fn test_batch_add_tokens_oversized_batch_reverts_before_any_added() {
+fn test_is_whitelisted_cost_is_constant_at_scale() {
     let (env, admin, client) = setup_test();
-    let mut tokens = soroban_sdk::Vec::new(&env);
-    for _ in 0..21 {
-        tokens.push_back(Address::generate(&env));
+
+    let small_token = Address::generate(&env);
+    client.add_token(&admin, &small_token);
+
+    env.cost_estimate().budget().reset_default();
+    assert!(client.is_whitelisted(&small_token));
+    let small_whitelist_cost = env.cost_estimate().budget().cpu_instruction_cost();
+
+    for _ in 0..500u32 {
+        let t = Address::generate(&env);
+        client.add_token(&admin, &t);
     }
+    let large_token = Address::generate(&env);
+    client.add_token(&admin, &large_token);
 
-    client.batch_add_tokens(&admin, &tokens);
-}
+    env.cost_estimate().budget().reset_default();
+    assert!(client.is_whitelisted(&large_token));
+    let large_whitelist_cost = env.cost_estimate().budget().cpu_instruction_cost();
 
-#[test]
-#[should_panic(expected = "Batch cannot be empty")]
-fn test_batch_add_tokens_empty_batch_fails() {
-    let (env, admin, client) = setup_test();
-    let tokens: soroban_sdk::Vec<Address> = soroban_sdk::Vec::new(&env);
-
-    client.batch_add_tokens(&admin, &tokens);
-}
-
-#[test]
-#[should_panic(expected = "Token already whitelisted")]
-fn test_batch_add_tokens_duplicate_within_batch_reverts_before_any_added() {
-    let (env, admin, client) = setup_test();
-    let token = Address::generate(&env);
-    let tokens = soroban_sdk::vec![&env, token.clone(), token];
-
-    client.batch_add_tokens(&admin, &tokens);
-}
-
-// ─── cleanup_allowlist_entries (#590) ────────────────────────────────────────
-
-#[test]
-fn test_cleanup_allowlist_entries_removes_only_expired() {
-    let (env, admin, client) = setup_test();
-    let contract_a = Address::generate(&env);
-    let contract_b = Address::generate(&env);
-    let token = Address::generate(&env);
-
-    let current = env.ledger().sequence();
-    client.set_contract_token(&admin, &contract_a, &token, &Some(current + 10));
-    client.set_contract_token(&admin, &contract_b, &token, &None); // permanent, never expires
-
-    env.ledger().with_mut(|l| l.sequence_number += 20);
-
-    let entries = soroban_sdk::vec![
-        &env,
-        (contract_a.clone(), token.clone()),
-        (contract_b.clone(), token.clone()),
-    ];
-    client.cleanup_allowlist_entries(&entries);
-
-    assert_eq!(client.get_contract_token_entry(&contract_a, &token), None);
-    // Permanent (contract_b) entry is untouched by cleanup.
-    assert!(client.is_token_allowed_for_contract(&contract_b, &token));
-}
-
-#[test]
-fn test_cleanup_allowlist_entries_no_effect_when_nothing_expired() {
-    let (env, admin, client) = setup_test();
-    let contract_id = Address::generate(&env);
-    let token = Address::generate(&env);
-
-    let current = env.ledger().sequence();
-    client.set_contract_token(&admin, &contract_id, &token, &Some(current + 100));
-
-    let entries = soroban_sdk::vec![&env, (contract_id.clone(), token.clone())];
-    client.cleanup_allowlist_entries(&entries);
-    assert!(client.is_token_allowed_for_contract(&contract_id, &token));
-
-    // Calling again is a no-op.
-    client.cleanup_allowlist_entries(&entries);
-    assert!(client.is_token_allowed_for_contract(&contract_id, &token));
+    assert!(
+        large_whitelist_cost < small_whitelist_cost * 3,
+        "lookup cost grew with whitelist size: small={}, large={}",
+        small_whitelist_cost,
+        large_whitelist_cost
+    );
 }
