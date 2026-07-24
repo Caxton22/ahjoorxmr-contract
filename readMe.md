@@ -210,6 +210,23 @@ Only the contract **admin** can modify the whitelist. The admin is set once at d
 | `remove_token(admin, token)` | Remove a token from the global whitelist. |
 | `is_whitelisted(token) → bool` | Return whether a token is on the global whitelist (read-only). |
 
+### Suspension
+
+Suspension is a temporary admin-controlled restriction on an already whitelisted token. It is distinct from full removal:
+
+- `remove_token(admin, token)` permanently deletes the token from the global whitelist and clears any active suspension record for that token.
+- `suspend_token_timed(admin, token, duration, reason_hash)` keeps the token on the whitelist but blocks `is_token_allowed(token)` until the suspension window expires.
+- A suspended token is not “delisted”; it remains globally whitelisted, but calls that rely on `is_token_allowed` will be rejected while the suspension is active.
+
+Only the contract admin can suspend a token, and the token must already be present in the global whitelist before suspension is allowed. A suspension is timed by ledger height: the contract stores an `expiry_ledger` and an optional `reason_hash` for the suspension record. While the token is suspended, `is_token_allowed(token)` returns `false` for downstream contracts that check the whitelist contract.
+
+A suspended token can be reinstated in either of two ways:
+
+1. Automatic expiry: when `is_token_allowed(token)` is queried after the suspension expiry ledger, the contract lazily clears the suspension record and returns `true`.
+2. Manual lift: the admin can call `lift_token_suspension(admin, token)` before expiry to remove the suspension early.
+
+The admin can also extend an active suspension with `extend_token_suspension(admin, token, additional_ledgers)`, which appends more ledgers to the existing expiry window. Suspension history is retained for the most recent suspensions, capped at ten recorded entries.
+
 ### Example CLI call
 
 ```bash
