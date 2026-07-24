@@ -5938,11 +5938,36 @@ impl AhjoorContract {
         (contributed, remaining)
     }
 
-    pub fn get_round_history(env: Env) -> Vec<PayoutRecord> {
-        env.storage()
+    /// Paginated round-by-round payout history for a group (#555).
+    ///
+    /// `group_id` is accepted for API/event-payload consistency with other
+    /// group-scoped functions (see `freeze_group`); this contract manages a
+    /// single group per instance, so it is not used to key storage.
+    ///
+    /// Returns the slice `[offset, offset + limit)` of `RoundHistory`. An
+    /// out-of-range `offset` (>= total number of rounds) returns an empty
+    /// vec rather than panicking.
+    pub fn get_round_history(
+        env: Env,
+        _group_id: u32,
+        offset: u32,
+        limit: u32,
+    ) -> Vec<PayoutRecord> {
+        let history: Vec<PayoutRecord> = env
+            .storage()
             .persistent()
             .get(&PersistentKey::RoundHistory)
-            .unwrap_or(Vec::new(&env))
+            .unwrap_or(Vec::new(&env));
+
+        let total = history.len();
+        let start = offset.min(total);
+        let end = start.saturating_add(limit).min(total);
+
+        let mut page = Vec::new(&env);
+        for i in start..end {
+            page.push_back(history.get(i).unwrap());
+        }
+        page
     }
 
     pub fn get_state(env: Env) -> (u32, Vec<Address>, u64, PayoutStrategy, Address) {

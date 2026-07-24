@@ -1149,7 +1149,7 @@ fn test_read_interface_lifecycle() {
     assert_eq!(info.members.len(), 2);
     assert_eq!(info.current_round, 0);
     assert_eq!(info.next_recipient, u1); // Round 0 recipient
-    assert_eq!(client.get_round_history().len(), 0);
+    assert_eq!(client.get_round_history(&0u32, &0u32, &100u32).len(), 0);
 
     // 2. STAGE: Mid-Round Contribution
     client.contribute(&u1, &token_admin, &100);
@@ -1167,7 +1167,7 @@ fn test_read_interface_lifecycle() {
     client.contribute(&u2, &token_admin, &100); // This triggers complete_round_payout
 
     // Verify History
-    let history = client.get_round_history();
+    let history = client.get_round_history(&0u32, &0u32, &100u32);
     assert_eq!(history.len(), 1);
     let record = history.get(0).unwrap();
     assert_eq!(record.recipient, u1);
@@ -4319,7 +4319,7 @@ fn test_round_history_persistent_ttl() {
         .set_sequence_number(setup.env.ledger().sequence() + 110_000);
 
     // RoundHistory must still be accessible (persistent storage, individual TTL)
-    let history = setup.client.get_round_history();
+    let history = setup.client.get_round_history(&0u32, &0u32, &100u32);
     assert_eq!(history.len(), 1);
     assert_eq!(history.get(0).unwrap().amount, 200);
 }
@@ -4345,8 +4345,86 @@ fn test_round_history_ttl_extended_each_round() {
         .ledger()
         .set_sequence_number(setup.env.ledger().sequence() + 110_000);
 
-    let history = setup.client.get_round_history();
+    let history = setup.client.get_round_history(&0u32, &0u32, &100u32);
     assert_eq!(history.len(), 2);
+}
+
+// ===========================================================================
+//  #555: get_round_history pagination
+// ===========================================================================
+
+/// get_round_history(group_id, offset, limit) returns the correct page of
+/// RoundHistory for a group with more rounds than fit on one page.
+#[test]
+fn test_get_round_history_pagination_returns_correct_slice() {
+    let setup = setup_with_members(2, 5_000);
+    default_init(&setup);
+
+    let u1 = setup.members.get(0).unwrap();
+    let u2 = setup.members.get(1).unwrap();
+
+    // Complete 5 rounds (round-robin: u1, u2, u1, u2, u1).
+    for _ in 0..5 {
+        setup.client.contribute(&u1, &setup.token_admin, &100);
+        setup.client.contribute(&u2, &setup.token_admin, &100);
+    }
+
+    let full = setup.client.get_round_history(&0u32, &0u32, &100u32);
+    assert_eq!(full.len(), 5);
+
+    // First page: 2 records, matching the start of the full history.
+    let page1 = setup.client.get_round_history(&0u32, &0u32, &2u32);
+    assert_eq!(page1.len(), 2);
+    assert_eq!(page1.get(0).unwrap().recipient, full.get(0).unwrap().recipient);
+    assert_eq!(page1.get(1).unwrap().recipient, full.get(1).unwrap().recipient);
+
+    // Second page: next 2 records.
+    let page2 = setup.client.get_round_history(&0u32, &2u32, &2u32);
+    assert_eq!(page2.len(), 2);
+    assert_eq!(page2.get(0).unwrap().recipient, full.get(2).unwrap().recipient);
+    assert_eq!(page2.get(1).unwrap().recipient, full.get(3).unwrap().recipient);
+
+    // Final (partial) page: only 1 record remains.
+    let page3 = setup.client.get_round_history(&0u32, &4u32, &2u32);
+    assert_eq!(page3.len(), 1);
+    assert_eq!(page3.get(0).unwrap().recipient, full.get(4).unwrap().recipient);
+}
+
+/// An out-of-range offset returns an empty vec rather than panicking.
+#[test]
+fn test_get_round_history_out_of_range_offset_returns_empty() {
+    let setup = setup_with_members(2, 1_000);
+    default_init(&setup);
+
+    let u1 = setup.members.get(0).unwrap();
+    let u2 = setup.members.get(1).unwrap();
+
+    setup.client.contribute(&u1, &setup.token_admin, &100);
+    setup.client.contribute(&u2, &setup.token_admin, &100);
+
+    // Only 1 round exists; offset way past the end must not panic.
+    let page = setup.client.get_round_history(&0u32, &50u32, &10u32);
+    assert_eq!(page.len(), 0);
+
+    // Offset exactly at the total count is also "out of range".
+    let page_at_boundary = setup.client.get_round_history(&0u32, &1u32, &10u32);
+    assert_eq!(page_at_boundary.len(), 0);
+}
+
+/// A zero limit returns an empty vec regardless of a valid offset.
+#[test]
+fn test_get_round_history_zero_limit_returns_empty() {
+    let setup = setup_with_members(2, 1_000);
+    default_init(&setup);
+
+    let u1 = setup.members.get(0).unwrap();
+    let u2 = setup.members.get(1).unwrap();
+
+    setup.client.contribute(&u1, &setup.token_admin, &100);
+    setup.client.contribute(&u2, &setup.token_admin, &100);
+
+    let page = setup.client.get_round_history(&0u32, &0u32, &0u32);
+    assert_eq!(page.len(), 0);
 }
 
 /// ExitRequests in temporary storage: a request is stored, accessible, and
