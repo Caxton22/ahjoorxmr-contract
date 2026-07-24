@@ -1599,7 +1599,7 @@ impl AhjoorRefundContract {
             .expect("Dispute window not configured");
 
         let now = env.ledger().timestamp();
-        if now < refund.requested_at + dispute_window {
+        if now <= refund.requested_at + dispute_window {
             panic!("Dispute window has not elapsed");
         }
 
@@ -1947,7 +1947,7 @@ impl AhjoorRefundContract {
             .expect("Customer cancel window not configured");
 
         let now = env.ledger().timestamp();
-        if now < refund.requested_at + cancel_window {
+        if now <= refund.requested_at + cancel_window {
             panic!("Customer cancel window has not elapsed");
         }
 
@@ -2292,7 +2292,7 @@ impl AhjoorRefundContract {
         let deadline = refund.requested_at + auto_reject_window + extension;
         let now = env.ledger().timestamp();
 
-        if now < deadline {
+        if now <= deadline {
             panic!("Auto-reject window has not elapsed");
         }
 
@@ -5721,3 +5721,6 @@ mod test_abuse_score;
 
 #[cfg(test)]
 mod test_cross_contract_refund;
+
+#[cfg(test)]
+mod test_deadline_boundaries;
