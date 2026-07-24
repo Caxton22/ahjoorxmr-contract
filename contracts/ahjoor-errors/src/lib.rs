@@ -453,9 +453,45 @@ pub static ALL_ERRORS: &[ErrorEntry] = &[
     ErrorEntry { code: whitelist::TOKEN_HAS_NO_QUOTA, name: "TokenHasNoQuota", contract: "ahjoor-token-whitelist" },
 ];
 
+/// Look up an `ErrorEntry` by its numeric code.
+///
+/// Performs the linear search over `ALL_ERRORS` once, for reuse by off-chain
+/// tooling and tests instead of every caller writing its own scan.
+pub fn error_name_from_code(code: u32) -> Option<&'static ErrorEntry> {
+    ALL_ERRORS.iter().find(|entry| entry.code == code)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn error_name_from_code_returns_known_entries() {
+        let entry = error_name_from_code(rosca::ALREADY_INITIALIZED).expect("known code");
+        assert_eq!(entry.name, "AlreadyInitialized");
+        assert_eq!(entry.contract, "ahjoor-rosca");
+
+        let entry = error_name_from_code(payments::RATE_LIMIT_EXCEEDED).expect("known code");
+        assert_eq!(entry.name, "RateLimitExceeded");
+        assert_eq!(entry.contract, "ahjoor-payments");
+
+        let entry = error_name_from_code(escrow::INVALID_DEADLINE).expect("known code");
+        assert_eq!(entry.name, "InvalidDeadline");
+        assert_eq!(entry.contract, "ahjoor-escrow");
+
+        let entry = error_name_from_code(refund::ALREADY_INITIALIZED).expect("known code");
+        assert_eq!(entry.name, "AlreadyInitialized");
+        assert_eq!(entry.contract, "ahjoor-refund");
+
+        let entry = error_name_from_code(whitelist::NOT_INITIALIZED).expect("known code");
+        assert_eq!(entry.name, "NotInitialized");
+        assert_eq!(entry.contract, "ahjoor-token-whitelist");
+    }
+
+    #[test]
+    fn error_name_from_code_returns_none_for_unrecognized_code() {
+        assert!(error_name_from_code(9_999_999).is_none());
+    }
 
     #[test]
     fn no_duplicate_codes() {
