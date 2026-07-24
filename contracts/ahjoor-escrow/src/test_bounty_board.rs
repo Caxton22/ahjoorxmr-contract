@@ -1,5 +1,20 @@
 #![cfg(test)]
 
+//! #319: Tests for the bounty board open competitive work assignment feature.
+//!
+//! Covers the acceptance criteria:
+//! - Buyer can create a bounty with description hash, claim deadline, and submission
+//!   deadline; status is `BountyUnclaimed` and solver is `None`.
+//! - Any solver can claim an unclaimed bounty first-come-first-served.
+//! - The assigned solver can submit work (submission hash) before the deadline.
+//! - Buyer can approve a submission, releasing funds to the solver.
+//! - Buyer can reject a submission, re-opening the bounty for another solver.
+//! - A configurable maximum rejection rounds (default 3) prevents infinite churn.
+//! - Buyer can cancel an unclaimed bounty and receive a refund.
+//! - Admin can configure the max bounty rejection rounds.
+//! - Milestone-gated bounty variant with per-milestone verifiers.
+//! - Cancellation after partial milestone payout refunds only remaining funds.
+
 use crate::{
     AhjoorEscrowContract, AhjoorEscrowContractClient, BountyMilestoneInput, EscrowStatus,
 };
