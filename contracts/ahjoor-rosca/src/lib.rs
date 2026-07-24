@@ -5945,6 +5945,57 @@ impl AhjoorContract {
             .unwrap_or(Vec::new(&env))
     }
 
+    /// Admin view of the current pending-penalty queue (#556).
+    ///
+    /// Penalties move through `request_penalty_grace` (deferred into the
+    /// queue when requested within the grace window) →
+    /// `process_pending_penalties` (applied once the grace period elapses
+    /// or the round advances) → `apply_penalty`. This surfaces which
+    /// members currently have an unprocessed pending penalty, without
+    /// mutating state or triggering processing.
+    ///
+    /// `group_id` is accepted for API consistency with other group-scoped
+    /// functions (see `freeze_group`); this contract manages a single group
+    /// per instance, so it is not used to key storage.
+    pub fn get_pending_penalties(env: Env, _group_id: u32) -> Vec<(Address, PendingPenaltyInfo)> {
+        let pending_penalties: Map<Address, u32> = env
+            .storage()
+            .instance()
+            .get(&DataKey4::PendingPenalties)
+            .unwrap_or(Map::new(&env));
+
+        let penalty_amount: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::PenaltyAmount)
+            .unwrap_or(0);
+        let grace_period_ledgers: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey4::GracePeriodLedgers)
+            .unwrap_or(0);
+        let round_deadline: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey4::LastRoundDeadline)
+            .or(env.storage().instance().get(&DataKey::RoundDeadline))
+            .unwrap_or(0);
+        let grace_expires_at = round_deadline.saturating_add(grace_period_ledgers as u64);
+
+        let mut result = Vec::new(&env);
+        for (member, round) in pending_penalties.iter() {
+            result.push_back((
+                member,
+                PendingPenaltyInfo {
+                    round,
+                    penalty_amount,
+                    grace_expires_at,
+                },
+            ));
+        }
+        result
+    }
+
     pub fn get_state(env: Env) -> (u32, Vec<Address>, u64, PayoutStrategy, Address) {
         let current_round: u32 = env
             .storage()
