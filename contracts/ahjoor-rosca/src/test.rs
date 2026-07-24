@@ -5050,6 +5050,95 @@ fn test_grace_period_ledger_vs_timestamp() {
     assert!(info.current_round >= 1, "should have progressed past round 0");
 }
 
+// ===========================================================================
+//  #556: get_pending_penalties admin view
+// ===========================================================================
+
+/// Empty vec when no penalties are pending.
+#[test]
+fn test_get_pending_penalties_empty_when_none_pending() {
+    let (_env, client, _admin, _token_addr, _members, _token_admin_client) =
+        setup_grace_env(false, 600, 0);
+
+    let pending = client.get_pending_penalties(&0u32);
+    assert_eq!(pending.len(), 0);
+}
+
+/// A group with a mix of an already-processed (auto-flushed on round
+/// advance) and a still-pending penalty: get_pending_penalties must surface
+/// only the member whose penalty is genuinely still awaiting processing.
+#[test]
+fn test_get_pending_penalties_mix_of_processed_and_pending() {
+    let (env, client, _admin, token_addr, members, _token_admin_client) =
+        setup_grace_env(false, 600, 0);
+    let token_client = TokenClient::new(&env, &token_addr);
+
+    let member0 = members.get(0).unwrap();
+    let member1 = members.get(1).unwrap();
+    let member2 = members.get(2).unwrap();
+
+    // Round 0 (deadline = 3600): member2 defaults.
+    env.ledger().with_mut(|l| l.timestamp = 100);
+    client.contribute(&member0, &token_addr, &100);
+    client.contribute(&member1, &token_addr, &100);
+
+    env.ledger().with_mut(|l| l.timestamp = 3800);
+    client.finalize_round();
+
+    // Still within round 0's grace window (deadline 3600 + grace 600 = 4200):
+    // member2's penalty is deferred, not charged yet.
+    env.ledger().with_mut(|l| l.timestamp = 3850);
+    let member2_balance_before = token_client.balance(&member2);
+    client.request_penalty_grace(&member2);
+
+    let pending_after_round0 = client.get_pending_penalties(&0u32);
+    assert_eq!(pending_after_round0.len(), 1);
+    assert_eq!(pending_after_round0.get(0).unwrap().0, member2);
+    // Deferred, not yet charged: balance unchanged.
+    assert_eq!(token_client.balance(&member2), member2_balance_before);
+
+    // Round 1: member1 defaults this time.
+    let round1_deadline = client.get_group_info().round_deadline;
+    client.contribute(&member0, &token_addr, &100);
+    client.contribute(&member2, &token_addr, &100);
+
+    env.ledger().with_mut(|l| l.timestamp = round1_deadline + 100);
+    client.finalize_round();
+    let member1_balance_before_request = token_client.balance(&member1);
+
+    // Still within round 1's own grace window (round1_deadline + 600).
+    // Requesting grace for member1 first runs process_pending_penalties,
+    // which flushes member2's stale round-0 entry (the round has advanced
+    // past it) before deferring member1's brand-new one.
+    let round1_grace_expires_at = round1_deadline + 600;
+    env.ledger()
+        .with_mut(|l| l.timestamp = round1_deadline + 150);
+    client.request_penalty_grace(&member1);
+
+    // member2 was auto-processed: the penalty was actually charged, on top
+    // of member2's normal round-1 contribution of 100.
+    assert_eq!(
+        token_client.balance(&member2),
+        member2_balance_before - 100 - 10
+    );
+
+    // member1 is the only one still awaiting processing.
+    let pending = client.get_pending_penalties(&0u32);
+    assert_eq!(pending.len(), 1);
+    let (pending_member, info) = pending.get(0).unwrap();
+    assert_eq!(pending_member, member1);
+    assert_eq!(info.round, 2);
+    assert_eq!(info.penalty_amount, 10);
+    assert_eq!(info.grace_expires_at, round1_grace_expires_at);
+
+    // member1's penalty hasn't been charged yet — deferred, not applied —
+    // so requesting grace left member1's balance unchanged.
+    assert_eq!(
+        token_client.balance(&member1),
+        member1_balance_before_request
+    );
+}
+
 /// #390 — set_use_timestamp_schedule must reject calls after round 1 starts.
 #[test]
 fn test_cannot_change_timestamp_schedule_mid_round() {

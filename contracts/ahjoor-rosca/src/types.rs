@@ -87,6 +87,21 @@ pub struct PayoutRecord {
     pub amount: i128,
 }
 
+/// A defaulter's penalty that has been deferred via `request_penalty_grace`
+/// and is awaiting processing by `process_pending_penalties`/`apply_penalty` (#556).
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PendingPenaltyInfo {
+    /// Round in which the penalty deferral was requested.
+    pub round: u32,
+    /// Penalty amount (in the group's contribution token) that will be
+    /// charged once the penalty is processed.
+    pub penalty_amount: i128,
+    /// Ledger timestamp after which the grace period has elapsed and the
+    /// penalty becomes eligible for processing.
+    pub grace_expires_at: u64,
+}
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExitRequest {
