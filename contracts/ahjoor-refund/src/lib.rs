@@ -4602,6 +4602,36 @@ impl AhjoorRefundContract {
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
+    /// #586: Admin view of refunds currently awaiting senior review.
+    /// Only refunds with status `EscalatedToSenior` are returned (resolved
+    /// escalations move to `Processed`/`Rejected` and drop out of this view).
+    /// `limit` is capped at 50 per call.
+    pub fn list_pending_senior_escalations(env: Env, offset: u32, limit: u32) -> Vec<u32> {
+        let effective_limit = limit.min(50);
+        let counter: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::RefundCounter)
+            .unwrap_or(0);
+
+        let mut result = Vec::new(&env);
+        let mut matched: u32 = 0;
+        for refund_id in 0..counter {
+            let refund: Refund = match env.storage().persistent().get(&DataKey::Refund(refund_id)) {
+                Some(r) => r,
+                None => continue,
+            };
+            if refund.status != RefundStatus::EscalatedToSenior {
+                continue;
+            }
+            if matched >= offset && result.len() < effective_limit {
+                result.push_back(refund_id);
+            }
+            matched += 1;
+        }
+        result
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Feature: Refund Customer Abuse Score
     // ─────────────────────────────────────────────────────────────────────────
