@@ -285,6 +285,11 @@ pub enum DataKey4 {
     LastRoundDeadline = 97,
     CoSigners = 98,
     CoSignerWindowLedgers = 99,
+    /// Count of consecutive `close_round` calls since the last `finalize_round`.
+    /// Guards against an admin repeatedly calling `close_round` instead of
+    /// `finalize_round`, which would advance rounds without ever paying out
+    /// the pot or recording audit trail / receipts / cycle bonuses.
+    UnfinalizedRoundStreak = 100,
 }
 
 /// Waitlist ordering mode (#456).
