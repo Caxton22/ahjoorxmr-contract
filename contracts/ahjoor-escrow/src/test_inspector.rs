@@ -371,13 +371,13 @@ fn test_inspector_replacement_requires_both_parties() {
     client.replace_inspector(&buyer, &escrow_id, &new_inspector);
     
     let escrow = client.get_escrow(&escrow_id);
-    assert_eq!(escrow.inspector, Some(old_inspector.clone()));
+    assert_eq!(escrow.extensions.inspector, Some(old_inspector.clone()));
 
     // Now seller also approves - inspector should change
     client.replace_inspector(&seller, &escrow_id, &new_inspector);
-    
+
     let escrow = client.get_escrow(&escrow_id);
-    assert_eq!(escrow.inspector, Some(new_inspector));
+    assert_eq!(escrow.extensions.inspector, Some(new_inspector));
 }
 
 #[test]
