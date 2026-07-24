@@ -25,6 +25,12 @@
 // ---------------------------------------------------------------------------
 
 pub mod rosca {
+    /// Number of `pub const` codes declared in this module. Kept in sync
+    /// manually; `ahjoor-errors`'s test suite cross-checks this against the
+    /// number of `ALL_ERRORS` entries tagged `"ahjoor-rosca"` so a code added
+    /// here without a matching `ALL_ERRORS` entry (or vice versa) fails CI.
+    pub const COUNT: usize = 110;
+
     // Core Error variants (on-chain discriminant → namespaced code)
     pub const ALREADY_INITIALIZED: u32         = 1001;
     pub const TOKEN_NOT_APPROVED: u32          = 1002;
@@ -145,6 +151,9 @@ pub mod rosca {
 // ---------------------------------------------------------------------------
 
 pub mod payments {
+    /// See [`crate::rosca::COUNT`] for why this exists.
+    pub const COUNT: usize = 47;
+
     pub const RATE_LIMIT_EXCEEDED: u32              = 2001;
     pub const SUBSCRIPTION_PAUSED: u32              = 2002;
     pub const ORACLE_CONDITION_NOT_MET: u32         = 2003;
@@ -199,6 +208,9 @@ pub mod payments {
 // ---------------------------------------------------------------------------
 
 pub mod escrow {
+    /// See [`crate::rosca::COUNT`] for why this exists.
+    pub const COUNT: usize = 3;
+
     pub const INVALID_DEADLINE: u32        = 3001;
     pub const INVALID_TRANCHE_INDEX: u32   = 3002;
     pub const TRANCHE_ALREADY_CLAIMED: u32 = 3003;
@@ -209,6 +221,9 @@ pub mod escrow {
 // ---------------------------------------------------------------------------
 
 pub mod refund {
+    /// See [`crate::rosca::COUNT`] for why this exists.
+    pub const COUNT: usize = 8;
+
     // Refund contract uses panic! rather than a contracterror enum;
     // these codes are the off-chain namespace assignments for future migration.
     pub const ALREADY_INITIALIZED: u32             = 4001;
@@ -226,6 +241,9 @@ pub mod refund {
 // ---------------------------------------------------------------------------
 
 pub mod whitelist {
+    /// See [`crate::rosca::COUNT`] for why this exists.
+    pub const COUNT: usize = 8;
+
     pub const NOT_INITIALIZED: u32            = 5001;
     pub const ALREADY_INITIALIZED: u32        = 5002;
     pub const UNAUTHORIZED: u32               = 5003;
@@ -248,7 +266,7 @@ pub struct ErrorEntry {
 }
 
 pub static ALL_ERRORS: &[ErrorEntry] = &[
-    // rosca
+    // rosca (110 entries — must match rosca::COUNT)
     ErrorEntry { code: rosca::ALREADY_INITIALIZED, name: "AlreadyInitialized", contract: "ahjoor-rosca" },
     ErrorEntry { code: rosca::TOKEN_NOT_APPROVED, name: "TokenNotApproved", contract: "ahjoor-rosca" },
     ErrorEntry { code: rosca::CUSTOM_ORDER_LENGTH_MISMATCH, name: "CustomOrderLengthMismatch", contract: "ahjoor-rosca" },
@@ -258,35 +276,222 @@ pub static ALL_ERRORS: &[ErrorEntry] = &[
     ErrorEntry { code: rosca::MEMBER_HAS_EXITED, name: "MemberHasExited", contract: "ahjoor-rosca" },
     ErrorEntry { code: rosca::NOT_A_MEMBER, name: "NotAMember", contract: "ahjoor-rosca" },
     ErrorEntry { code: rosca::ALREADY_CONTRIBUTED, name: "AlreadyContributed", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVALID_EXCHANGE_RATE, name: "InvalidExchangeRate", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::EXCEEDS_TOKEN_LIMIT, name: "ExceedsTokenLimit", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::EXCEEDS_REMAINING_CONTRIBUTION, name: "ExceedsRemainingContribution", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::DEADLINE_NOT_PASSED, name: "DeadlineNotPassed", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::PENALTY_DISABLED, name: "PenaltyDisabled", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NOT_A_DEFAULTER, name: "NotADefaulter", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::CANNOT_CHANGE_MID_ROUND, name: "CannotChangeMidRound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ALREADY_A_MEMBER, name: "AlreadyAMember", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NO_REWARDS_TO_CLAIM, name: "NoRewardsToClaim", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ONLY_MEMBERS_ALLOWED, name: "OnlyMembersAllowed", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::PROPOSAL_NOT_FOUND, name: "ProposalNotFound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::VOTING_DEADLINE_PASSED, name: "VotingDeadlinePassed", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::PROPOSAL_NOT_PENDING, name: "ProposalNotPending", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ALREADY_VOTED, name: "AlreadyVoted", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::VOTING_NOT_ENDED, name: "VotingNotEnded", contract: "ahjoor-rosca" },
     ErrorEntry { code: rosca::CONTRACT_PAUSED, name: "ContractPaused", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ALL_MEMBERS_SUSPENDED, name: "AllMembersSuspended", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ALREADY_PAUSED, name: "AlreadyPaused", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NOT_PAUSED, name: "NotPaused", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::MEMBER_ALREADY_EXITED, name: "MemberAlreadyExited", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::EXIT_REQUEST_PENDING, name: "ExitRequestPending", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NO_EXIT_REQUEST_FOUND, name: "NoExitRequestFound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::EXIT_NOT_ALLOWED_MID_ROUND, name: "ExitNotAllowedMidRound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::CONTRIBUTION_WINDOW_CLOSED, name: "ContributionWindowClosed", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::FEE_EXCEEDS_MAXIMUM, name: "FeeExceedsMaximum", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVALID_MAX_DEFAULTS, name: "InvalidMaxDefaults", contract: "ahjoor-rosca" },
     ErrorEntry { code: rosca::GROUP_FULL, name: "GroupFull", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVALID_MAX_MEMBERS, name: "InvalidMaxMembers", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::DELEGATION_ALREADY_EXISTS, name: "DelegationAlreadyExists", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NO_DELEGATION_FOUND, name: "NoDelegationFound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::CANNOT_VOTE_WITH_ACTIVE_DELEGATION, name: "CannotVoteWithActiveDelegation", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::CANNOT_SUB_DELEGATE, name: "CannotSubDelegate", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVITE_NOT_FOUND, name: "InviteNotFound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVITE_ALREADY_REDEEMED, name: "InviteAlreadyRedeemed", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVITE_WRONG_RECIPIENT, name: "InviteWrongRecipient", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ADMIN_ACTION_NOT_FOUND, name: "AdminActionNotFound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ADMIN_ACTION_ALREADY_EXECUTED, name: "AdminActionAlreadyExecuted", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ADMIN_ACTION_EXPIRED, name: "AdminActionExpired", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ADMIN_ALREADY_APPROVED, name: "AdminAlreadyApproved", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INSUFFICIENT_APPROVALS, name: "InsufficientApprovals", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NOT_A_CO_ADMIN, name: "NotACoAdmin", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVALID_TIER, name: "InvalidTier", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INSURANCE_POOL_NEGATIVE, name: "InsurancePoolNegative", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVALID_INSURANCE_CONTRIBUTION, name: "InvalidInsuranceContribution", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::SKIP_LIMIT_REACHED, name: "SkipLimitReached", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ALREADY_SKIPPED, name: "AlreadySkipped", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INSUFFICIENT_WEIGHT, name: "InsufficientWeight", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::EMERGENCY_PAYOUT_REQUESTED, name: "EmergencyPayoutRequested", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::EMERGENCY_PAYOUT_QUORUM_NOT_MET, name: "EmergencyPayoutQuorumNotMet", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::EMERGENCY_PAYOUT_VOTE_EXPIRED, name: "EmergencyPayoutVoteExpired", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::EMERGENCY_PAYOUT_ALREADY_EXECUTED, name: "EmergencyPayoutAlreadyExecuted", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::EMERGENCY_PAYOUT_LIMIT_REACHED, name: "EmergencyPayoutLimitReached", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::GROUP_ALREADY_DISSOLVED, name: "GroupAlreadyDissolved", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::DISSOLUTION_VOTE_IN_PROGRESS, name: "DissolutionVoteInProgress", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::DISSOLUTION_QUORUM_NOT_MET, name: "DissolutionQuorumNotMet", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::DISSOLUTION_VOTE_EXPIRED, name: "DissolutionVoteExpired", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NO_FUNDS_TO_DISTRIBUTE, name: "NoFundsToDistribute", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVALID_EMERGENCY_CONFIG, name: "InvalidEmergencyConfig", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVALID_DISSOLUTION_CONFIG, name: "InvalidDissolutionConfig", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::GROUP_NOT_YET_ACTIVE, name: "GroupNotYetActive", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ONLY_ADMIN_ALLOWED, name: "OnlyAdminAllowed", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVALID_AMOUNT, name: "InvalidAmount", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::CO_SIGNER_ALREADY_SET, name: "CoSignerAlreadySet", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NO_CO_SIGNER_FOUND, name: "NoCoSignerFound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::CO_SIGNER_NOT_ACCEPTED, name: "CoSignerNotAccepted", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NOT_THE_CO_SIGNER, name: "NotTheCoSigner", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::CO_SIGNER_WINDOW_NOT_OPEN, name: "CoSignerWindowNotOpen", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::CO_SIGNER_WINDOW_EXPIRED, name: "CoSignerWindowExpired", contract: "ahjoor-rosca" },
     ErrorEntry { code: rosca::GROUP_FROZEN, name: "GroupFrozen", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::GROUP_NOT_FROZEN, name: "GroupNotFrozen", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::SNAPSHOT_TOO_SOON, name: "SnapshotTooSoon", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::TIER_NOT_FOUND, name: "TierNotFound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVALID_TIER_DEFINITION, name: "InvalidTierDefinition", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INSUFFICIENT_CREDIT_SCORE, name: "InsufficientCreditScore", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::ROUND_DURATION_OUT_OF_BOUNDS, name: "RoundDurationOutOfBounds", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::DELEGATION_EXPIRED, name: "DelegationExpired", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NOT_CONTRIB_DELEGATE, name: "NotContribDelegate", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::SPLIT_PROPOSAL_NOT_FOUND, name: "SplitProposalNotFound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::SPLIT_MEMBERS_INVALID, name: "SplitMembersInvalid", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::SPLIT_CONFIRMATION_WINDOW_CLOSED, name: "SplitConfirmationWindowClosed", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::SOURCE_GROUP_ALREADY_SPLIT, name: "SourceGroupAlreadySplit", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::SPLIT_ALREADY_CONFIRMED, name: "SplitAlreadyConfirmed", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::SPLIT_NOT_FULLY_CONFIRMED, name: "SplitNotFullyConfirmed", contract: "ahjoor-rosca" },
     ErrorEntry { code: rosca::AUCTION_NOT_ENABLED, name: "AuctionNotEnabled", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::AUCTION_NOT_OPEN, name: "AuctionNotOpen", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::AUCTION_WINDOW_CLOSED, name: "AuctionWindowClosed", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INCORRECT_CONTRIBUTION_AMOUNT, name: "IncorrectContributionAmount", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::INVALID_SLOT_INDEX, name: "InvalidSlotIndex", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::MIGRATION_ALREADY_EXECUTED, name: "MigrationAlreadyExecuted", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::MIGRATION_ALREADY_PENDING, name: "MigrationAlreadyPending", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::MIGRATION_NOT_APPROVED, name: "MigrationNotApproved", contract: "ahjoor-rosca" },
     ErrorEntry { code: rosca::MIGRATION_NOT_FOUND, name: "MigrationNotFound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NO_BID_FOUND, name: "NoBidFound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::SLOT_OCCUPIED, name: "SlotOccupied", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::TOKEN_MISMATCH, name: "TokenMismatch", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::OUTSTANDING_LOAN_EXISTS, name: "OutstandingLoanExists", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::NO_COPAYERS_REGISTERED, name: "NoCopayersRegistered", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::COPAYER_AMOUNTS_MISMATCH, name: "CopayerAmountsMismatch", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::RECEIPT_NOT_FOUND, name: "ReceiptNotFound", contract: "ahjoor-rosca" },
+    ErrorEntry { code: rosca::COPAYER_SPLITS_ALREADY_SET, name: "CopayerSplitsAlreadySet", contract: "ahjoor-rosca" },
     ErrorEntry { code: rosca::PROXY_ROUNDS_EXHAUSTED, name: "ProxyRoundsExhausted", contract: "ahjoor-rosca" },
-    // payments
+
+    // payments (47 entries — must match payments::COUNT)
     ErrorEntry { code: payments::RATE_LIMIT_EXCEEDED, name: "RateLimitExceeded", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::SUBSCRIPTION_PAUSED, name: "SubscriptionPaused", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::ORACLE_CONDITION_NOT_MET, name: "OracleConditionNotMet", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::SUBSCRIPTION_IN_TRIAL, name: "SubscriptionInTrial", contract: "ahjoor-payments" },
     ErrorEntry { code: payments::TOKEN_NOT_ALLOWED, name: "TokenNotAllowed", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::DUPLICATE_EXTERNAL_ID, name: "DuplicateExternalId", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::MULTISIG_NOT_REQUIRED, name: "MultisigNotRequired", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::ALREADY_APPROVED, name: "AlreadyApproved", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::NOT_A_SIGNER, name: "NotASigner", contract: "ahjoor-payments" },
     ErrorEntry { code: payments::VOUCHER_EXPIRED, name: "VoucherExpired", contract: "ahjoor-payments" },
-    ErrorEntry { code: payments::CUSTOMER_BLOCKED, name: "CustomerBlocked", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::VOUCHER_EXHAUSTED, name: "VoucherExhausted", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::VOUCHER_REVOKED, name: "VoucherRevoked", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::VOUCHER_NOT_FOUND, name: "VoucherNotFound", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::WITHDRAWAL_RATE_LIMIT_EXCEEDED, name: "WithdrawalRateLimitExceeded", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::REFERRAL_ALREADY_EXISTS, name: "ReferralAlreadyExists", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::NO_COMMISSION_TO_CLAIM, name: "NoCommissionToClaim", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::DYNAMIC_PAYMENT_EXPIRED, name: "DynamicPaymentExpired", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::TIPPING_NOT_ENABLED, name: "TippingNotEnabled", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::TIP_EXCEEDS_MAX_BPS, name: "TipExceedsMaxBps", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::MERCHANT_VOLUME_CAPPED, name: "MerchantVolumeCapped", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::SLIPPAGE_EXCEEDED, name: "SlippageExceeded", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::ORACLE_NOT_WHITELISTED, name: "OracleNotWhitelisted", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::CUSTOMER_SPEND_LIMIT_EXCEEDED, name: "CustomerSpendLimitExceeded", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::CAPTURE_PAST_DEADLINE, name: "CapturePastDeadline", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::EVIDENCE_WINDOW_CLOSED, name: "EvidenceWindowClosed", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::EVIDENCE_LIMIT_REACHED, name: "EvidenceLimitReached", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::COOLING_OFF_EXPIRED, name: "CoolingOffExpired", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::NOT_IN_COOLING_OFF, name: "NotInCoolingOff", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::COOLING_OFF_EXCEEDS_MAX, name: "CoolingOffExceedsMax", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::PAUSE_COUNT_EXCEEDED, name: "PauseCountExceeded", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::UNAUTHORIZED_PAUSE, name: "UnauthorizedPause", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::INSUFFICIENT_MERCHANT_RESERVE, name: "InsufficientMerchantReserve", contract: "ahjoor-payments" },
     ErrorEntry { code: payments::KYB_VERIFICATION_REQUIRED, name: "KYBVerificationRequired", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::RETRY_NOT_DUE, name: "RetryNotDue", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::DEBIT_RECORD_NOT_FOUND, name: "DebitRecordNotFound", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::DEBIT_ALREADY_ABANDONED, name: "DebitAlreadyAbandoned", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::DEBIT_ALREADY_SUCCEEDED, name: "DebitAlreadySucceeded", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::INVALID_PAYMENT_STATUS, name: "InvalidPaymentStatus", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::MAX_EXTENSIONS_REACHED, name: "MaxExtensionsReached", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::MAX_EXTENSION_LEDGERS_EXCEEDED, name: "MaxExtensionLedgersExceeded", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::CUSTOMER_BLOCKED, name: "CustomerBlocked", contract: "ahjoor-payments" },
     ErrorEntry { code: payments::DAO_NOT_CONFIGURED, name: "DaoNotConfigured", contract: "ahjoor-payments" },
-    // escrow
+    ErrorEntry { code: payments::NOT_A_DAO_MEMBER, name: "NotADaoMember", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::DAO_ALREADY_ESCALATED, name: "DaoAlreadyEscalated", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::DAO_VOTE_WINDOW_OPEN, name: "DaoVoteWindowOpen", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::DAO_VOTE_WINDOW_CLOSED, name: "DaoVoteWindowClosed", contract: "ahjoor-payments" },
+    ErrorEntry { code: payments::DAO_ALREADY_VOTED, name: "DaoAlreadyVoted", contract: "ahjoor-payments" },
+
+    // escrow (3 entries — must match escrow::COUNT)
     ErrorEntry { code: escrow::INVALID_DEADLINE, name: "InvalidDeadline", contract: "ahjoor-escrow" },
     ErrorEntry { code: escrow::INVALID_TRANCHE_INDEX, name: "InvalidTrancheIndex", contract: "ahjoor-escrow" },
     ErrorEntry { code: escrow::TRANCHE_ALREADY_CLAIMED, name: "TrancheAlreadyClaimed", contract: "ahjoor-escrow" },
-    // refund
+
+    // refund (8 entries — must match refund::COUNT)
     ErrorEntry { code: refund::ALREADY_INITIALIZED, name: "AlreadyInitialized", contract: "ahjoor-refund" },
+    ErrorEntry { code: refund::FEE_EXCEEDS_MAXIMUM, name: "FeeExceedsMaximum", contract: "ahjoor-refund" },
     ErrorEntry { code: refund::AMOUNT_MUST_BE_POSITIVE, name: "AmountMustBePositive", contract: "ahjoor-refund" },
-    // whitelist
+    ErrorEntry { code: refund::INVALID_REASON_CODE, name: "InvalidReasonCode", contract: "ahjoor-refund" },
+    ErrorEntry { code: refund::REFUND_COOLDOWN_ACTIVE, name: "RefundCooldownActive", contract: "ahjoor-refund" },
+    ErrorEntry { code: refund::PAYMENT_NOT_FOUND, name: "PaymentNotFound", contract: "ahjoor-refund" },
+    ErrorEntry { code: refund::PAYMENT_NOT_COMPLETED, name: "PaymentNotCompleted", contract: "ahjoor-refund" },
+    ErrorEntry { code: refund::EXCEEDS_REFUNDABLE_AMOUNT, name: "ExceedsRefundableAmount", contract: "ahjoor-refund" },
+
+    // whitelist (8 entries — must match whitelist::COUNT)
     ErrorEntry { code: whitelist::NOT_INITIALIZED, name: "NotInitialized", contract: "ahjoor-token-whitelist" },
+    ErrorEntry { code: whitelist::ALREADY_INITIALIZED, name: "AlreadyInitialized", contract: "ahjoor-token-whitelist" },
+    ErrorEntry { code: whitelist::UNAUTHORIZED, name: "Unauthorized", contract: "ahjoor-token-whitelist" },
     ErrorEntry { code: whitelist::TOKEN_ALREADY_WHITELISTED, name: "TokenAlreadyWhitelisted", contract: "ahjoor-token-whitelist" },
     ErrorEntry { code: whitelist::TOKEN_NOT_WHITELISTED, name: "TokenNotWhitelisted", contract: "ahjoor-token-whitelist" },
+    ErrorEntry { code: whitelist::QUOTA_EXCEEDED, name: "QuotaExceeded", contract: "ahjoor-token-whitelist" },
+    ErrorEntry { code: whitelist::TOKEN_ALREADY_HAS_QUOTA, name: "TokenAlreadyHasQuota", contract: "ahjoor-token-whitelist" },
+    ErrorEntry { code: whitelist::TOKEN_HAS_NO_QUOTA, name: "TokenHasNoQuota", contract: "ahjoor-token-whitelist" },
 ];
+
+/// Look up an `ErrorEntry` by its numeric code.
+///
+/// Performs the linear search over `ALL_ERRORS` once, for reuse by off-chain
+/// tooling and tests instead of every caller writing its own scan.
+pub fn error_name_from_code(code: u32) -> Option<&'static ErrorEntry> {
+    ALL_ERRORS.iter().find(|entry| entry.code == code)
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn error_name_from_code_returns_known_entries() {
+        let entry = error_name_from_code(rosca::ALREADY_INITIALIZED).expect("known code");
+        assert_eq!(entry.name, "AlreadyInitialized");
+        assert_eq!(entry.contract, "ahjoor-rosca");
+
+        let entry = error_name_from_code(payments::RATE_LIMIT_EXCEEDED).expect("known code");
+        assert_eq!(entry.name, "RateLimitExceeded");
+        assert_eq!(entry.contract, "ahjoor-payments");
+
+        let entry = error_name_from_code(escrow::INVALID_DEADLINE).expect("known code");
+        assert_eq!(entry.name, "InvalidDeadline");
+        assert_eq!(entry.contract, "ahjoor-escrow");
+
+        let entry = error_name_from_code(refund::ALREADY_INITIALIZED).expect("known code");
+        assert_eq!(entry.name, "AlreadyInitialized");
+        assert_eq!(entry.contract, "ahjoor-refund");
+
+        let entry = error_name_from_code(whitelist::NOT_INITIALIZED).expect("known code");
+        assert_eq!(entry.name, "NotInitialized");
+        assert_eq!(entry.contract, "ahjoor-token-whitelist");
+    }
+
+    #[test]
+    fn error_name_from_code_returns_none_for_unrecognized_code() {
+        assert!(error_name_from_code(9_999_999).is_none());
+    }
 
     #[test]
     fn no_duplicate_codes() {
@@ -301,6 +506,41 @@ mod tests {
             );
             seen.push(entry.code);
         }
+    }
+
+    /// Guards against the exact failure mode that motivated this registry:
+    /// a `pub const` added to a module without a matching `ALL_ERRORS` entry
+    /// (or an entry added to the wrong contract/range). Each module exposes
+    /// a `COUNT` const alongside its error codes; this test cross-checks
+    /// that count against how many `ALL_ERRORS` entries are tagged for that
+    /// contract. If someone adds a new error code, they must also bump the
+    /// module's `COUNT` and add an `ALL_ERRORS` entry — if either step is
+    /// skipped, this test fails.
+    #[test]
+    fn all_errors_covers_every_module_const() {
+        let expected: &[(&str, usize)] = &[
+            ("ahjoor-rosca", rosca::COUNT),
+            ("ahjoor-payments", payments::COUNT),
+            ("ahjoor-escrow", escrow::COUNT),
+            ("ahjoor-refund", refund::COUNT),
+            ("ahjoor-token-whitelist", whitelist::COUNT),
+        ];
+
+        for (contract, count) in expected {
+            let actual = ALL_ERRORS.iter().filter(|e| &e.contract == contract).count();
+            assert_eq!(
+                actual, *count,
+                "{contract}: ALL_ERRORS has {actual} entries but the module declares COUNT = {count}. \
+                 A const was added/removed without updating the other.",
+            );
+        }
+
+        let total_expected: usize = expected.iter().map(|(_, c)| c).sum();
+        assert_eq!(
+            ALL_ERRORS.len(),
+            total_expected,
+            "ALL_ERRORS contains entries for a contract not covered by this test",
+        );
     }
 
     #[test]

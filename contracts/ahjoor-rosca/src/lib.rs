@@ -22,6 +22,13 @@ const TEMP_BUMP_AMOUNT: u32 = 15_000;
 
 pub(crate) const MIGRATION_TIMEOUT_SECONDS: u64 = 604800; // 7 days in seconds
 
+// Maximum number of consecutive close_round calls allowed without an
+// intervening finalize_round. close_round only advances round state; it
+// never pays out the pot, records the audit trail, or mints contribution
+// receipts. This cap forces the admin back to finalize_round instead of
+// letting contributions accumulate un-paid indefinitely.
+pub(crate) const MAX_CONSECUTIVE_UNFINALIZED_ROUNDS: u32 = 3;
+
 pub mod types;
 pub use types::*;
 
@@ -1289,6 +1296,22 @@ impl AhjoorContract {
             .expect("Admin not set");
         admin.require_auth();
 
+        // Guard against an admin calling close_round repeatedly instead of
+        // finalize_round: close_round never pays out the pot, never records
+        // audit trail (CycleRecord/CycleSnapshotData), and never mints
+        // contribution receipts — only finalize_round does. Cap how many
+        // rounds in a row can be closed without an intervening
+        // finalize_round so contributions cannot accumulate un-paid
+        // indefinitely.
+        let unfinalized_streak: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey4::UnfinalizedRoundStreak)
+            .unwrap_or(0);
+        if unfinalized_streak >= MAX_CONSECUTIVE_UNFINALIZED_ROUNDS {
+            panic_with_error!(&env, ExtError2::RoundPendingFinalization);
+        }
+
         let use_timestamp: bool = env
             .storage()
             .instance()
@@ -1354,6 +1377,9 @@ impl AhjoorContract {
         env.storage()
             .instance()
             .set(&DataKey4::LastRoundDeadline, &deadline);
+        env.storage()
+            .instance()
+            .set(&DataKey4::UnfinalizedRoundStreak, &(unfinalized_streak + 1));
 
         internals::reset_round_state(&env, current_round);
     }
@@ -1399,6 +1425,12 @@ impl AhjoorContract {
             .expect("Admin not set");
         admin.require_auth();
         Self::process_pending_penalties(&env);
+
+        // finalize_round pays out the pot and records the audit trail /
+        // receipts, so the "rounds closed without finalizing" streak resets.
+        env.storage()
+            .instance()
+            .set(&DataKey4::UnfinalizedRoundStreak, &0u32);
 
         let use_timestamp: bool = env
             .storage()

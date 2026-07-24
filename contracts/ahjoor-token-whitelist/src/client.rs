@@ -29,9 +29,16 @@ pub trait TokenWhitelistInterface {
 
     fn add_token(env: Env, admin: Address, token: Address);
 
+    fn batch_add_tokens(env: Env, admin: Address, tokens: soroban_sdk::Vec<Address>);
+
     fn remove_token(env: Env, admin: Address, token: Address);
 
-    fn get_whitelisted_tokens(env: Env, offset: u32, limit: u32) -> soroban_sdk::Vec<Address>;
+    fn cleanup_allowlist_entries(
+        env: Env,
+        entries: soroban_sdk::Vec<(Address, Address)>,
+    );
+
+    fn get_whitelisted_tokens(env: Env) -> soroban_sdk::Vec<Address>;
 
     fn get_admin(env: Env) -> Address;
 

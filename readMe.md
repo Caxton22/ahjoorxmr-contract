@@ -327,6 +327,15 @@ A: Call `bump_storage()` periodically (recommended every ~30 days of inactivity)
 
 ## Documentation
 
-- [Payments Authorization and Capture Flow](docs/payments-flow.md) - lifecycle guide for `authorize_payment`, `capture_payment`, missed capture expiry, and related events.
-- [Contract Error Codes](docs/errors.md) — consolidated reference of every numeric `#[contracterror]` code exposed by the Ahjoor contracts.
-- [State Archival Troubleshooting](docs/state-archival.md) — check archived status, restore a dormant ROSCA contract, and prevent future archival.
+For a comprehensive table of contents and topic breakdown, see the **[Documentation Index](docs/README.md)**.
+
+- [**Documentation Index**](docs/README.md) — Complete table of contents organized by contract and feature.
+- [Payments Authorization and Capture Flow](docs/payments-flow.md) — Lifecycle guide for `authorize_payment`, `capture_payment`, missed capture expiry, and related events.
+- [Contract Error Codes](docs/errors.md) — Consolidated reference of every numeric `#[contracterror]` code exposed by the Ahjoor contracts.
+- [State Archival Troubleshooting](docs/state-archival.md) — Check archived status, restore a dormant ROSCA contract, and prevent future archival.
+- [Escrow Dispute Flow](docs/escrow-dispute-flow.md) — Dispute lifecycle, arbiter timeouts, default winner rules, and cooling-off period mechanics.
+- [DAO Mediation](docs/dao-mediation.md) — On-chain DAO mediation and voting process for disputed merchant payments.
+- [Multi-Token Invoices](docs/multi-token-invoice.md) — Invoicing with multi-token support, oracle price feeds, and settlement.
+- [ROSCA Co-signer Guarantee](docs/rosca-cosigner-guarantee.md) — Co-signer nomination and default coverage mechanisms for ROSCA groups.
+- [Refund Contract Guide](docs/refund.md) — Refund request/approval flows, senior escalation, and abuse score tracking.
+- [ROSCA Migration Guide](docs/migration-guide.md) — Upgrade and migration process for deployed ROSCA contracts.
