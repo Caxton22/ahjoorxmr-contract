@@ -6594,6 +6594,28 @@ impl AhjoorContract {
             .temporary()
             .set(&DataKey2::ExitRequests, &requests);
 
+        // #389: Compact PayoutOrder so renumbered slots no longer point at
+        // the exited member. Skipped automatically when the member's slot was
+        // already paid out by an earlier round. `skip_reason = 0` means the
+        // compactor ran; `1` means past-slot guard tripped; `2` means the
+        // member was absent from `PayoutOrder` (defensive).
+        let current_round: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::CurrentRound)
+            .unwrap_or(0);
+        let (_, slot_index, old_len, new_len, skip_reason) =
+            internals::compact_payout_order(&env, &member, current_round);
+        events::emit_payout_order_compacted(
+            &env,
+            member.clone(),
+            slot_index,
+            old_len,
+            new_len,
+            current_round,
+            skip_reason,
+        );
+
         Self::update_credit_score_internal(&env, &member, Symbol::new(&env, "early_exit"));
         events::emit_exit_ok(&env, member.clone(), refund_amount);
 

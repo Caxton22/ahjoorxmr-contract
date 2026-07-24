@@ -2801,6 +2801,199 @@ fn test_exit_approval_event_emitted() {
     assert_eq!(refund_amount, 0);
 }
 
+// ---------------------------------------------------------------
+// #389: Regression — exiting a member up-front (before their slot
+// has been visited by the round rotation) compacts PayoutOrder,
+// so subsequent members are promoted and slots stay strictly
+// sequential rather than leaving a dangling entry.
+// ---------------------------------------------------------------
+#[test]
+fn test_exit_compacts_payout_order_on_early_exit() {
+    let env = Env::default();
+    let (client, _admin, u1, _u2, _u3, _tc, _ta) = setup_exit_env(&env);
+
+    // Initial layout: PayoutOrder.len() == 3 (members u1, u2, u3).
+    assert_eq!(client.get_group_info().total_rounds, 3);
+
+    // u1 (slot 0) requests + admin approves before any round contributions,
+    // so current_round = 0 and u1's slot_index = 0. Not the past-slot guard
+    // since 0 > 0 is false.
+    client.request_emergency_exit(&u1);
+    client.approve_exit(&u1);
+
+    // After compact: PayoutOrder becomes [u2, u3], length 2.
+    assert_eq!(client.get_group_info().total_rounds, 2);
+
+    // Round 0 → idx 0 % 2 = 0 → u2 (originally at slot 1, now promoted).
+    let u2_before = _tc.balance(&_u2);
+    client.contribute(&_u2, &_ta, &100);
+    client.contribute(&_u3, &_ta, &100);
+    let u2_after = _tc.balance(&_u2);
+    assert_eq!(
+        u2_after, u2_before - 100 + 200,
+        "u2 (promoted to slot 0) should receive round 0 pot after early exit"
+    );
+}
+
+// ---------------------------------------------------------------
+// #389: Regression — exiting AFTER a round has advanced past the
+// member's slot keeps PayoutOrder intact. The per-round payout
+// logic in `complete_round_payout` continues to skip the exited
+// member via the `ExitedMembers` contains check.
+// ---------------------------------------------------------------
+#[test]
+fn test_exit_skips_compaction_on_late_exit() {
+    let env = Env::default();
+    let (client, _admin, u1, u2, u3, _tc, _ta) = setup_exit_env(&env);
+
+    // u1 contributes, then we advance past the round deadline and close_round
+    // so CurrentRound advances from 0 to 1. u1's slot (0) was visited.
+    client.contribute(&u1, &_ta, &100);
+    env.ledger().set_timestamp(3601);
+    client.close_round();
+
+    assert_eq!(client.get_group_info().current_round, 1);
+    assert_eq!(client.get_group_info().total_rounds, 3);
+
+    // u1 exits after their round was paid — compactor must NOT renumber.
+    client.request_emergency_exit(&u1);
+    client.approve_exit(&u1);
+
+    // Layout preserved: total_rounds stays at 3, payout order still 3 entries.
+    assert_eq!(
+        client.get_group_info().total_rounds,
+        3,
+        "Late-exit compactor must skip when current_round > slot_index"
+    );
+
+    // Round 1 → idx = 1 % 3 = 1 → u2 still receives, with u1 correctly
+    // skipped by the contains-check.
+    let u2_before = _tc.balance(&u2);
+    client.contribute(&u2, &_ta, &100);
+    client.contribute(&u3, &_ta, &100);
+    let u2_after = _tc.balance(&u2);
+    assert!(
+        u2_after > u2_before,
+        "u2 should still receive round 1 payout (compactor skipped)"
+    );
+}
+
+// ---------------------------------------------------------------
+// #389: Regression — the PayoutOrderCompacted event is emitted
+// with the correct topic and `skipped_reason` enum value (0 when
+// compaction ran, 1 when the past-slot guard tripped).
+// ---------------------------------------------------------------
+#[test]
+fn test_exit_emits_payout_order_compacted_event() {
+    // ---- Early-exit path: skipped_reason = 0 ----
+    let env = Env::default();
+    let (client, _admin, u1, _u2, _u3, _tc, _ta) = setup_exit_env(&env);
+
+    client.request_emergency_exit(&u1);
+    client.approve_exit(&u1);
+
+    // The new event is published mid-flight in approve_exit, so we scan all
+    // events by topic rather than relying on `last()`.
+    let target_topic = Symbol::new(&env, "payout_order_compacted");
+    let all_events = env.events().all();
+    let mut matched: Option<(soroban_sdk::Vec<soroban_sdk::Val>, soroban_sdk::Map<Symbol, soroban_sdk::Val>)> = None;
+    for (_, topics, data) in all_events.iter() {
+        let topics_vec: soroban_sdk::Vec<soroban_sdk::Val> = topics.into_val(&env);
+        if let Some(first) = topics_vec.first() {
+            let first_sym: Symbol = first.into_val(&env);
+            if first_sym == target_topic {
+                matched = Some((topics_vec.clone(), data.into_val(&env)));
+                break;
+            }
+        }
+    }
+    let (_topics, data) = matched.expect("PayoutOrderCompacted event must be emitted");
+
+    let exited_member: Address = data
+        .get(Symbol::new(&env, "exited_member"))
+        .unwrap()
+        .into_val(&env);
+    let slot_index: u32 = data
+        .get(Symbol::new(&env, "slot_index"))
+        .unwrap()
+        .into_val(&env);
+    let old_len: u32 = data
+        .get(Symbol::new(&env, "old_len"))
+        .unwrap()
+        .into_val(&env);
+    let new_len: u32 = data
+        .get(Symbol::new(&env, "new_len"))
+        .unwrap()
+        .into_val(&env);
+    let current_round: u32 = data
+        .get(Symbol::new(&env, "current_round"))
+        .unwrap()
+        .into_val(&env);
+    let skipped_reason: u32 = data
+        .get(Symbol::new(&env, "skipped_reason"))
+        .unwrap()
+        .into_val(&env);
+    assert_eq!(exited_member, u1);
+    assert_eq!(slot_index, 0);
+    assert_eq!(old_len, 3);
+    assert_eq!(new_len, 2);
+    assert_eq!(current_round, 0);
+    assert_eq!(skipped_reason, 0, "compactor ran (early exit)");
+}
+
+// ---------------------------------------------------------------
+// #389: Regression — late-exit emits PayoutOrderCompacted with
+// skipped_reason = 1 (past-slot guard) and unchanged lengths.
+// ---------------------------------------------------------------
+#[test]
+fn test_exit_emits_payout_order_compacted_skipped_reason_1() {
+    let env = Env::default();
+    let (client, _admin, u1, _u2, _u3, _tc, _ta) = setup_exit_env(&env);
+
+    // Advance past round 0 so u1's slot (0) is already in the past.
+    client.contribute(&u1, &_ta, &100);
+    env.ledger().set_timestamp(3601);
+    client.close_round();
+
+    client.request_emergency_exit(&u1);
+    client.approve_exit(&u1);
+
+    let target_topic = Symbol::new(&env, "payout_order_compacted");
+    let all_events = env.events().all();
+    let mut data: Option<soroban_sdk::Map<Symbol, soroban_sdk::Val>> = None;
+    for (_, topics, event_data) in all_events.iter() {
+        let topics_vec: soroban_sdk::Vec<soroban_sdk::Val> = topics.into_val(&env);
+        if let Some(first) = topics_vec.first() {
+            let first_sym: Symbol = first.into_val(&env);
+            if first_sym == target_topic {
+                data = Some(event_data.into_val(&env));
+                break;
+            }
+        }
+    }
+    let data = data.expect("PayoutOrderCompacted event must be emitted");
+
+    let skipped_reason: u32 = data
+        .get(Symbol::new(&env, "skipped_reason"))
+        .unwrap()
+        .into_val(&env);
+    let old_len: u32 = data
+        .get(Symbol::new(&env, "old_len"))
+        .unwrap()
+        .into_val(&env);
+    let new_len: u32 = data
+        .get(Symbol::new(&env, "new_len"))
+        .unwrap()
+        .into_val(&env);
+    let current_round: u32 = data
+        .get(Symbol::new(&env, "current_round"))
+        .unwrap()
+        .into_val(&env);
+    assert_eq!(skipped_reason, 1, "past-slot guard tripped");
+    assert_eq!(old_len, new_len, "layout unchanged on past-slot skip");
+    assert_eq!(current_round, 1);
+}
+
 // --- PAUSE AND RESUME TESTS ---
 
 #[test]

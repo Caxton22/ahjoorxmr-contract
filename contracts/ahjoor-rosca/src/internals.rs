@@ -749,3 +749,81 @@ pub(crate) fn execute_member_removal(env: &Env, member: &Address) {
     events::emit_mem_del(env, member.clone());
 }
 
+/// Removes `member` from `DataKey::PayoutOrder` and renumbers the following
+/// slots, fixing the dangling-entry / payout-gap defect described in #389.
+///
+/// compaction only runs when the exiting member's payout slot has NOT yet been
+/// paid out, i.e. `current_round <= slot_index`. When `current_round > slot_index`
+/// the slot has already been visited by an earlier round; renumbering later
+/// slots in that case would shift active pays into the wrong rounds, so we
+/// leave the layout untouched and rely on the exited-member check inside
+/// `complete_round_payout` to skip the vacated slot.
+///
+/// `current_round` is taken as a parameter so the caller does not have to
+/// re-read the storage key (avoids a duplicate `get(&DataKey::CurrentRound)`).
+///
+/// Returns `(compacted, slot_index, old_len, new_len, skip_reason)`:
+/// - `compacted`: `true` only when the vector was rewritten, `false` on every
+///   defensive branch.
+/// - `slot_index`: 0-based index of the member inside `PayoutOrder` before
+///   any compaction. `u32::MAX` when the member was not found (defensive);
+///   otherwise in `[0, old_len)`.
+/// - `old_len` / `new_len`: lengths before / after; equal when `compacted ==
+///   false`.
+/// - `skip_reason`: `0` when compaction ran, `1` when the past-slot guard
+///   tripped, `2` when the layout was left untouched for a defensive reason
+///   (empty `PayoutOrder` or member absent from it).
+pub(crate) fn compact_payout_order(
+    env: &Env,
+    member: &Address,
+    current_round: u32,
+) -> (bool, u32, u32, u32, u32) {
+    let payout_order: Vec<Address> = env
+        .storage()
+        .instance()
+        .get(&DataKey::PayoutOrder)
+        .unwrap_or_else(|| Vec::new(env));
+    let old_len = payout_order.len();
+
+    // Defensive: nothing to compact against an empty payout order.
+    if old_len == 0 {
+        return (false, 0, 0, 0, 2);
+    }
+
+    // Locate the member's slot in PayoutOrder. Sentinel when not found so we
+    // can distinguish "not found" from "found at index 0".
+    let mut slot_index: u32 = u32::MAX;
+    for (idx, addr) in payout_order.iter().enumerate() {
+        if addr == *member {
+            slot_index = idx as u32;
+            break;
+        }
+    }
+
+    if slot_index == u32::MAX {
+        // Member absent from the order — no compaction to perform.
+        return (false, u32::MAX, old_len, old_len, 2);
+    }
+
+    // Skip compaction if the exiting member's slot was already paid out by
+    // an earlier round. Renumbering here would shift later slots into the
+    // wrong round and cause misdirected payouts.
+    if current_round > slot_index {
+        return (false, slot_index, old_len, old_len, 1);
+    }
+
+    // Rebuild the vector without the exited member — promotes every member
+    // after the exited one up by one slot (and one round).
+    let mut new_order: Vec<Address> = Vec::new(env);
+    for addr in payout_order.iter() {
+        if addr != *member {
+            new_order.push_back(addr.clone());
+        }
+    }
+    let new_len = new_order.len();
+
+    env.storage().instance().set(&DataKey::PayoutOrder, &new_order);
+
+    (true, slot_index, old_len, new_len, 0)
+}
+
