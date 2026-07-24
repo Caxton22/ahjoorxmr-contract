@@ -42,6 +42,16 @@ Alternate shorter flow (automatic approval): some flows can be configured so tha
 
 Check the contract configuration constants for the exact timeouts used in the deployed instance.
 
+## Escalation
+
+Refund escalation is part of the refund dispute flow and is used when the initial review window expires without a final decision.
+
+- **What triggers escalation:** a refund must first be in an escalatable state (`Requested`, `EvidenceSubmitted`, or `EvidencePeriodExpired`), and the primary review deadline must have passed. The contract rejects escalation before that deadline with `PrimaryDeadlineNotPassed`.
+- **Who handles escalated refunds:** the configured senior arbiter handles escalated refunds. The arbiter address and the senior review window are set by the admin with `set_senior_arbiter` and `set_senior_review_window`.
+- **What the senior arbiter can do:** the senior arbiter resolves the dispute with `resolve_escalated_refund(refund_id, approved, resolution_hash)`. If `approved` is `true`, the refund is processed and the customer receives the refund amount, minus any configured fee. If `approved` is `false`, the refund is marked rejected and the customer is returned the escrowed funds.
+- **How the final outcome is enforced on-chain:** escalation moves the refund into `EscalatedToSenior` and stores the senior review deadline on-chain. Resolution can only be submitted by the configured senior arbiter, and the contract enforces the outcome by updating refund status and transferring tokens from the contract to the customer and, if configured, the fee recipient.
+- **Missed senior deadline:** if `auto_approve_on_senior_miss` is enabled, anyone can call `trigger_senior_auto_approve(refund_id)` after the senior deadline passes. This finalizes the refund on-chain, marks it `Processed`, and records the auto-approval source as `senior_miss`.
+
 ## Events and error handling
 
 - Events: `RefundRequested`, `RefundCreated`, `RefundApproved`, `RefundClaimed`, `RefundExpired`, `RefundCancelled`.
