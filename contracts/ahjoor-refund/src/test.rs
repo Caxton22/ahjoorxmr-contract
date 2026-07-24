@@ -1391,16 +1391,46 @@ fn test_auto_approve_after_window_transfers_tokens_and_sets_processed() {
     // Verify tokens are in escrow
     let balance_before = s.token_client.balance(&customer);
 
-    // Advance exactly to the boundary: requested_at(0) + dispute_window(86400) = 86400
-    s.env.ledger().set_timestamp(86_400);
+    // Advance one ledger past the boundary: requested_at(0) + dispute_window(86400) = 86400.
+    // The window uses an exclusive boundary (consistent with escrow/rosca's permissionless
+    // timeout functions, see #553): the dispute window has elapsed only once the current
+    // timestamp is strictly greater than requested_at + dispute_window.
+    s.env.ledger().set_timestamp(86_401);
     s.refund_client.auto_approve_refund(&refund_id);
 
     let refund = s.refund_client.get_refund(&refund_id);
     assert_eq!(refund.status, RefundStatus::Processed);
-    assert_eq!(refund.processed_at, Some(86_400));
+    assert_eq!(refund.processed_at, Some(86_401));
 
     // Customer received the tokens back
     assert_eq!(s.token_client.balance(&customer), balance_before + 100);
+}
+
+#[test]
+#[should_panic(expected = "Dispute window has not elapsed")]
+fn test_auto_approve_exactly_at_window_boundary_panics() {
+    // Boundary-ledger test for #553: at the exact instant the dispute window
+    // elapses (now == requested_at + dispute_window) the refund is not yet
+    // auto-approvable — this matches the exclusive-boundary convention used
+    // by escrow's auto_release_expired/expire_cancellation/
+    // expire_seller_transfer_veto and rosca's close_round/finalize_round.
+    let s = setup_with_dispute_window(86_400);
+    let customer = Address::generate(&s.env);
+    let merchant = Address::generate(&s.env);
+
+    s.env.ledger().set_timestamp(0);
+    let pid = create_completed_payment(&s, &customer, &merchant, 200);
+    s.token_admin_client.mint(&customer, &100);
+    let refund_id = s.refund_client.request_refund(
+        &customer,
+        &pid,
+        &100,
+        &String::from_str(&s.env, "no response"),
+        &0u32,
+    );
+
+    s.env.ledger().set_timestamp(86_400);
+    s.refund_client.auto_approve_refund(&refund_id);
 }
 
 #[test]
