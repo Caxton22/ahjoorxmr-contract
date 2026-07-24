@@ -30,7 +30,7 @@ fn test_initialize() {
     assert_eq!(client.get_admin(), admin);
 
     // Verify whitelist is empty initially
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 0);
 
     // Check initialization event
@@ -59,7 +59,7 @@ fn test_add_token() {
     assert!(client.is_token_allowed(&token));
 
     // Verify it's in the whitelist
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 1);
     assert_eq!(tokens.get(0).unwrap(), token);
 
@@ -101,7 +101,7 @@ fn test_remove_token() {
     assert!(!client.is_token_allowed(&token));
 
     // Verify it's not in the whitelist
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 0);
 
     // Check events were emitted
@@ -154,7 +154,7 @@ fn test_multiple_tokens() {
     assert!(client.is_token_allowed(&token2));
     assert!(client.is_token_allowed(&token3));
 
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 3);
 
     // Remove one token
@@ -163,7 +163,7 @@ fn test_multiple_tokens() {
     assert!(!client.is_token_allowed(&token2));
     assert!(client.is_token_allowed(&token3));
 
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 2);
 }
 
@@ -364,7 +364,7 @@ fn test_non_suspended_baseline() {
     client.add_token(&admin, &token);
     assert!(client.is_token_allowed(&token));
 
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 1);
 
     client.remove_token(&admin, &token);
@@ -401,6 +401,48 @@ fn test_suspend_nonwhitelisted_token_fails() {
 
     let reason = BytesN::from_array(&env, &[1u8; 32]);
     client.suspend_token_timed(&admin, &token, &50u32, &reason);
+}
+
+// ── #589: get_whitelisted_tokens pagination ──────────────────────────────────
+
+#[test]
+fn test_get_whitelisted_tokens_paginated() {
+    let (env, admin, client) = setup_test();
+    let mut tokens: soroban_sdk::Vec<Address> = soroban_sdk::Vec::new(&env);
+    for _ in 0..5 {
+        let t = Address::generate(&env);
+        client.add_token(&admin, &t);
+        tokens.push_back(t);
+    }
+
+    let page1 = client.get_whitelisted_tokens(&0, &2);
+    assert_eq!(page1.len(), 2);
+    assert_eq!(page1.get(0).unwrap(), tokens.get(0).unwrap());
+    assert_eq!(page1.get(1).unwrap(), tokens.get(1).unwrap());
+
+    let page2 = client.get_whitelisted_tokens(&2, &2);
+    assert_eq!(page2.len(), 2);
+    assert_eq!(page2.get(0).unwrap(), tokens.get(2).unwrap());
+    assert_eq!(page2.get(1).unwrap(), tokens.get(3).unwrap());
+
+    let page3 = client.get_whitelisted_tokens(&4, &2);
+    assert_eq!(page3.len(), 1);
+    assert_eq!(page3.get(0).unwrap(), tokens.get(4).unwrap());
+
+    let past_end = client.get_whitelisted_tokens(&10, &2);
+    assert_eq!(past_end.len(), 0);
+}
+
+#[test]
+fn test_get_whitelisted_tokens_limit_capped() {
+    let (env, admin, client) = setup_test();
+    for _ in 0..3 {
+        let t = Address::generate(&env);
+        client.add_token(&admin, &t);
+    }
+    // Requesting a limit above the max page size still only returns what's available.
+    let page = client.get_whitelisted_tokens(&0, &10_000);
+    assert_eq!(page.len(), 3);
 }
 
 // ── #588: set_token_quota / update_token_quota period_ledgers upper bound ────

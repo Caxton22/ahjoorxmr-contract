@@ -11,6 +11,9 @@ const PERSISTENT_BUMP_AMOUNT: u32 = 120_000;
 
 const SUSPENSION_HISTORY_LIMIT: u32 = 10;
 
+/// #589: Default/maximum page size for `get_whitelisted_tokens`.
+const DEFAULT_WHITELIST_PAGE_SIZE: u32 = 50;
+
 /// #588: Maximum allowed `period_ledgers` for a token quota (~30 days at 5s ledgers).
 const MAX_QUOTA_PERIOD_LEDGERS: u32 = 518_400;
 
@@ -345,7 +348,9 @@ impl TokenWhitelistContract {
         true
     }
 
-    pub fn get_whitelisted_tokens(env: Env) -> Vec<Address> {
+    /// #589: Returns a bounded page of the whitelist instead of the full list.
+    /// `limit` is capped at `DEFAULT_WHITELIST_PAGE_SIZE` (50) per call.
+    pub fn get_whitelisted_tokens(env: Env, offset: u32, limit: u32) -> Vec<Address> {
         let whitelist: Vec<Address> = env
             .storage().persistent()
             .get(&DataKey::WhitelistedTokens)
@@ -355,7 +360,14 @@ impl TokenWhitelistContract {
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
-        whitelist
+        let wlen = whitelist.len();
+        let start = offset.min(wlen);
+        let l = limit.min(DEFAULT_WHITELIST_PAGE_SIZE).min(wlen - start);
+        let mut page = Vec::new(&env);
+        for i in start..start + l {
+            page.push_back(whitelist.get(i).unwrap());
+        }
+        page
     }
 
     pub fn get_admin(env: Env) -> Address {
