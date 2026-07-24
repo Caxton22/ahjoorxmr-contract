@@ -12,6 +12,16 @@ const PERSISTENT_BUMP_AMOUNT: u32 = 120_000;
 const SUSPENSION_HISTORY_LIMIT: u32 = 10;
 const MAX_BATCH_ADD_TOKENS: u32 = 20;
 
+/// #589: Default/maximum page size for `get_whitelisted_tokens`.
+const DEFAULT_WHITELIST_PAGE_SIZE: u32 = 50;
+
+/// #588: Maximum allowed `period_ledgers` for a token quota (~30 days at 5s ledgers).
+const MAX_QUOTA_PERIOD_LEDGERS: u32 = 518_400;
+
+/// Companion fix: maximum allowed `to_ledger - from_ledger` window for `get_token_volume`.
+/// Bounded to keep the per-ledger storage-read loop within the host's CPU/memory budget.
+const MAX_VOLUME_QUERY_RANGE: u32 = 500;
+
 #[contracterror]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
@@ -134,6 +144,9 @@ mod test_contract_allowlist;
 mod test_governance;
 #[cfg(test)]
 mod test_suspension;
+
+#[cfg(test)]
+mod test;
 
 pub use client::TokenWhitelistClient;
 
@@ -369,7 +382,9 @@ impl TokenWhitelistContract {
         true
     }
 
-    pub fn get_whitelisted_tokens(env: Env) -> Vec<Address> {
+    /// #589: Returns a bounded page of the whitelist instead of the full list.
+    /// `limit` is capped at `DEFAULT_WHITELIST_PAGE_SIZE` (50) per call.
+    pub fn get_whitelisted_tokens(env: Env, offset: u32, limit: u32) -> Vec<Address> {
         let whitelist: Vec<Address> = env
             .storage().persistent()
             .get(&DataKey::WhitelistedTokens)
@@ -379,7 +394,14 @@ impl TokenWhitelistContract {
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
-        whitelist
+        let wlen = whitelist.len();
+        let start = offset.min(wlen);
+        let l = limit.min(DEFAULT_WHITELIST_PAGE_SIZE).min(wlen - start);
+        let mut page = Vec::new(&env);
+        for i in start..start + l {
+            page.push_back(whitelist.get(i).unwrap());
+        }
+        page
     }
 
     pub fn get_admin(env: Env) -> Address {
@@ -644,6 +666,7 @@ impl TokenWhitelistContract {
         }
         if max_volume_per_period <= 0 { panic!("max_volume_per_period must be positive"); }
         if period_ledgers == 0 { panic!("period_ledgers must be positive"); }
+        if period_ledgers > MAX_QUOTA_PERIOD_LEDGERS { panic!("period_ledgers exceeds maximum allowed"); }
         let quota = TokenQuota { max_volume_per_period, period_ledgers };
         env.storage().persistent().set(&DataKey::TokenQuota(token.clone()), &quota);
         env.storage().persistent().extend_ttl(&DataKey::TokenQuota(token.clone()), PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
@@ -661,6 +684,7 @@ impl TokenWhitelistContract {
         Self::require_admin(&env, &admin);
         if max_volume_per_period <= 0 { panic!("max_volume_per_period must be positive"); }
         if period_ledgers == 0 { panic!("period_ledgers must be positive"); }
+        if period_ledgers > MAX_QUOTA_PERIOD_LEDGERS { panic!("period_ledgers exceeds maximum allowed"); }
         if !env.storage().persistent().has(&DataKey::TokenQuota(token.clone())) {
             panic!("Token has no quota");
         }
@@ -711,6 +735,12 @@ impl TokenWhitelistContract {
     }
 
     pub fn get_token_volume(env: Env, token: Address, from_ledger: u32, to_ledger: u32) -> i128 {
+        if from_ledger > to_ledger {
+            panic!("from_ledger must not exceed to_ledger");
+        }
+        if to_ledger - from_ledger > MAX_VOLUME_QUERY_RANGE {
+            panic!("ledger range exceeds maximum allowed");
+        }
         let mut volume: i128 = 0;
         for bucket_ledger in from_ledger..=to_ledger {
             let bucket_volume: i128 = env

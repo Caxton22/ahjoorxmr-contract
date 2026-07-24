@@ -1,6 +1,9 @@
 #![cfg(test)]
 
-use crate::{TokenWhitelistContract, TokenWhitelistContractClient};
+use crate::{
+    TokenWhitelistContract, TokenWhitelistContractClient, MAX_QUOTA_PERIOD_LEDGERS,
+    MAX_VOLUME_QUERY_RANGE,
+};
 use soroban_sdk::{
     testutils::{Address as _, Events, Ledger},
     Address, BytesN, Env,
@@ -27,7 +30,7 @@ fn test_initialize() {
     assert_eq!(client.get_admin(), admin);
 
     // Verify whitelist is empty initially
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 0);
 
     // Check initialization event
@@ -56,7 +59,7 @@ fn test_add_token() {
     assert!(client.is_token_allowed(&token));
 
     // Verify it's in the whitelist
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 1);
     assert_eq!(tokens.get(0).unwrap(), token);
 
@@ -98,7 +101,7 @@ fn test_remove_token() {
     assert!(!client.is_token_allowed(&token));
 
     // Verify it's not in the whitelist
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 0);
 
     // Check events were emitted
@@ -151,7 +154,7 @@ fn test_multiple_tokens() {
     assert!(client.is_token_allowed(&token2));
     assert!(client.is_token_allowed(&token3));
 
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 3);
 
     // Remove one token
@@ -160,7 +163,7 @@ fn test_multiple_tokens() {
     assert!(!client.is_token_allowed(&token2));
     assert!(client.is_token_allowed(&token3));
 
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 2);
 }
 
@@ -361,7 +364,7 @@ fn test_non_suspended_baseline() {
     client.add_token(&admin, &token);
     assert!(client.is_token_allowed(&token));
 
-    let tokens = client.get_whitelisted_tokens();
+    let tokens = client.get_whitelisted_tokens(&0, &50);
     assert_eq!(tokens.len(), 1);
 
     client.remove_token(&admin, &token);
