@@ -399,3 +399,99 @@ fn test_suspend_nonwhitelisted_token_fails() {
     let reason = BytesN::from_array(&env, &[1u8; 32]);
     client.suspend_token_timed(&admin, &token, &50u32, &reason);
 }
+
+// ─── batch_add_tokens (#592) ─────────────────────────────────────────────────
+
+#[test]
+fn test_batch_add_tokens_full_valid_batch() {
+    let (env, admin, client) = setup_test();
+    let tokens = soroban_sdk::vec![
+        &env,
+        Address::generate(&env),
+        Address::generate(&env),
+        Address::generate(&env),
+    ];
+
+    client.batch_add_tokens(&admin, &tokens);
+
+    for token in tokens.iter() {
+        assert!(client.is_token_allowed(&token));
+    }
+    assert_eq!(client.get_whitelisted_tokens().len(), 3);
+}
+
+#[test]
+#[should_panic(expected = "Batch size exceeds maximum allowed")]
+fn test_batch_add_tokens_oversized_batch_reverts_before_any_added() {
+    let (env, admin, client) = setup_test();
+    let mut tokens = soroban_sdk::Vec::new(&env);
+    for _ in 0..21 {
+        tokens.push_back(Address::generate(&env));
+    }
+
+    client.batch_add_tokens(&admin, &tokens);
+}
+
+#[test]
+#[should_panic(expected = "Batch cannot be empty")]
+fn test_batch_add_tokens_empty_batch_fails() {
+    let (env, admin, client) = setup_test();
+    let tokens: soroban_sdk::Vec<Address> = soroban_sdk::Vec::new(&env);
+
+    client.batch_add_tokens(&admin, &tokens);
+}
+
+#[test]
+#[should_panic(expected = "Token already whitelisted")]
+fn test_batch_add_tokens_duplicate_within_batch_reverts_before_any_added() {
+    let (env, admin, client) = setup_test();
+    let token = Address::generate(&env);
+    let tokens = soroban_sdk::vec![&env, token.clone(), token];
+
+    client.batch_add_tokens(&admin, &tokens);
+}
+
+// ─── cleanup_allowlist_entries (#590) ────────────────────────────────────────
+
+#[test]
+fn test_cleanup_allowlist_entries_removes_only_expired() {
+    let (env, admin, client) = setup_test();
+    let contract_a = Address::generate(&env);
+    let contract_b = Address::generate(&env);
+    let token = Address::generate(&env);
+
+    let current = env.ledger().sequence();
+    client.set_contract_token(&admin, &contract_a, &token, &Some(current + 10));
+    client.set_contract_token(&admin, &contract_b, &token, &None); // permanent, never expires
+
+    env.ledger().with_mut(|l| l.sequence_number += 20);
+
+    let entries = soroban_sdk::vec![
+        &env,
+        (contract_a.clone(), token.clone()),
+        (contract_b.clone(), token.clone()),
+    ];
+    client.cleanup_allowlist_entries(&entries);
+
+    assert_eq!(client.get_contract_token_entry(&contract_a, &token), None);
+    // Permanent (contract_b) entry is untouched by cleanup.
+    assert!(client.is_token_allowed_for_contract(&contract_b, &token));
+}
+
+#[test]
+fn test_cleanup_allowlist_entries_no_effect_when_nothing_expired() {
+    let (env, admin, client) = setup_test();
+    let contract_id = Address::generate(&env);
+    let token = Address::generate(&env);
+
+    let current = env.ledger().sequence();
+    client.set_contract_token(&admin, &contract_id, &token, &Some(current + 100));
+
+    let entries = soroban_sdk::vec![&env, (contract_id.clone(), token.clone())];
+    client.cleanup_allowlist_entries(&entries);
+    assert!(client.is_token_allowed_for_contract(&contract_id, &token));
+
+    // Calling again is a no-op.
+    client.cleanup_allowlist_entries(&entries);
+    assert!(client.is_token_allowed_for_contract(&contract_id, &token));
+}
