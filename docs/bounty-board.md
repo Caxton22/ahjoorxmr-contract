@@ -6,6 +6,17 @@ This document describes the bounty-board flows in `contracts/ahjoor-escrow`, wit
 
 Milestone payouts let a bounty release funds in smaller tranches instead of paying the full amount at the end.
 
+### Milestone status flow
+
+The bounty milestone flow is stateful and the contract moves each milestone through a small set of statuses:
+
+- `Pending` while the milestone is waiting to be submitted or verified
+- `Submitted` after the solver uploads the deliverable hash
+- `Verified` during verifier sign-off
+- `Paid` after the tranche has been transferred to the solver
+
+For the verifier-gated bounty flow, later milestones remain blocked until every earlier milestone is already `Paid`. For the proportional BPS flow, each milestone must also be `Submitted` before approval, and rejected milestones can be returned to `Pending` for resubmission.
+
 ### How milestones are defined and ordered
 
 Each milestone is defined when the bounty is created. A milestone includes:
