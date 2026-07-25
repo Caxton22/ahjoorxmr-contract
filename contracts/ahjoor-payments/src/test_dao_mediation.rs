@@ -86,6 +86,40 @@ fn test_escalate_to_dao() {
 }
 
 #[test]
+fn test_cancel_dao_escalation_before_votes() {
+    let (env, client, _admin, customer, _merchant, _token, payment_id) =
+        setup_with_payment();
+
+    let mediator = Address::generate(&env);
+    client.configure_dao(&vec![&env, mediator.clone()], &86_400u64, &1u32);
+
+    let case_id_0 = client.escalate_to_dao(&customer, &payment_id);
+    assert_eq!(case_id_0, 0);
+
+    client.cancel_dao_escalation(&payment_id);
+
+    // Cancellation removes the active case, allowing a fresh escalation.
+    let case_id_1 = client.escalate_to_dao(&customer, &payment_id);
+    assert_eq!(case_id_1, 1);
+}
+
+#[test]
+#[should_panic]
+fn test_cancel_dao_escalation_after_vote_panics() {
+    let (env, client, _admin, customer, _merchant, _token, payment_id) =
+        setup_with_payment();
+
+    let mediator = Address::generate(&env);
+    client.configure_dao(&vec![&env, mediator.clone()], &86_400u64, &1u32);
+
+    let case_id = client.escalate_to_dao(&customer, &payment_id);
+    client.dao_vote(&mediator, &case_id, &false);
+
+    // Any vote activity blocks cancellation.
+    client.cancel_dao_escalation(&payment_id);
+}
+
+#[test]
 fn test_dao_vote_and_execute_customer_wins() {
     let (env, client, admin, customer, _merchant, token_client, payment_id) =
         setup_with_payment();
