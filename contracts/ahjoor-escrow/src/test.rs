@@ -3060,6 +3060,196 @@ fn test_insurance_pool_capped_by_pool_balance() {
     assert_eq!(s.client.get_insurance_pool(), 0);
 }
 
+// ---------------------------------------------------------------------------
+// Insurance double-payment prevention tests (fix #b)
+// ---------------------------------------------------------------------------
+
+/// Scenario 1: Claimant wins the verdict.
+/// Buyer claims insurance (500) while disputed, then arbiter rules 100% for buyer.
+/// Total received by buyer must not exceed the original escrow amount (1000).
+/// execute_verdict should pay buyer at most 1000 - 500 = 500 from the verdict.
+#[test]
+fn test_insurance_no_double_payment_claimant_wins() {
+    let s = setup();
+    setup_insurance(&s);
+
+    // Fund the insurance pool generously
+    let contributor = Address::generate(&s.env);
+    s.token_admin_client.mint(&contributor, &10_000);
+    s.client.contribute_to_insurance(&contributor, &10_000);
+
+    let buyer  = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 10_000;
+    let escrow_id = s.client.create_escrow(
+        &buyer, &seller, &arbiter, &1_000, &s.token_addr, &deadline,
+        &None, &Vec::new(&s.env), &false, &0u32,
+    );
+
+    // Open dispute for the full escrow amount
+    s.client.dispute_escrow(
+        &buyer, &escrow_id,
+        &String::from_str(&s.env, "stuck"), &1_000,
+    );
+
+    // Advance past 7-day insurance trigger
+    s.env.ledger().set_timestamp(1_000 + 604_801);
+    s.client.confirm_insurance_inactivity(&s.admin, &escrow_id, &true);
+
+    // Buyer claims insurance: capped at 50% of 1000 = 500
+    s.client.claim_insurance(&buyer, &escrow_id);
+    let bal_after_insurance = s.token_client.balance(&buyer);
+    assert_eq!(bal_after_insurance, 500, "insurance payout should be 500");
+
+    // Arbiter resolves 100% in buyer's favour (no cooling-off configured)
+    s.client.resolve_dispute(&arbiter, &escrow_id, &100u32);
+
+    let bal_after_verdict = s.token_client.balance(&buyer);
+    // Total received = insurance (500) + verdict payout
+    // Verdict payout must be capped so total ≤ original escrow amount (1000)
+    assert_eq!(
+        bal_after_verdict, 1_000,
+        "buyer total receipts must not exceed original escrow amount"
+    );
+    // Specifically the verdict should have paid 500 (1000 - 500 insurance)
+    assert_eq!(
+        bal_after_verdict - bal_after_insurance, 500,
+        "verdict payout must be reduced by the already-paid insurance amount"
+    );
+}
+
+/// Scenario 2: Claimant (buyer) claimed insurance but loses the verdict.
+/// Seller wins 100%, so the insurance deduction applies to the buyer's share,
+/// which is already 0 — no extra deduction needed.  Seller should receive
+/// the full distributable amount; buyer keeps the insurance payment but
+/// receives nothing from the verdict.
+#[test]
+fn test_insurance_no_double_payment_claimant_loses() {
+    let s = setup();
+    setup_insurance(&s);
+
+    let contributor = Address::generate(&s.env);
+    s.token_admin_client.mint(&contributor, &10_000);
+    s.client.contribute_to_insurance(&contributor, &10_000);
+
+    let buyer  = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 10_000;
+    let escrow_id = s.client.create_escrow(
+        &buyer, &seller, &arbiter, &1_000, &s.token_addr, &deadline,
+        &None, &Vec::new(&s.env), &false, &0u32,
+    );
+
+    s.client.dispute_escrow(
+        &buyer, &escrow_id,
+        &String::from_str(&s.env, "stuck"), &1_000,
+    );
+
+    s.env.ledger().set_timestamp(1_000 + 604_801);
+    s.client.confirm_insurance_inactivity(&s.admin, &escrow_id, &true);
+
+    // Buyer claims 500 insurance
+    s.client.claim_insurance(&buyer, &escrow_id);
+    let buyer_bal_after_insurance = s.token_client.balance(&buyer);
+    assert_eq!(buyer_bal_after_insurance, 500);
+
+    let seller_bal_before = s.token_client.balance(&seller);
+
+    // Arbiter rules 0% for buyer → seller wins outright
+    s.client.resolve_dispute(&arbiter, &escrow_id, &0u32);
+
+    let buyer_bal_final  = s.token_client.balance(&buyer);
+    let seller_bal_final = s.token_client.balance(&seller);
+
+    // Buyer receives nothing from the verdict (seller won)
+    assert_eq!(
+        buyer_bal_final, buyer_bal_after_insurance,
+        "buyer should receive nothing from a verdict they lost"
+    );
+
+    // Seller receives the full distributable (1000, no fees configured)
+    // The insurance deduction only affects the winner's share; seller won 100%
+    // and the insurance was paid to the buyer-side, so deduction hits buyer's
+    // already-zero share → seller gets the full 1000.
+    assert_eq!(
+        seller_bal_final - seller_bal_before, 1_000,
+        "seller should receive the full escrow amount when buyer claimed insurance and lost"
+    );
+}
+
+/// Scenario 3: Claimant (buyer) claimed insurance and gets a split verdict (50/50).
+/// Buyer's split share is 500; insurance already paid 500 → verdict pays buyer 0.
+/// Seller's split share is 500 and is unaffected.
+#[test]
+fn test_insurance_no_double_payment_split_verdict() {
+    let s = setup();
+    setup_insurance(&s);
+
+    let contributor = Address::generate(&s.env);
+    s.token_admin_client.mint(&contributor, &10_000);
+    s.client.contribute_to_insurance(&contributor, &10_000);
+
+    let buyer  = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 10_000;
+    let escrow_id = s.client.create_escrow(
+        &buyer, &seller, &arbiter, &1_000, &s.token_addr, &deadline,
+        &None, &Vec::new(&s.env), &false, &0u32,
+    );
+
+    s.client.dispute_escrow(
+        &buyer, &escrow_id,
+        &String::from_str(&s.env, "stuck"), &1_000,
+    );
+
+    s.env.ledger().set_timestamp(1_000 + 604_801);
+    s.client.confirm_insurance_inactivity(&s.admin, &escrow_id, &true);
+
+    // Buyer claims 500 insurance (50% of 1000)
+    s.client.claim_insurance(&buyer, &escrow_id);
+    assert_eq!(s.token_client.balance(&buyer), 500);
+
+    let seller_bal_before = s.token_client.balance(&seller);
+
+    // 50/50 split verdict — buyer_percent == seller_percent == 50
+    // buyer's raw share = 500, insurance_paid = 500 → buyer verdict payout = 0
+    // seller's raw share = 500, untouched
+    s.client.resolve_dispute(&arbiter, &escrow_id, &50u32);
+
+    let buyer_bal_final  = s.token_client.balance(&buyer);
+    let seller_bal_final = s.token_client.balance(&seller);
+
+    // Buyer: 500 (insurance) + 0 (verdict, deducted) = 500 total
+    assert_eq!(
+        buyer_bal_final, 500,
+        "buyer verdict payout should be zero after full insurance offset"
+    );
+
+    // Seller: receives their 500 split share unaffected
+    assert_eq!(
+        seller_bal_final - seller_bal_before, 500,
+        "seller split share should be unaffected by buyer's insurance claim"
+    );
+
+    // Grand total paid out: 500 (insurance) + 0 (buyer verdict) + 500 (seller verdict) = 1000
+    // This equals the original escrow amount — no over-payment.
+    let total_paid = (buyer_bal_final)   // buyer net (started with 0 after escrow deposit)
+        + (seller_bal_final - seller_bal_before); // seller net
+    assert_eq!(total_paid, 1_000, "grand total payout must equal original escrow amount");
+}
+
 // ===========================================================================
 //  Issue #138: Arbitration Fee Mechanism Tests
 // ===========================================================================
