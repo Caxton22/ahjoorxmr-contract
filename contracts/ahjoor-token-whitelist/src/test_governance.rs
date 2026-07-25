@@ -298,3 +298,35 @@ fn test_vote_weight_capped_by_snapshot_not_live_balance_on_revote() {
 
     client.vote_listing(&voter, &proposal_id, &true, &1_000i128);
 }
+
+#[test]
+fn test_vote_weight_uses_snapshot_not_live_balance() {
+    let (env, admin, client, gov_token) = setup_governance();
+
+    let proposer = Address::generate(&env);
+    let voter = Address::generate(&env);
+    let sink = Address::generate(&env);
+    let new_token = Address::generate(&env);
+
+    mint_gov_tokens(&env, &gov_token, &admin, &proposer, 200);
+    // Voter flash-acquires a large balance right before voting.
+    mint_gov_tokens(&env, &gov_token, &admin, &voter, 1_000);
+
+    let rationale = BytesN::from_array(&env, &[11u8; 32]);
+    let proposal_id = client.propose_token_listing(&proposer, &new_token, &rationale);
+
+    // Vote weight is snapshotted at first vote.
+    client.vote_listing(&voter, &proposal_id, &true, &1_000i128);
+
+    // Voter moves the tokens elsewhere before finalisation — the recorded
+    // weight must not be affected by this post-vote balance change.
+    soroban_sdk::token::Client::new(&env, &gov_token).transfer(&voter, &sink, &1_000i128);
+    assert_eq!(soroban_sdk::token::Client::new(&env, &gov_token).balance(&voter), 0);
+
+    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    client.finalise_listing_proposal(&proposal_id);
+
+    let proposal = client.get_listing_proposal(&proposal_id);
+    assert_eq!(proposal.approve_weight, 1_000);
+    assert_eq!(proposal.status, ProposalStatus::PendingEnactment);
+}

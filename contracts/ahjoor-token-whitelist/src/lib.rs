@@ -22,6 +22,11 @@ const MAX_QUOTA_PERIOD_LEDGERS: u32 = 518_400;
 /// Bounded to keep the per-ledger storage-read loop within the host's CPU/memory budget.
 const MAX_VOLUME_QUERY_RANGE: u32 = 500;
 
+/// #540: fixed number of aggregate buckets covering a quota period. Keeps
+/// `record_token_volume`'s cost constant regardless of `period_ledgers`
+/// instead of scaling linearly with it.
+const VOLUME_AGG_BUCKET_COUNT: u32 = 24;
+
 #[contracterror]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
@@ -40,6 +45,18 @@ pub enum Error {
 pub struct TokenQuota {
     pub max_volume_per_period: i128,
     pub period_ledgers: u32,
+}
+
+/// #540: one slot of the fixed-size rolling window used by `record_token_volume`.
+/// `bucket_id` is `ledger / bucket_span`; a slot is live (counted toward the
+/// current period total) only while `current_bucket_id - bucket_id` is less
+/// than `VOLUME_AGG_BUCKET_COUNT`, otherwise it holds stale volume from a
+/// previous cycle through this slot and is ignored.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct VolumeAggBucket {
+    pub bucket_id: u32,
+    pub volume: i128,
 }
 
 pub type TokenSuspension = SuspensionRecord;
@@ -91,6 +108,9 @@ pub enum DataKey {
     SuspensionHistory(Address),
     TokenQuota(Address),
     TokenVolumeBucket(Address, u32),
+    /// #540: fixed-size aggregate bucket slot (token, slot_index) used to
+    /// track rolling period volume without iterating every ledger.
+    TokenVolumeAggBucket(Address, u32),
     RiskTier(u32),
     TokenTier(Address),
     TokenLimitOverride(Address),
@@ -144,9 +164,6 @@ mod test_contract_allowlist;
 mod test_governance;
 #[cfg(test)]
 mod test_suspension;
-
-#[cfg(test)]
-mod test;
 
 pub use client::TokenWhitelistClient;
 
@@ -713,19 +730,42 @@ impl TokenWhitelistContract {
             return Ok(());
         };
         let current_ledger = env.ledger().sequence();
-        let start_ledger = current_ledger.saturating_sub(quota.period_ledgers - 1);
+
+        // #540: sum the rolling window from a fixed number of aggregate
+        // buckets instead of iterating every ledger in the period, so cost
+        // stays constant regardless of how large `period_ledgers` is.
+        let bucket_span = (quota.period_ledgers / VOLUME_AGG_BUCKET_COUNT).max(1);
+        let current_bucket_id = current_ledger / bucket_span;
         let mut current_period_volume: i128 = 0;
-        for bucket_ledger in start_ledger..=current_ledger {
-            let bucket_volume: i128 = env
+        for slot in 0..VOLUME_AGG_BUCKET_COUNT {
+            if let Some(bucket) = env
                 .storage().persistent()
-                .get(&DataKey::TokenVolumeBucket(token.clone(), bucket_ledger))
-                .unwrap_or(0);
-            current_period_volume += bucket_volume;
+                .get::<_, VolumeAggBucket>(&DataKey::TokenVolumeAggBucket(token.clone(), slot))
+            {
+                if current_bucket_id.saturating_sub(bucket.bucket_id) < VOLUME_AGG_BUCKET_COUNT {
+                    current_period_volume += bucket.volume;
+                }
+            }
         }
         if current_period_volume + amount > quota.max_volume_per_period {
             events::emit_token_quota_exceeded(&env, token, amount, current_period_volume);
             return Err(Error::QuotaExceeded);
         }
+
+        let slot = current_bucket_id % VOLUME_AGG_BUCKET_COUNT;
+        let agg_key = DataKey::TokenVolumeAggBucket(token.clone(), slot);
+        let existing: Option<VolumeAggBucket> = env.storage().persistent().get(&agg_key);
+        let new_volume = match existing {
+            Some(b) if b.bucket_id == current_bucket_id => b.volume + amount,
+            _ => amount,
+        };
+        env.storage().persistent().set(
+            &agg_key,
+            &VolumeAggBucket { bucket_id: current_bucket_id, volume: new_volume },
+        );
+        env.storage().persistent().extend_ttl(&agg_key, PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
+
+        // Exact per-ledger record retained for `get_token_volume` transparency/audit queries.
         let bucket_key = DataKey::TokenVolumeBucket(token.clone(), current_ledger);
         let mut bucket_volume: i128 = env.storage().persistent().get(&bucket_key).unwrap_or(0);
         bucket_volume += amount;

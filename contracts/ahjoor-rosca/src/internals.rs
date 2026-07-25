@@ -174,6 +174,7 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
     let mut total_payout_history_amt = 0i128;
     let mut reinvested_amount = 0i128;
     let mut total_fee_collected = 0i128;
+    let mut insurance_drawn_this_round = 0i128;
 
     // Calculate expected pot based on member tiers and check for shortfall
     let base_amount: i128 = env
@@ -254,6 +255,7 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
             }
         };
         if draw_amount > 0 {
+            insurance_drawn_this_round = draw_amount;
             insurance_pool -= draw_amount;
             env.storage().instance().set(&DataKey2::InsurancePool, &insurance_pool);
             events::emit_insurance_paid_out(env, current_round, shortfall, insurance_pool);
@@ -419,18 +421,21 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
         env.ledger().sequence() as u64
     };
 
-    let cycle_start_timestamp = audit_trail::get_cycle_start_timestamp(env, current_round);
+    // Cycle 0's start isn't captured by the "new cycle begins" hook below
+    // (that only fires once a preceding round has completed), so fall back
+    // to this round's own end-of-processing marker rather than reporting 0.
+    let recorded_cycle_start = audit_trail::get_cycle_start_timestamp(env, current_round);
+    let cycle_start_timestamp = if recorded_cycle_start > 0 {
+        recorded_cycle_start
+    } else {
+        cycle_end_timestamp
+    };
 
     // Get penalty and insurance amounts from storage
     let penalty_amount: i128 = env
         .storage()
         .instance()
         .get(&DataKey::PenaltyAmount)
-        .unwrap_or(0);
-    let insurance_pool: i128 = env
-        .storage()
-        .instance()
-        .get(&DataKey2::InsurancePool)
         .unwrap_or(0);
 
     // Calculate penalties collected and insurance drawn from events/defaults
@@ -441,9 +446,7 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
         0
     };
 
-    // Insurance drawn is available from previous insurance balance - current balance
-    // For this round, we track what was drawn via events; default to 0 if not tracked separately
-    let insurance_drawn = 0i128;
+    let insurance_drawn = insurance_drawn_this_round;
 
     // Record the cycle audit trail
     audit_trail::record_cycle_audit(

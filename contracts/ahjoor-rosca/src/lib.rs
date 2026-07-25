@@ -1411,8 +1411,18 @@ impl AhjoorContract {
         audit_trail::get_retention_window(&env)
     }
 
-    pub fn get_member_contribution_history(env: Env, member: Address) -> Vec<ContributionEntry> {
-        audit_trail::get_member_contribution_history(&env, member)
+    /// Returns `member`'s contribution entries within cycles
+    /// `from_cycle..=to_cycle` (inclusive). The range is capped at
+    /// `audit_trail::MAX_CONTRIBUTION_HISTORY_RANGE` (100) cycles per call —
+    /// callers with longer histories page through it with successive calls
+    /// instead of loading the whole history at once (#544).
+    pub fn get_member_contribution_history(
+        env: Env,
+        member: Address,
+        from_cycle: u32,
+        to_cycle: u32,
+    ) -> Vec<ContributionEntry> {
+        audit_trail::get_member_contribution_history(&env, member, from_cycle, to_cycle)
     }
 
     pub fn finalize_round(env: Env) {
@@ -11441,6 +11451,7 @@ impl AhjoorContract {
 }
 
 mod test;
+mod test_audit_trail;
 mod test_contrib_delegation;
 mod test_cosigner_guarantee;
 mod test_emergency_reserve;

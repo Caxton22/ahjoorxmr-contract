@@ -255,9 +255,7 @@ pub enum DataKey2 {
     ReinvestPreference = 58,
     ExitRequests = 59,
     TokenWhitelistContract = 60,
-    CycleRecords = 61,
     CycleRecordRetentionWindow = 62,
-    ArchivedCycleRecords = 63,
     CycleStartTimestamps = 64,
     EmergencyPayoutConfig = 65,
     EmergencyPayoutRequests = 66,
@@ -399,6 +397,16 @@ pub enum DataKey5 {
     // #454: Collective goal reward pool
     GoalRewardPool,             // i128 — funded by admin, distributed once collective_goal is reached
     GoalRewardDistributed,
+    // #544: per-cycle CycleRecord storage, keyed by cycle_number, replacing
+    // the single CycleRecords blob so lookups/writes are O(1) instead of
+    // requiring the whole history to be deserialized on every call.
+    CycleRecordEntry(u32),
+    // #544: per-cycle archived CycleRecord storage (temporary), keyed by
+    // cycle_number, replacing the single ArchivedCycleRecords blob.
+    ArchivedCycleRecordEntry(u32),
+    // #544: smallest cycle_number not yet archived, so `archive_old_records`
+    // can find archival candidates without scanning every persisted cycle.
+    OldestPersistentCycle,
 }
 
 
