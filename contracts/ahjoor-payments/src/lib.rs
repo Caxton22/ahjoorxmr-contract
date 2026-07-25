@@ -208,6 +208,10 @@ pub enum Error {
     DaoMinVotesNotMet = 58,
     /// Payment is not in Disputed status; cannot escalate.
     PaymentNotDisputed = 59,
+    /// No active DAO mediation case exists for the payment.
+    DaoCaseNotFoundForPayment = 60,
+    /// DAO escalation cannot be cancelled because voting has started.
+    DaoEscalationHasVotes = 61,
 }
 
 /// Extension errors that overflow the 50-variant contracterror limit.
@@ -1037,6 +1041,8 @@ pub enum DataKey3 {
     DaoMediationCounter,
     /// Persistent: DAO mediation case record keyed by case ID
     DaoMediationCase(u32),
+    /// Persistent: payment_id -> DAO mediation case ID
+    DaoCaseByPayment(u32),
     /// Persistent: (case_id, voter) → bool vote cast by DAO member
     DaoMediationVote(u32, Address),
     /// Instance: list of DAO mediator addresses
@@ -1155,6 +1161,27 @@ pub struct AhjoorPaymentsContract;
 
 #[contractimpl]
 impl AhjoorPaymentsContract {
+    fn find_open_dao_case_id_by_payment(env: &Env, payment_id: u32) -> Option<u32> {
+        let case_counter: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey3::DaoMediationCounter)
+            .unwrap_or(0);
+
+        for case_id in 0..case_counter {
+            let maybe_case: Option<DaoMediationCase> = env
+                .storage()
+                .persistent()
+                .get(&DataKey3::DaoMediationCase(case_id));
+            if let Some(case) = maybe_case {
+                if case.payment_id == payment_id && !case.executed {
+                    return Some(case_id);
+                }
+            }
+        }
+        None
+    }
+
     /// One-time contract initialization.
     /// Admin, counters, and config go to instance storage.
     /// fee_recipient: Address that receives protocol fees
@@ -8386,7 +8413,7 @@ impl AhjoorPaymentsContract {
     }
 
     /// Returns the loyalty points balance for a customer (after expiry check).
-    pub fn get_loyalty_balance(env: Env, customer: Address) -> i128 {
+    pub fn get_loyalty_points_balance(env: Env, customer: Address) -> i128 {
         Self::maybe_expire_points(&env, &customer);
         env.storage()
             .persistent()
@@ -10084,7 +10111,11 @@ impl AhjoorPaymentsContract {
             .get(&DataKey3::DaoVoteWindowSeconds)
             .unwrap_or(DEFAULT_DAO_VOTE_WINDOW_SECONDS);
 
-        // Ensure not already escalated (check for existing case with this payment_id).
+        // Ensure not already escalated (check for existing open case with this payment_id).
+        if Self::find_open_dao_case_id_by_payment(&env, payment_id).is_some() {
+            panic_with_error!(&env, Error::DaoAlreadyEscalated);
+        }
+
         let case_counter: u32 = env
             .storage()
             .instance()
@@ -10115,12 +10146,50 @@ impl AhjoorPaymentsContract {
             PERSISTENT_BUMP_AMOUNT,
         );
         env.storage()
+            .persistent()
+            .set(&DataKey3::DaoCaseByPayment(payment_id), &case_id);
+        env.storage().persistent().extend_ttl(
+            &DataKey3::DaoCaseByPayment(payment_id),
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+        env.storage()
             .instance()
             .set(&DataKey3::DaoMediationCounter, &(case_counter + 1));
 
         events::emit_dispute_escalated_to_dao(&env, payment_id, case_id, initiator, vote_window_closes_at);
         env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         case_id
+    }
+
+    /// Cancel an active DAO escalation for a payment before any votes are cast.
+    ///
+    /// Admin-gated: only the contract admin may call this function.
+    /// Panics with `DaoCaseNotFoundForPayment` if there is no active case for the payment.
+    /// Panics with `DaoEscalationHasVotes` if voting activity has already started.
+    pub fn cancel_dao_escalation(env: Env, payment_id: u32) {
+        Self::require_not_paused(&env);
+
+        let admin: Address = env.storage().instance().get(&DataKey::Admin).expect("Not initialized");
+        admin.require_auth();
+
+        let case_id = Self::find_open_dao_case_id_by_payment(&env, payment_id)
+            .unwrap_or_else(|| panic_with_error!(&env, Error::DaoCaseNotFoundForPayment));
+        let case: DaoMediationCase = env
+            .storage()
+            .persistent()
+            .get(&DataKey3::DaoMediationCase(case_id))
+            .expect("Mediation case not found");
+
+        if case.votes_for_merchant > 0 || case.votes_for_customer > 0 {
+            panic_with_error!(&env, Error::DaoEscalationHasVotes);
+        }
+
+        env.storage()
+            .persistent()
+            .remove(&DataKey3::DaoMediationCase(case_id));
+        events::emit_dao_escalation_cancelled(&env, payment_id, case_id);
+        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
     /// Cast a vote on a DAO mediation case.
@@ -10299,6 +10368,28 @@ impl AhjoorPaymentsContract {
             .persistent()
             .get(&DataKey3::DaoMediationCase(case_id))
             .expect("Mediation case not found")
+    }
+
+    /// Return the DAO mediation case for `payment_id`, if one exists.
+    pub fn get_dao_case_by_payment(env: Env, payment_id: u32) -> Option<DaoMediationCase> {
+        let case_id: u32 = env.storage().persistent().get(&DataKey3::DaoCaseByPayment(payment_id))?;
+        env.storage().persistent().extend_ttl(
+            &DataKey3::DaoCaseByPayment(payment_id),
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+        let case_opt: Option<DaoMediationCase> = env
+            .storage()
+            .persistent()
+            .get(&DataKey3::DaoMediationCase(case_id));
+        if case_opt.is_some() {
+            env.storage().persistent().extend_ttl(
+                &DataKey3::DaoMediationCase(case_id),
+                PERSISTENT_LIFETIME_THRESHOLD,
+                PERSISTENT_BUMP_AMOUNT,
+            );
+        }
+        case_opt
     }
 
     /// Return the list of registered DAO mediator addresses.
