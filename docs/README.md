@@ -15,6 +15,7 @@ Welcome to the Ahjoor contract documentation directory. Below is a structured in
 ## 2. ROSCA Contract (`ahjoor-rosca`)
 
 - [**Cosigner Guarantee in ROSCA**](rosca-cosigner-guarantee.md) — Overview of co-signer nomination, acceptance, and default coverage logic for community savings groups.
+- [**Contribution Delegation in ROSCA**](rosca-contribution-delegation.md) — Overview of contribution and voting weight delegation, proxy execution, limits, and revocation.
 
 ---
 
