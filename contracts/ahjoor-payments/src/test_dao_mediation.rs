@@ -86,6 +86,28 @@ fn test_escalate_to_dao() {
 }
 
 #[test]
+fn test_get_dao_case_by_payment_returns_existing_case() {
+    let (env, client, _admin, customer, _merchant, _token, payment_id) = setup_with_payment();
+
+    let mediator = Address::generate(&env);
+    client.configure_dao(&vec![&env, mediator], &86_400u64, &1u32);
+
+    let case_id = client.escalate_to_dao(&customer, &payment_id);
+    let by_id = client.get_dao_mediation_case(&case_id);
+    let by_payment = client.get_dao_case_by_payment(&payment_id);
+
+    assert!(by_payment.is_some());
+    assert_eq!(by_payment.unwrap(), by_id);
+}
+
+#[test]
+fn test_get_dao_case_by_payment_returns_none_when_absent() {
+    let (env, client, _admin, _customer, _merchant, _token, _payment_id) = setup_with_payment();
+    let missing = client.get_dao_case_by_payment(&999u32);
+    assert!(missing.is_none());
+}
+
+#[test]
 fn test_dao_vote_and_execute_customer_wins() {
     let (env, client, admin, customer, _merchant, token_client, payment_id) =
         setup_with_payment();

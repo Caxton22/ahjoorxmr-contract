@@ -1037,6 +1037,8 @@ pub enum DataKey3 {
     DaoMediationCounter,
     /// Persistent: DAO mediation case record keyed by case ID
     DaoMediationCase(u32),
+    /// Persistent: payment_id -> DAO mediation case ID
+    DaoCaseByPayment(u32),
     /// Persistent: (case_id, voter) → bool vote cast by DAO member
     DaoMediationVote(u32, Address),
     /// Instance: list of DAO mediator addresses
@@ -10115,6 +10117,14 @@ impl AhjoorPaymentsContract {
             PERSISTENT_BUMP_AMOUNT,
         );
         env.storage()
+            .persistent()
+            .set(&DataKey3::DaoCaseByPayment(payment_id), &case_id);
+        env.storage().persistent().extend_ttl(
+            &DataKey3::DaoCaseByPayment(payment_id),
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+        env.storage()
             .instance()
             .set(&DataKey3::DaoMediationCounter, &(case_counter + 1));
 
@@ -10299,6 +10309,28 @@ impl AhjoorPaymentsContract {
             .persistent()
             .get(&DataKey3::DaoMediationCase(case_id))
             .expect("Mediation case not found")
+    }
+
+    /// Return the DAO mediation case for `payment_id`, if one exists.
+    pub fn get_dao_case_by_payment(env: Env, payment_id: u32) -> Option<DaoMediationCase> {
+        let case_id: u32 = env.storage().persistent().get(&DataKey3::DaoCaseByPayment(payment_id))?;
+        env.storage().persistent().extend_ttl(
+            &DataKey3::DaoCaseByPayment(payment_id),
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+        let case_opt: Option<DaoMediationCase> = env
+            .storage()
+            .persistent()
+            .get(&DataKey3::DaoMediationCase(case_id));
+        if case_opt.is_some() {
+            env.storage().persistent().extend_ttl(
+                &DataKey3::DaoMediationCase(case_id),
+                PERSISTENT_LIFETIME_THRESHOLD,
+                PERSISTENT_BUMP_AMOUNT,
+            );
+        }
+        case_opt
     }
 
     /// Return the list of registered DAO mediator addresses.
