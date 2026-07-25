@@ -1417,16 +1417,18 @@ impl AhjoorContract {
         audit_trail::get_retention_window(&env)
     }
 
-    /// Returns `member`'s contribution entries within cycles
-    /// `from_cycle..=to_cycle` (inclusive). The range is capped at
-    /// `audit_trail::MAX_CONTRIBUTION_HISTORY_RANGE` (100) cycles per call —
-    /// callers with longer histories page through it with successive calls
-    /// instead of loading the whole history at once (#544).
+    /// Returns `member`'s contribution entries within an optional cycle window.
+    ///
+    /// When both bounds are omitted, this returns the most recent
+    /// `audit_trail::DEFAULT_CONTRIBUTION_HISTORY_WINDOW` cycles.
+    /// When one bound is omitted, the other side is expanded by that same
+    /// default window. Any resolved range is still capped by
+    /// `audit_trail::MAX_CONTRIBUTION_HISTORY_RANGE` (100) cycles per call.
     pub fn get_member_contribution_history(
         env: Env,
         member: Address,
-        from_cycle: u32,
-        to_cycle: u32,
+        from_cycle: Option<u32>,
+        to_cycle: Option<u32>,
     ) -> Vec<ContributionEntry> {
         audit_trail::get_member_contribution_history(&env, member, from_cycle, to_cycle)
     }
@@ -3315,6 +3317,64 @@ impl AhjoorContract {
                     .set(&DataKey3::IncomingMigrations, &incoming);
             }
         }
+    }
+
+    /// Admin override to force-cancel a stalled migration request.
+    ///
+    /// Unlike `cancel_migration`, this does not require timeout expiry and can
+    /// remove migration state at any intermediate approval stage.
+    ///
+    /// Removes, when present, both:
+    /// - `MigrationRequests[member]`   (source-side request record)
+    /// - `IncomingMigrations[member]`  (destination-side approval record)
+    ///
+    /// Panics with `MigrationNotFound` if no migration state exists for `member`
+    /// on this contract.
+    pub fn admin_cancel_migration(env: Env, member: Address) {
+        internals::check_not_paused(&env);
+
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .expect("Not initialized");
+        admin.require_auth();
+
+        let mut changed = false;
+
+        let mut requests: Map<Address, MigrationRequest> = env
+            .storage()
+            .instance()
+            .get(&DataKey3::MigrationRequests)
+            .unwrap_or(Map::new(&env));
+        if requests.contains_key(member.clone()) {
+            requests.remove(member.clone());
+            env.storage()
+                .instance()
+                .set(&DataKey3::MigrationRequests, &requests);
+            changed = true;
+        }
+
+        let mut incoming: Map<Address, IncomingMigration> = env
+            .storage()
+            .instance()
+            .get(&DataKey3::IncomingMigrations)
+            .unwrap_or(Map::new(&env));
+        if incoming.contains_key(member.clone()) {
+            incoming.remove(member.clone());
+            env.storage()
+                .instance()
+                .set(&DataKey3::IncomingMigrations, &incoming);
+            changed = true;
+        }
+
+        if !changed {
+            panic_with_error!(&env, ExtError2::MigrationNotFound);
+        }
+
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
     /// Returns the pending outbound migration request for `member`, if any.
@@ -9178,12 +9238,20 @@ impl AhjoorContract {
             state_hash: state_hash.clone(),
         };
 
-        log.push_back(snapshot);
+        log.push_back(snapshot.clone());
         env.storage()
             .persistent()
             .set(&PersistentKey::SnapshotLog, &log);
         env.storage().persistent().extend_ttl(
             &PersistentKey::SnapshotLog,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+        env.storage()
+            .persistent()
+            .set(&PersistentKey::SnapshotByRound(current_round), &snapshot);
+        env.storage().persistent().extend_ttl(
+            &PersistentKey::SnapshotByRound(current_round),
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
@@ -9224,6 +9292,55 @@ impl AhjoorContract {
             .get(&PersistentKey::SnapshotLog)
             .unwrap_or(Vec::new(&env));
         log.len() as u32
+    }
+
+    /// Returns the latest snapshot captured for `round`, if one exists.
+    /// `group_id` is accepted for interface consistency but ignored (each contract is one group).
+    pub fn get_group_snapshot_at(env: Env, _group_id: u32, round: u32) -> Option<GroupSnapshot> {
+        if let Some(snapshot) = env
+            .storage()
+            .persistent()
+            .get::<PersistentKey, GroupSnapshot>(&PersistentKey::SnapshotByRound(round))
+        {
+            env.storage().persistent().extend_ttl(
+                &PersistentKey::SnapshotByRound(round),
+                PERSISTENT_LIFETIME_THRESHOLD,
+                PERSISTENT_BUMP_AMOUNT,
+            );
+            env.storage()
+                .instance()
+                .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+            return Some(snapshot);
+        }
+
+        // Backward-compat fallback for snapshots created before round indexing existed.
+        let log: Vec<GroupSnapshot> = env
+            .storage()
+            .persistent()
+            .get(&PersistentKey::SnapshotLog)
+            .unwrap_or(Vec::new(&env));
+        for i in (0..log.len()).rev() {
+            let candidate = log.get(i).expect("snapshot index in bounds");
+            if candidate.round_number == round {
+                env.storage()
+                    .persistent()
+                    .set(&PersistentKey::SnapshotByRound(round), &candidate);
+                env.storage().persistent().extend_ttl(
+                    &PersistentKey::SnapshotByRound(round),
+                    PERSISTENT_LIFETIME_THRESHOLD,
+                    PERSISTENT_BUMP_AMOUNT,
+                );
+                env.storage()
+                    .instance()
+                    .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+                return Some(candidate);
+            }
+        }
+
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        None
     }
 
     // ─────────────────────────────────────────────────────────────────────────
