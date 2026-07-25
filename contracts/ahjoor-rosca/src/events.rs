@@ -898,12 +898,30 @@ pub struct InsurancePaidOut {
     pub remaining_pool: i128,
 }
 
+/// Event: Insurance pool dropped below configured low threshold
+#[contractevent]
+#[derive(Clone, Debug)]
+pub struct InsurancePoolLow {
+    pub round: u32,
+    pub threshold: i128,
+    pub remaining_pool: i128,
+}
+
 pub fn emit_insurance_top_up(e: &Env, contributor: Address, amount: i128) {
     InsurancePoolTopUp { contributor, amount }.publish(e);
 }
 
 pub fn emit_insurance_paid_out(e: &Env, round: u32, shortfall: i128, remaining_pool: i128) {
     InsurancePaidOut { round, shortfall, remaining_pool }.publish(e);
+}
+
+pub fn emit_insurance_pool_low(e: &Env, round: u32, threshold: i128, remaining_pool: i128) {
+    InsurancePoolLow {
+        round,
+        threshold,
+        remaining_pool,
+    }
+    .publish(e);
 }
 
 pub fn emit_round_skip_requested(e: &Env, member: Address, round: u32, fee_paid: i128) {

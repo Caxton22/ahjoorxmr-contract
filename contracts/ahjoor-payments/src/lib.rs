@@ -208,6 +208,10 @@ pub enum Error {
     DaoMinVotesNotMet = 58,
     /// Payment is not in Disputed status; cannot escalate.
     PaymentNotDisputed = 59,
+    /// No active DAO mediation case exists for the payment.
+    DaoCaseNotFoundForPayment = 60,
+    /// DAO escalation cannot be cancelled because voting has started.
+    DaoEscalationHasVotes = 61,
 }
 
 /// Extension errors that overflow the 50-variant contracterror limit.
@@ -1155,6 +1159,27 @@ pub struct AhjoorPaymentsContract;
 
 #[contractimpl]
 impl AhjoorPaymentsContract {
+    fn find_open_dao_case_id_by_payment(env: &Env, payment_id: u32) -> Option<u32> {
+        let case_counter: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey3::DaoMediationCounter)
+            .unwrap_or(0);
+
+        for case_id in 0..case_counter {
+            let maybe_case: Option<DaoMediationCase> = env
+                .storage()
+                .persistent()
+                .get(&DataKey3::DaoMediationCase(case_id));
+            if let Some(case) = maybe_case {
+                if case.payment_id == payment_id && !case.executed {
+                    return Some(case_id);
+                }
+            }
+        }
+        None
+    }
+
     /// One-time contract initialization.
     /// Admin, counters, and config go to instance storage.
     /// fee_recipient: Address that receives protocol fees
@@ -10084,7 +10109,11 @@ impl AhjoorPaymentsContract {
             .get(&DataKey3::DaoVoteWindowSeconds)
             .unwrap_or(DEFAULT_DAO_VOTE_WINDOW_SECONDS);
 
-        // Ensure not already escalated (check for existing case with this payment_id).
+        // Ensure not already escalated (check for existing open case with this payment_id).
+        if Self::find_open_dao_case_id_by_payment(&env, payment_id).is_some() {
+            panic_with_error!(&env, Error::DaoAlreadyEscalated);
+        }
+
         let case_counter: u32 = env
             .storage()
             .instance()
@@ -10121,6 +10150,36 @@ impl AhjoorPaymentsContract {
         events::emit_dispute_escalated_to_dao(&env, payment_id, case_id, initiator, vote_window_closes_at);
         env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         case_id
+    }
+
+    /// Cancel an active DAO escalation for a payment before any votes are cast.
+    ///
+    /// Admin-gated: only the contract admin may call this function.
+    /// Panics with `DaoCaseNotFoundForPayment` if there is no active case for the payment.
+    /// Panics with `DaoEscalationHasVotes` if voting activity has already started.
+    pub fn cancel_dao_escalation(env: Env, payment_id: u32) {
+        Self::require_not_paused(&env);
+
+        let admin: Address = env.storage().instance().get(&DataKey::Admin).expect("Not initialized");
+        admin.require_auth();
+
+        let case_id = Self::find_open_dao_case_id_by_payment(&env, payment_id)
+            .unwrap_or_else(|| panic_with_error!(&env, Error::DaoCaseNotFoundForPayment));
+        let case: DaoMediationCase = env
+            .storage()
+            .persistent()
+            .get(&DataKey3::DaoMediationCase(case_id))
+            .expect("Mediation case not found");
+
+        if case.votes_for_merchant > 0 || case.votes_for_customer > 0 {
+            panic_with_error!(&env, Error::DaoEscalationHasVotes);
+        }
+
+        env.storage()
+            .persistent()
+            .remove(&DataKey3::DaoMediationCase(case_id));
+        events::emit_dao_escalation_cancelled(&env, payment_id, case_id);
+        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
     /// Cast a vote on a DAO mediation case.

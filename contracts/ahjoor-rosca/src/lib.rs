@@ -717,6 +717,12 @@ impl AhjoorContract {
             .unwrap_or(0)
     }
 
+    /// Read-only balance view for integrators expecting a group-scoped API.
+    /// `group_id` is currently unused because this contract manages one group.
+    pub fn get_insurance_pool_balance(env: Env, _group_id: u32) -> i128 {
+        Self::get_insurance_pool(env)
+    }
+
     /// Get the proposed admin address, if any.
     pub fn get_proposed_admin(env: Env) -> Option<Address> {
         env.storage().instance().get(&DataKey2::ProposedAdmin)
@@ -7456,6 +7462,32 @@ impl AhjoorContract {
         events::emit_insurance_coverage_mode_set(&env, mode as u32);
     }
 
+    pub fn set_insurance_pool_low_threshold(env: Env, admin: Address, threshold: i128) {
+        admin.require_auth();
+        internals::check_not_paused(&env);
+        let a: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .expect("No admin");
+        if admin != a {
+            panic_with_error!(&env, ExtError::OnlyAdminAllowed);
+        }
+        if threshold < 0 {
+            panic_with_error!(&env, ExtError::InvalidAmount);
+        }
+        env.storage()
+            .instance()
+            .set(&DataKey4::InsurancePoolLowThreshold, &threshold);
+    }
+
+    pub fn get_insurance_pool_low_threshold(env: Env) -> i128 {
+        env.storage()
+            .instance()
+            .get(&DataKey4::InsurancePoolLowThreshold)
+            .unwrap_or(0)
+    }
+
     pub fn get_insurance_claims(env: Env, round: u32) -> Vec<InsuranceClaim> {
         let claims: Map<u32, Vec<InsuranceClaim>> = env
             .storage()
@@ -9520,6 +9552,23 @@ impl AhjoorContract {
             groups_completed: 0,
             score: 0,
         })
+    }
+
+    /// Batch-read member credit score records for UI/leaderboard rendering.
+    /// Returns entries in the same order as the `members` input.
+    /// `group_id` is currently unused because this contract manages one group.
+    pub fn get_member_scores(env: Env, _group_id: u32, members: Vec<Address>) -> Vec<Option<MemberScore>> {
+        let scores: Map<Address, MemberScore> = env
+            .storage()
+            .persistent()
+            .get(&PersistentKey::MemberCreditScores)
+            .unwrap_or(Map::new(&env));
+
+        let mut result: Vec<Option<MemberScore>> = Vec::new(&env);
+        for member in members.iter() {
+            result.push_back(scores.get(member));
+        }
+        result
     }
 
     /// #457: Cross-contract credit score oracle.

@@ -255,10 +255,28 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
             }
         };
         if draw_amount > 0 {
+            let insurance_pool_before_draw = insurance_pool;
             insurance_drawn_this_round = draw_amount;
             insurance_pool -= draw_amount;
             env.storage().instance().set(&DataKey2::InsurancePool, &insurance_pool);
             events::emit_insurance_paid_out(env, current_round, shortfall, insurance_pool);
+
+            let low_threshold: i128 = env
+                .storage()
+                .instance()
+                .get(&DataKey4::InsurancePoolLowThreshold)
+                .unwrap_or(0);
+            if low_threshold > 0
+                && insurance_pool_before_draw >= low_threshold
+                && insurance_pool < low_threshold
+            {
+                events::emit_insurance_pool_low(env, current_round, low_threshold, insurance_pool);
+            }
+
+            let shortfall_remaining = shortfall - draw_amount;
+            if insurance_pool == 0 {
+                events::emit_insurance_pool_exhausted(env, current_round, shortfall_remaining);
+            }
             events::emit_insurance_claim_executed(env, current_round, payout_recipient.clone(), draw_amount);
             let mut claims: Map<u32, Vec<InsuranceClaim>> = env
                 .storage()

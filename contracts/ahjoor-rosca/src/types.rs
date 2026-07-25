@@ -303,6 +303,8 @@ pub enum DataKey4 {
     /// `finalize_round`, which would advance rounds without ever paying out
     /// the pot or recording audit trail / receipts / cycle bonuses.
     UnfinalizedRoundStreak = 100,
+    /// Insurance pool low-balance alert threshold.
+    InsurancePoolLowThreshold = 101,
 }
 
 /// Waitlist ordering mode (#456).
