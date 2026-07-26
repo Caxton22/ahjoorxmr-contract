@@ -38,6 +38,7 @@ pub enum Error {
     QuotaExceeded = 6,
     TokenAlreadyHasQuota = 7,
     TokenHasNoQuota = 8,
+    SuspensionExtensionOverflow = 9,
 }
 
 #[contracttype]
@@ -507,7 +508,7 @@ impl TokenWhitelistContract {
         events::emit_token_suspension_lifted(&env, token, admin, current_ledger);
     }
 
-    pub fn extend_token_suspension(env: Env, admin: Address, token: Address, additional_ledgers: u32) {
+    pub fn extend_token_suspension(env: Env, admin: Address, token: Address, additional_ledgers: u32) -> Result<(), Error> {
         admin.require_auth();
         Self::require_admin(&env, &admin);
         let maybe_record: Option<SuspensionRecord> = env
@@ -521,10 +522,14 @@ impl TokenWhitelistContract {
         if current_ledger >= record.expiry_ledger {
             panic!("No active suspension");
         }
+        let new_expiry_ledger = record
+            .expiry_ledger
+            .checked_add(additional_ledgers)
+            .ok_or(Error::SuspensionExtensionOverflow)?;
         env.storage().persistent().set(
             &DataKey::SuspensionRecord(token.clone()),
             &SuspensionRecord {
-                expiry_ledger: record.expiry_ledger + additional_ledgers,
+                expiry_ledger: new_expiry_ledger,
                 reason_hash: record.reason_hash,
             },
         );
@@ -534,6 +539,7 @@ impl TokenWhitelistContract {
             PERSISTENT_BUMP_AMOUNT,
         );
         env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        Ok(())
     }
 
     pub fn get_token_suspension(env: Env, token: Address) -> Option<SuspensionRecord> {

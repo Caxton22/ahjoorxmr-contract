@@ -5907,6 +5907,20 @@ impl AhjoorPaymentsContract {
         Self::get_withdrawal_queue(&env, &merchant)
     }
 
+    /// Returns `payment_id`'s current 0-indexed position in the merchant's
+    /// withdrawal queue, reflecting any reordering from `prioritize_withdrawal`.
+    /// Returns `None` if the payment is not currently queued for this merchant.
+    pub fn get_withdrawal_queue_position(env: Env, merchant: Address, payment_id: u32) -> Option<u32> {
+        let queue = Self::get_withdrawal_queue(&env, &merchant);
+        for i in 0..queue.len() {
+            let (pid, _) = queue.get(i).unwrap();
+            if pid == payment_id {
+                return Some(i);
+            }
+        }
+        None
+    }
+
     // --- Internal Helpers ---
 
     fn require_not_paused(env: &Env) {
