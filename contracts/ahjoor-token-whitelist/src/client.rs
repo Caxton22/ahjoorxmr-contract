@@ -76,7 +76,7 @@ pub trait TokenWhitelistInterface {
 
     fn lift_token_suspension(env: Env, admin: Address, token: Address);
 
-    fn extend_token_suspension(env: Env, admin: Address, token: Address, additional_ledgers: u32);
+    fn extend_token_suspension(env: Env, admin: Address, token: Address, additional_ledgers: u32) -> Result<(), Error>;
 
     fn get_token_suspension(env: Env, token: Address) -> Option<crate::SuspensionRecord>;
 
