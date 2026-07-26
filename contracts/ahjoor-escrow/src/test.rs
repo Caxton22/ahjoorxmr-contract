@@ -2909,6 +2909,49 @@ fn test_insurance_claim_after_trigger_period() {
 }
 
 #[test]
+fn test_get_insurance_claim_status_before_and_after_claim() {
+    let s = setup();
+    setup_insurance(&s);
+
+    let contributor = Address::generate(&s.env);
+    s.token_admin_client.mint(&contributor, &10_000);
+    s.client.contribute_to_insurance(&contributor, &10_000);
+
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    s.env.ledger().set_timestamp(1000);
+    let deadline = s.env.ledger().timestamp() + 10_000;
+    let escrow_id = s.client.create_escrow(
+        &buyer, &seller, &arbiter, &1000, &s.token_addr, &deadline,
+        &None, &Vec::new(&s.env), &false, &0u32,
+    );
+
+    // No claim on record yet
+    assert_eq!(s.client.get_insurance_claim_status(&escrow_id), None);
+
+    s.client.dispute_escrow(&buyer, &escrow_id, &String::from_str(&s.env, "stuck"), &1000);
+
+    // Advance past 7-day trigger (7 * 24 * 60 * 60 = 604800 seconds)
+    s.env.ledger().set_timestamp(1000 + 604_801);
+
+    s.client.confirm_insurance_inactivity(&s.admin, &escrow_id, &true);
+
+    // Still no claim on record before claim_insurance is called
+    assert_eq!(s.client.get_insurance_claim_status(&escrow_id), None);
+
+    s.client.claim_insurance(&buyer, &escrow_id);
+
+    let status = s.client.get_insurance_claim_status(&escrow_id);
+    let record = status.expect("expected an insurance claim record after claiming");
+    assert_eq!(record.claimant, buyer);
+    assert_eq!(record.amount, 500);
+    assert_eq!(record.claimed_at, s.env.ledger().timestamp());
+}
+
+#[test]
 fn test_insurance_claim_capped_at_50_percent() {
     let s = setup();
     setup_insurance(&s);
@@ -4846,4 +4889,44 @@ fn test_withdraw_fees_zero_balance_on_fresh_contract_rejected() {
         &s.admin, &1, &s.token_addr, &Address::generate(&s.env),
     );
     assert!(result.is_err());
+}
+
+// ===========================================================================
+//  Issue #572: remove_arbiter batch length cap
+// ===========================================================================
+
+#[test]
+fn test_remove_arbiter_oversized_batch_rejected() {
+    let s = setup();
+
+    let arbiter = Address::generate(&s.env);
+    s.client.add_arbiter(&s.admin, &arbiter);
+
+    let mut escrow_ids = Vec::new(&s.env);
+    for i in 0..21u32 {
+        escrow_ids.push_back(i);
+    }
+
+    let result = s.client.try_remove_arbiter(&s.admin, &arbiter, &escrow_ids);
+    assert!(result.is_err());
+
+    // Storage must not have been mutated: arbiter is still in the pool.
+    let result_second_remove = s.client.try_remove_arbiter(&s.admin, &arbiter, &Vec::new(&s.env));
+    assert!(result_second_remove.is_ok());
+}
+
+#[test]
+fn test_remove_arbiter_valid_size_batch_still_works() {
+    let s = setup();
+
+    let arbiter = Address::generate(&s.env);
+    s.client.add_arbiter(&s.admin, &arbiter);
+
+    let mut escrow_ids = Vec::new(&s.env);
+    for i in 0..20u32 {
+        escrow_ids.push_back(i);
+    }
+
+    let result = s.client.try_remove_arbiter(&s.admin, &arbiter, &escrow_ids);
+    assert!(result.is_ok());
 }
