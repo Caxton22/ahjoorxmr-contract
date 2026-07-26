@@ -296,6 +296,8 @@ pub enum EscrowErrorExt4 {
     MilestoneMustBeSubmittedBeforeApproval = 46,
     OnlyEscrowBuyerMayRejectMilestones = 47,
     OnlySubmittedMilestoneCanBeRejected = 48,
+    /// Caller is the winning party and may not flag a resolution error.
+    OnlyLosingPartyCanFlagResolutionError = 49,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -2908,6 +2910,22 @@ impl AhjoorEscrowContract {
             panic_with_error!(&env, EscrowErrorExt::OnlyBuyerOrSellerCanFlagResolutionError);
         }
 
+        // Only the losing party may flag a resolution error.
+        // - buyer_percent == 100  → buyer won outright; seller lost → only seller may flag
+        // - buyer_percent == 0    → seller won outright; buyer lost → only buyer may flag
+        // - 0 < buyer_percent < 100 → split verdict; both parties received something, so
+        //   either may flag (neither is an unambiguous "winner").
+        let buyer_won_outright = verdict.buyer_percent == 100;
+        let seller_won_outright = verdict.buyer_percent == 0;
+        if buyer_won_outright && caller == escrow.buyer {
+            // Buyer won — buyer is NOT the losing party
+            panic_with_error!(&env, EscrowErrorExt4::OnlyLosingPartyCanFlagResolutionError);
+        }
+        if seller_won_outright && caller == escrow.seller {
+            // Seller won — seller is NOT the losing party
+            panic_with_error!(&env, EscrowErrorExt4::OnlyLosingPartyCanFlagResolutionError);
+        }
+
         // Enforce cooling-off window has not expired
         let cooling_off_seconds: u64 = env
             .storage()
@@ -3076,10 +3094,38 @@ impl AhjoorEscrowContract {
             panic_with_error!(&env, EscrowErrorExt::FeeConfigurationExceedsEscrowAmount);
         }
 
+        // --- Insurance double-payment prevention ---
+        // If a party already received an insurance payout while this escrow was
+        // disputed, that amount must be deducted from their verdict payout so
+        // total receipts (insurance + verdict) never exceed `escrow.amount`.
+        let insurance_paid: i128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::InsuranceClaimed(escrow_id))
+            .unwrap_or(0);
+
         let seller_percent = 100 - buyer_percent;
 
-        let buyer_amount = (distributable * buyer_percent as i128) / 100;
-        let seller_amount = distributable - buyer_amount;
+        let raw_buyer_amount = (distributable * buyer_percent as i128) / 100;
+        let raw_seller_amount = distributable - raw_buyer_amount;
+
+        // Deduct insurance from the winning side's share (floor at 0).
+        // For a split verdict both sides "won" a portion, so we conservatively
+        // deduct from whichever side received the larger share. If split is
+        // exactly equal we deduct from buyer (to be safe).
+        let (buyer_amount, seller_amount) = if insurance_paid > 0 {
+            if buyer_percent >= seller_percent {
+                // Buyer's side received more (or equal) → deduct from buyer
+                let buyer_net = (raw_buyer_amount - insurance_paid).max(0);
+                (buyer_net, raw_seller_amount)
+            } else {
+                // Seller's side received more → deduct from seller
+                let seller_net = (raw_seller_amount - insurance_paid).max(0);
+                (raw_buyer_amount, seller_net)
+            }
+        } else {
+            (raw_buyer_amount, raw_seller_amount)
+        };
 
         if buyer_amount > 0 {
             Self::transfer_to_buyers(env, &escrow, buyer_amount, escrow_id);
@@ -3607,8 +3653,9 @@ impl AhjoorEscrowContract {
         if env
             .storage()
             .persistent()
-            .get::<DataKey, bool>(&DataKey::InsuranceClaimed(escrow_id))
-            .unwrap_or(false)
+            .get::<DataKey, i128>(&DataKey::InsuranceClaimed(escrow_id))
+            .unwrap_or(0)
+            > 0
         {
             panic_with_error!(&env, EscrowErrorExt::InsuranceAlreadyClaimed);
         }
@@ -3666,7 +3713,7 @@ impl AhjoorEscrowContract {
             .set(&DataKey::InsurancePool, &(pool_balance - claim_amount));
         env.storage()
             .persistent()
-            .set(&DataKey::InsuranceClaimed(escrow_id), &true);
+            .set(&DataKey::InsuranceClaimed(escrow_id), &claim_amount);
         env.storage().persistent().extend_ttl(
             &DataKey::InsuranceClaimed(escrow_id),
             PERSISTENT_LIFETIME_THRESHOLD,

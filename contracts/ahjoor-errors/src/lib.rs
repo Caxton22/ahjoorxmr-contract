@@ -209,7 +209,7 @@ pub mod payments {
 
 pub mod escrow {
     /// See [`crate::rosca::COUNT`] for why this exists.
-    pub const COUNT: usize = 248;
+    pub const COUNT: usize = 249;
 
     pub const INVALID_DEADLINE: u32        = 3001;
     pub const INVALID_TRANCHE_INDEX: u32   = 3002;
@@ -459,6 +459,7 @@ pub mod escrow {
     pub const MILESTONE_MUST_BE_SUBMITTED_BEFORE_APPROVAL: u32 = 3246;
     pub const ONLY_ESCROW_BUYER_MAY_REJECT_MILESTONES: u32 = 3247;
     pub const ONLY_SUBMITTED_MILESTONE_CAN_BE_REJECTED: u32 = 3248;
+    pub const ONLY_LOSING_PARTY_CAN_FLAG_RESOLUTION_ERROR: u32 = 3249;
 }
 
 // ---------------------------------------------------------------------------
@@ -921,6 +922,7 @@ pub static ALL_ERRORS: &[ErrorEntry] = &[
     ErrorEntry { code: escrow::MILESTONE_MUST_BE_SUBMITTED_BEFORE_APPROVAL, name: "MilestoneMustBeSubmittedBeforeApproval", contract: "ahjoor-escrow" },
     ErrorEntry { code: escrow::ONLY_ESCROW_BUYER_MAY_REJECT_MILESTONES, name: "OnlyEscrowBuyerMayRejectMilestones", contract: "ahjoor-escrow" },
     ErrorEntry { code: escrow::ONLY_SUBMITTED_MILESTONE_CAN_BE_REJECTED, name: "OnlySubmittedMilestoneCanBeRejected", contract: "ahjoor-escrow" },
+    ErrorEntry { code: escrow::ONLY_LOSING_PARTY_CAN_FLAG_RESOLUTION_ERROR, name: "OnlyLosingPartyCanFlagResolutionError", contract: "ahjoor-escrow" },
 
     // refund (8 entries — must match refund::COUNT)
     ErrorEntry { code: refund::ALREADY_INITIALIZED, name: "AlreadyInitialized", contract: "ahjoor-refund" },
