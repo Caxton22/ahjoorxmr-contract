@@ -961,6 +961,10 @@ pub enum DataKey2 {
     ReferralRecord(Address),
     /// Persistent: pending commission balance for a referrer (#242)
     PendingCommission(Address),
+    /// Persistent: lifetime total commission earned by a referrer (#570)
+    TotalEarnedCommission(Address),
+    /// Persistent: lifetime total commission claimed by a referrer (#570)
+    TotalClaimedCommission(Address),
     /// Persistent: dynamic payment record (#246)
     DynamicPayment(u32),
     /// Instance: admin-maintained oracle whitelist (#246)
@@ -8683,6 +8687,16 @@ impl AhjoorPaymentsContract {
             PERSISTENT_BUMP_AMOUNT,
         );
 
+        let claimed_key = DataKey2::TotalClaimedCommission(referrer.clone());
+        let total_claimed: i128 = env.storage().persistent().get(&claimed_key).unwrap_or(0);
+        let new_total_claimed = total_claimed.saturating_add(pending);
+        env.storage().persistent().set(&claimed_key, &new_total_claimed);
+        env.storage().persistent().extend_ttl(
+            &claimed_key,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+
         let token_client = token::Client::new(&env, &token);
         token_client.transfer(&env.current_contract_address(), &referrer, &pending);
 
@@ -8705,6 +8719,22 @@ impl AhjoorPaymentsContract {
         env.storage()
             .persistent()
             .get(&DataKey2::ReferralRecord(referred_merchant))
+    }
+
+    /// Get a referrer's aggregate commission summary: (total_earned, total_claimed).
+    /// A referrer with no activity returns (0, 0).
+    pub fn get_referral_commission_summary(env: Env, referrer: Address) -> (i128, i128) {
+        let total_earned: i128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::TotalEarnedCommission(referrer.clone()))
+            .unwrap_or(0);
+        let total_claimed: i128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::TotalClaimedCommission(referrer))
+            .unwrap_or(0);
+        (total_earned, total_claimed)
     }
 
     /// Internal: accrue referral commission when a referred merchant's payment is finalized.
@@ -8758,6 +8788,16 @@ impl AhjoorPaymentsContract {
         env.storage().persistent().set(&pending_key, &new_total);
         env.storage().persistent().extend_ttl(
             &pending_key,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+
+        let earned_key = DataKey2::TotalEarnedCommission(record.referrer.clone());
+        let total_earned: i128 = env.storage().persistent().get(&earned_key).unwrap_or(0);
+        let new_total_earned = total_earned.saturating_add(commission);
+        env.storage().persistent().set(&earned_key, &new_total_earned);
+        env.storage().persistent().extend_ttl(
+            &earned_key,
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
