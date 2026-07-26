@@ -10091,7 +10091,9 @@ impl AhjoorPaymentsContract {
             panic!("Only the payment customer or admin may escalate");
         }
 
-        if payment.status != PaymentStatus::Disputed {
+        if payment.status != PaymentStatus::Disputed
+            && payment.status != PaymentStatus::EscalatedDispute
+        {
             panic_with_error!(&env, Error::PaymentNotDisputed);
         }
 
@@ -10304,6 +10306,14 @@ impl AhjoorPaymentsContract {
             .persistent()
             .get(&DataKey::Payment(case.payment_id))
             .expect("Payment not found");
+
+        // Guard: the payment must still be in an unresolved dispute state.
+        // If a prior verdict (or admin action) already settled it, reject.
+        if payment.status != PaymentStatus::Disputed
+            && payment.status != PaymentStatus::EscalatedDispute
+        {
+            panic_with_error!(&env, Error::DaoCaseAlreadyExecuted);
+        }
 
         let old_status = payment.status;
         let token_client = token::Client::new(&env, &payment.token);
