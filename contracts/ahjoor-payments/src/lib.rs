@@ -4215,6 +4215,37 @@ impl AhjoorPaymentsContract {
         Self::get_rate_limit_config_internal(&env)
     }
 
+    /// #649: Returns the current rate limit status for a customer.
+    /// 
+    /// Returns (count, window_start_ledger) where:
+    /// - count: number of payments made in the current window
+    /// - window_start_ledger: ledger sequence when the current window started
+    /// 
+    /// Returns (0, 0) for a customer with no recorded activity in the current window.
+    pub fn get_customer_rate_limit_status(env: Env, customer: Address) -> (u32, u32) {
+        let key = DataKey::CustomerRateLimit(customer);
+        let cfg = Self::get_rate_limit_config_internal(&env);
+        let current_ledger = env.ledger().sequence();
+
+        let state: CustomerRateLimit = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or(CustomerRateLimit {
+                count: 0,
+                window_start_ledger: current_ledger,
+            });
+
+        // Check if the window has expired
+        if current_ledger.saturating_sub(state.window_start_ledger) >= cfg.window_size_ledgers {
+            // Window expired; return reset state
+            (0, current_ledger)
+        } else {
+            // Window still active; return current state
+            (state.count, state.window_start_ledger)
+        }
+    }
+
     pub fn is_settled(env: Env, payment_id: u32) -> bool {
         env.storage()
             .persistent()
