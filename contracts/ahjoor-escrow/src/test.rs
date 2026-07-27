@@ -161,6 +161,145 @@ fn test_burn_on_cancel() {
     assert!(s.client.get_escrow_receipt(&escrow_id).is_none());
 }
 
+/// #650: get_cancellation_request returns None when no pending request exists
+#[test]
+fn test_get_cancellation_request_none_when_no_pending() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    let deadline = s.env.ledger().timestamp() + 1000;
+    let escrow_id = s.client.create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+
+    // No cancellation request has been made
+    let request = s.client.get_cancellation_request(&escrow_id);
+    assert_eq!(request, None, "Should return None when no cancellation request exists");
+}
+
+/// #650: get_cancellation_request returns pending request with full details
+#[test]
+fn test_get_cancellation_request_returns_pending_request() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    let deadline = s.env.ledger().timestamp() + 1000;
+    let escrow_id = s.client.create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+
+    // Record the current timestamp before requesting cancellation
+    let request_timestamp = s.env.ledger().timestamp();
+    let reason_hash = BytesN::from_array(&s.env, &[42u8; 32]);
+
+    // Request cancellation from seller
+    s.client.request_cancellation(&seller, &escrow_id, &reason_hash);
+
+    // Retrieve the cancellation request
+    let request = s.client.get_cancellation_request(&escrow_id);
+    assert!(request.is_some(), "Should return a cancellation request");
+
+    let cancel_req = request.unwrap();
+    assert_eq!(cancel_req.initiator, seller, "Initiator should be the seller");
+    assert_eq!(cancel_req.reason_hash, reason_hash, "Reason hash should match");
+    assert_eq!(cancel_req.requested_at, request_timestamp, "Requested at should match");
+    
+    // expires_at should be requested_at + window (default 7 days = 604800 seconds)
+    let default_window: u64 = 7 * 24 * 60 * 60;
+    assert_eq!(cancel_req.expires_at, request_timestamp + default_window, "Expires at should be requested_at + window");
+}
+
+/// #650: get_cancellation_request returns None after acceptance
+#[test]
+fn test_get_cancellation_request_none_after_acceptance() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    let deadline = s.env.ledger().timestamp() + 1000;
+    let escrow_id = s.client.create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+
+    let reason_hash = BytesN::from_array(&s.env, &[1u8; 32]);
+    s.client.request_cancellation(&seller, &escrow_id, &reason_hash);
+
+    // Verify request exists
+    assert!(s.client.get_cancellation_request(&escrow_id).is_some(), "Request should exist");
+
+    // Accept the cancellation
+    s.client.accept_cancellation(&buyer, &escrow_id);
+
+    // Request should now be gone
+    let request = s.client.get_cancellation_request(&escrow_id);
+    assert_eq!(request, None, "Should return None after acceptance");
+}
+
+/// #650: get_cancellation_request returns None after rejection
+#[test]
+fn test_get_cancellation_request_none_after_rejection() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    let deadline = s.env.ledger().timestamp() + 1000;
+    let escrow_id = s.client.create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+
+    let reason_hash = BytesN::from_array(&s.env, &[2u8; 32]);
+    s.client.request_cancellation(&seller, &escrow_id, &reason_hash);
+
+    // Verify request exists
+    assert!(s.client.get_cancellation_request(&escrow_id).is_some(), "Request should exist");
+
+    // Reject the cancellation
+    s.client.reject_cancellation(&buyer, &escrow_id);
+
+    // Request should now be gone
+    let request = s.client.get_cancellation_request(&escrow_id);
+    assert_eq!(request, None, "Should return None after rejection");
+}
+
+/// #650: get_cancellation_request returns None after expiration
+#[test]
+fn test_get_cancellation_request_none_after_expiration() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    let deadline = s.env.ledger().timestamp() + 1000;
+    let escrow_id = s.client.create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+
+    let reason_hash = BytesN::from_array(&s.env, &[3u8; 32]);
+    s.client.request_cancellation(&seller, &escrow_id, &reason_hash);
+
+    // Verify request exists
+    assert!(s.client.get_cancellation_request(&escrow_id).is_some(), "Request should exist");
+
+    // Set admin's response window to 100 seconds for testing
+    s.client.set_cancellation_response_window(&s.admin, &100);
+
+    // Advance timestamp past expiry (default window was just set to 100 seconds)
+    // We requested at timestamp T, so it expires at T + 100
+    let request_before = s.client.get_cancellation_request(&escrow_id).unwrap();
+    let expires_at = request_before.expires_at;
+    
+    // Advance to after expiry
+    s.env.ledger().set_timestamp(expires_at + 1);
+
+    // Expire the cancellation
+    s.client.expire_cancellation(&escrow_id);
+
+    // Request should now be gone
+    let request = s.client.get_cancellation_request(&escrow_id);
+    assert_eq!(request, None, "Should return None after expiration");
+}
+
 #[test]
 fn test_create_escrow_zero_amount_panics() {
     let s = setup();
