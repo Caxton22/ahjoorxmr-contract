@@ -208,6 +208,12 @@ pub enum Error {
     DaoMinVotesNotMet = 58,
     /// Payment is not in Disputed status; cannot escalate.
     PaymentNotDisputed = 59,
+}
+
+/// Overflow Error2 — split from Error because #[contracterror] is bounded to 50 variants.
+#[contracterror]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Error2 {
     /// No active DAO mediation case exists for the payment.
     DaoCaseNotFoundForPayment = 60,
     /// DAO escalation cannot be cancelled because voting has started.
@@ -961,10 +967,6 @@ pub enum DataKey2 {
     ReferralRecord(Address),
     /// Persistent: pending commission balance for a referrer (#242)
     PendingCommission(Address),
-    /// Persistent: lifetime total commission earned by a referrer (#570)
-    TotalEarnedCommission(Address),
-    /// Persistent: lifetime total commission claimed by a referrer (#570)
-    TotalClaimedCommission(Address),
     /// Persistent: dynamic payment record (#246)
     DynamicPayment(u32),
     /// Instance: admin-maintained oracle whitelist (#246)
@@ -1023,6 +1025,10 @@ pub enum DataKey2 {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey3 {
+    /// Persistent: lifetime total commission earned by a referrer (#570)
+    TotalEarnedCommission(Address),
+    /// Persistent: lifetime total commission claimed by a referrer (#570)
+    TotalClaimedCommission(Address),
     /// #351: counter for recurring payment schedules
     RecurringCounter,
     /// #351: recurring payment schedule record
@@ -8701,7 +8707,7 @@ impl AhjoorPaymentsContract {
             PERSISTENT_BUMP_AMOUNT,
         );
 
-        let claimed_key = DataKey2::TotalClaimedCommission(referrer.clone());
+        let claimed_key = DataKey3::TotalClaimedCommission(referrer.clone());
         let total_claimed: i128 = env.storage().persistent().get(&claimed_key).unwrap_or(0);
         let new_total_claimed = total_claimed.saturating_add(pending);
         env.storage().persistent().set(&claimed_key, &new_total_claimed);
@@ -8741,12 +8747,12 @@ impl AhjoorPaymentsContract {
         let total_earned: i128 = env
             .storage()
             .persistent()
-            .get(&DataKey2::TotalEarnedCommission(referrer.clone()))
+            .get(&DataKey3::TotalEarnedCommission(referrer.clone()))
             .unwrap_or(0);
         let total_claimed: i128 = env
             .storage()
             .persistent()
-            .get(&DataKey2::TotalClaimedCommission(referrer))
+            .get(&DataKey3::TotalClaimedCommission(referrer))
             .unwrap_or(0);
         (total_earned, total_claimed)
     }
@@ -8806,7 +8812,7 @@ impl AhjoorPaymentsContract {
             PERSISTENT_BUMP_AMOUNT,
         );
 
-        let earned_key = DataKey2::TotalEarnedCommission(record.referrer.clone());
+        let earned_key = DataKey3::TotalEarnedCommission(record.referrer.clone());
         let total_earned: i128 = env.storage().persistent().get(&earned_key).unwrap_or(0);
         let new_total_earned = total_earned.saturating_add(commission);
         env.storage().persistent().set(&earned_key, &new_total_earned);
@@ -10230,7 +10236,7 @@ impl AhjoorPaymentsContract {
         admin.require_auth();
 
         let case_id = Self::find_open_dao_case_id_by_payment(&env, payment_id)
-            .unwrap_or_else(|| panic_with_error!(&env, Error::DaoCaseNotFoundForPayment));
+            .unwrap_or_else(|| panic_with_error!(&env, Error2::DaoCaseNotFoundForPayment));
         let case: DaoMediationCase = env
             .storage()
             .persistent()
@@ -10238,7 +10244,7 @@ impl AhjoorPaymentsContract {
             .expect("Mediation case not found");
 
         if case.votes_for_merchant > 0 || case.votes_for_customer > 0 {
-            panic_with_error!(&env, Error::DaoEscalationHasVotes);
+            panic_with_error!(&env, Error2::DaoEscalationHasVotes);
         }
 
         env.storage()
