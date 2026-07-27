@@ -154,3 +154,72 @@ fn test_migrate_merchant_reserve_no_legacy_balance_is_noop() {
     let migrated = client.migrate_merchant_reserve(&admin, &merchant);
     assert_eq!(migrated, 0i128);
 }
+
+// --- #579: Combined reserve balance summary ---
+
+#[test]
+fn test_reserve_balance_summary_no_activity_is_zeroed() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, _admin, _) = setup(&env);
+    let merchant = Address::generate(&env);
+
+    let summary = client.get_reserve_balance_summary(&merchant);
+    assert_eq!(summary.legacy_reserve_balance, 0i128);
+    assert_eq!(summary.merchant_reserve_balance, 0i128);
+    assert_eq!(summary.total_reserve_balance, 0i128);
+}
+
+#[test]
+fn test_reserve_balance_summary_reflects_both_subsystems() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _) = setup(&env);
+    let merchant = Address::generate(&env);
+    let (token_addr, token_admin) = make_token(&env, &admin);
+    let token_client = TokenClient::new(&env, &token_addr);
+
+    token_admin.mint(&merchant, &2000i128);
+
+    // Legacy (#274) balance via deposit_reserve.
+    client.deposit_reserve(&merchant, &token_addr, &300i128);
+
+    // Canonical (#334) balance via deposit_merchant_reserve (seeded as in
+    // `test_migrate_merchant_reserve_moves_legacy_into_canonical` above).
+    env.as_contract(&client.address, || {
+        env.storage()
+            .instance()
+            .set(&crate::DataKey2::ReserveToken, &token_addr);
+    });
+    token_client.approve(
+        &merchant,
+        &client.address,
+        &200i128,
+        &(env.ledger().sequence() + 1000),
+    );
+    client.deposit_merchant_reserve(&merchant, &200i128);
+
+    let summary = client.get_reserve_balance_summary(&merchant);
+    assert_eq!(summary.legacy_reserve_balance, 300i128);
+    assert_eq!(summary.merchant_reserve_balance, 200i128);
+    assert_eq!(summary.total_reserve_balance, 500i128);
+}
+
+#[test]
+fn test_reserve_balance_summary_activity_in_only_one_system() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let (client, admin, _) = setup(&env);
+    let merchant = Address::generate(&env);
+    let (token_addr, token_admin) = make_token(&env, &admin);
+
+    token_admin.mint(&merchant, &2000i128);
+
+    // Only the legacy (#274) subsystem has activity.
+    client.deposit_reserve(&merchant, &token_addr, &150i128);
+
+    let summary = client.get_reserve_balance_summary(&merchant);
+    assert_eq!(summary.legacy_reserve_balance, 150i128);
+    assert_eq!(summary.merchant_reserve_balance, 0i128);
+    assert_eq!(summary.total_reserve_balance, 150i128);
+}

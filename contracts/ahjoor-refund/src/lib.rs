@@ -279,6 +279,9 @@ pub enum DataKey2 {
     BlockDurationLedgers,
     /// Ledger window for detecting rapid submissions
     RapidSubmissionWindowLedgers,
+    /// Vec<Address> of every customer who has ever had an abuse record
+    /// touched, used to drive `list_abuse_flagged_customers` (#580).
+    AbuseTrackedCustomers,
 
     // --- Feature: Cross-Contract Refund Registration ---
     /// Vec<Address> of whitelisted origin contracts
@@ -426,6 +429,19 @@ const DEFAULT_MAX_VOUCHER_BONUS_BPS: u32 = 1_000;
 pub struct BatchRefundResult {
     pub processed: Vec<u32>,
     pub skipped: Vec<u32>,
+}
+
+/// Combined reserve balance view across both parallel reserve subsystems (#579).
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReserveSummary {
+    pub merchant: Address,
+    /// Legacy (#274) reserve balance held under `DataKey::MerchantReserve`.
+    pub legacy_reserve_balance: i128,
+    /// Canonical (#334) reserve balance held under `DataKey2::MerchantReserveBalance`.
+    pub merchant_reserve_balance: i128,
+    /// Sum of both subsystems' balances.
+    pub total_reserve_balance: i128,
 }
 
 /// Optional extended configuration for `initialize`.
@@ -4767,6 +4783,45 @@ impl AhjoorRefundContract {
         Self::load_abuse_record_with_decay(&env, &customer)
     }
 
+    /// #580: Admin view of customers currently above the abuse block
+    /// threshold (with lazy decay applied), correctly paginated.
+    /// A customer reset via `reset_customer_abuse_score` drops out of this
+    /// view since their decayed score falls back below the threshold.
+    /// Returns an empty vec if no threshold is configured. `limit` is
+    /// capped at 50 per call.
+    pub fn list_abuse_flagged_customers(
+        env: Env,
+        offset: u32,
+        limit: u32,
+    ) -> Vec<(Address, RefundAbuseRecord)> {
+        let effective_limit = limit.min(50);
+        let threshold: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey2::AbuseBlockThreshold)
+            .unwrap_or(u32::MAX);
+
+        let tracked: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::AbuseTrackedCustomers)
+            .unwrap_or(Vec::new(&env));
+
+        let mut result = Vec::new(&env);
+        let mut matched: u32 = 0;
+        for customer in tracked.iter() {
+            let record = Self::load_abuse_record_with_decay(&env, &customer);
+            if record.abuse_score < threshold {
+                continue;
+            }
+            if matched >= offset && result.len() < effective_limit {
+                result.push_back((customer, record));
+            }
+            matched += 1;
+        }
+        result
+    }
+
     // ─── #355: Configurable Abuse Score Decay ────────────────────────────────
 
     /// Admin configures the exponential decay parameters for the abuse score system.
@@ -4962,7 +5017,30 @@ impl AhjoorRefundContract {
         }
     }
 
+    /// Adds `customer` to the registry of customers ever tracked by the
+    /// abuse-score system, used by `list_abuse_flagged_customers` (#580).
+    /// No-op if already tracked.
+    fn track_abuse_customer(env: &Env, customer: &Address) {
+        let mut tracked: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::AbuseTrackedCustomers)
+            .unwrap_or(Vec::new(env));
+        if !tracked.contains(customer) {
+            tracked.push_back(customer.clone());
+            env.storage()
+                .persistent()
+                .set(&DataKey2::AbuseTrackedCustomers, &tracked);
+            env.storage().persistent().extend_ttl(
+                &DataKey2::AbuseTrackedCustomers,
+                PERSISTENT_LIFETIME_THRESHOLD,
+                PERSISTENT_BUMP_AMOUNT,
+            );
+        }
+    }
+
     fn update_abuse_on_request(env: &Env, customer: &Address, current_seq: u32, rapid_window: u32) {
+        Self::track_abuse_customer(env, customer);
         let old_record = Self::load_abuse_record_with_decay(env, customer);
         let mut record = old_record.clone();
         record.total_requests += 1;
@@ -4985,6 +5063,7 @@ impl AhjoorRefundContract {
     }
 
     fn increment_abuse_score(env: &Env, customer: &Address, delta: u32, is_elevated: bool) {
+        Self::track_abuse_customer(env, customer);
         // Load with in-memory decay applied (does NOT write to storage)
         let old_record = Self::load_abuse_record_with_decay(env, customer);
         let mut record = old_record.clone();
@@ -5485,6 +5564,34 @@ impl AhjoorRefundContract {
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
 
         legacy_balance
+    }
+
+    /// #579: Combined reserve balance view across both parallel reserve
+    /// subsystems — the legacy (#274) `*_reserve` balances and the
+    /// canonical (#334) `*_merchant_reserve` balances. Reports both side by
+    /// side so a merchant/admin has one place to check reserve status
+    /// without querying each subsystem separately. See
+    /// `migrate_merchant_reserve` (#585) to consolidate the two into one.
+    /// A merchant with no activity in either subsystem gets zeroed values.
+    pub fn get_reserve_balance_summary(env: Env, merchant: Address) -> ReserveSummary {
+        let legacy_reserve_balance: i128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::MerchantReserve(merchant.clone()))
+            .unwrap_or(0);
+        let merchant_reserve_balance: i128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::MerchantReserveBalance(merchant.clone()))
+            .unwrap_or(0);
+        let total_reserve_balance = legacy_reserve_balance + merchant_reserve_balance;
+
+        ReserveSummary {
+            merchant,
+            legacy_reserve_balance,
+            merchant_reserve_balance,
+            total_reserve_balance,
+        }
     }
 
     pub fn set_merchant_response_deadline(

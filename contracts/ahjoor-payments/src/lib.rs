@@ -4165,6 +4165,45 @@ impl AhjoorPaymentsContract {
             .expect("No dispute found for this payment")
     }
 
+    /// Merchant/admin view of all disputes tied to a given merchant (#565).
+    /// Only disputes still present in temporary storage are returned (a
+    /// resolved dispute is not TTL-extended and will naturally expire and
+    /// drop out of this view). `limit` is capped at 50 per call.
+    pub fn list_disputes_by_merchant(
+        env: Env,
+        merchant: Address,
+        offset: u32,
+        limit: u32,
+    ) -> Vec<Dispute> {
+        let effective_limit = limit.min(50);
+        let counter: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::PaymentCounter)
+            .unwrap_or(0);
+
+        let mut result = Vec::new(&env);
+        let mut matched: u32 = 0;
+        for payment_id in 0..counter {
+            let payment: Payment = match env.storage().persistent().get(&DataKey::Payment(payment_id)) {
+                Some(p) => p,
+                None => continue,
+            };
+            if payment.merchant != merchant {
+                continue;
+            }
+            let dispute: Dispute = match env.storage().temporary().get(&DataKey::Dispute(payment_id)) {
+                Some(d) => d,
+                None => continue,
+            };
+            if matched >= offset && result.len() < effective_limit {
+                result.push_back(dispute);
+            }
+            matched += 1;
+        }
+        result
+    }
+
     pub fn get_dispute_timeout(env: Env) -> u64 {
         env.storage()
             .instance()
@@ -10470,6 +10509,9 @@ impl AhjoorPaymentsContract {
             .unwrap_or(Vec::new(&env))
     }
 }
+
+#[cfg(test)]
+mod test_disputes_by_merchant;
 
 #[cfg(test)]
 mod test_tip;
