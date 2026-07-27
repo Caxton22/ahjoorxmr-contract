@@ -11,7 +11,7 @@ const PERSISTENT_BUMP_AMOUNT: u32 = 120_000;
 const DEADLINE_EXTENSION_PROPOSAL_WINDOW: u64 = 24 * 60 * 60;
 const MAX_EVIDENCE_ENTRIES_PER_PARTY: u32 = 5;
 const DEFAULT_DISPUTE_TIMEOUT_SECONDS: u64 = 7 * 24 * 60 * 60;
-const MAX_BATCH_ESCROWS: u32 = 10;
+const DEFAULT_MAX_BATCH_ESCROWS: u32 = 10;
 const DEFAULT_MAX_ORACLE_AGE_SECONDS: u64 = 300;
 const DEFAULT_INSURANCE_TRIGGER_DAYS: u64 = 7;
 const DEFAULT_MAX_TOPUP_MULTIPLIER: u32 = 3;
@@ -341,6 +341,13 @@ pub enum EscrowStatus {
 pub enum DisputeDefaultWinner {
     Buyer = 0,
     Seller = 1,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[contracttype]
+pub enum CollateralHealthStatus {
+    Healthy = 0,
+    UnderCollateralized = 1,
 }
 
 const ORACLE_COMPARISON_LESS_OR_EQUAL: u32 = 0;
@@ -731,6 +738,8 @@ pub enum DataKey2 {
     CollateralMinRatioBps(u32),
     /// #361: oracle address for collateral health checks per escrow
     CollateralOracle(u32),
+    /// #577: admin-configurable max batch size for batch escrow creation
+    MaxEscrowBatchSize,
     /// #350: ordered list of authorized approver addresses per escrow
     MultiPartyApprovers(u32),
     /// #350: required N-of-M approval threshold per escrow
@@ -757,6 +766,8 @@ pub enum DataKey2 {
     InspectorRulingAppealed(u32),
     /// #376: ordered milestone schedule for a milestone-gated bounty (escrow_id → Vec<BountyMilestone>)
     BountyMilestones(u32),
+    /// #573: paginated bounty submission listing per bounty
+    BountySubmissions(u32),
     /// #421: buyer list for a multi-buyer escrow (escrow_id → Vec<Address>)
     MultiBuyerList(u32),
     /// #421: buyer contribution shares (escrow_id → Map<Address, i128>)
@@ -839,6 +850,14 @@ const DEFAULT_VETO_OVERRIDE_WINDOW_SECONDS: u64 = 48 * 60 * 60;
 // ── #319: Bounty Board for Open Competitive Work Assignment ──────────────────
 
 /// Bounty metadata for open competitive work assignment.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BountySubmission {
+    pub solver: Address,
+    pub submission_hash: BytesN<32>,
+    pub submitted_at: u64,
+}
+
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BountyData {
@@ -1009,6 +1028,7 @@ impl AhjoorEscrowContract {
         env.storage().instance().set(&DataKey::MaxTopupMultiplier, &DEFAULT_MAX_TOPUP_MULTIPLIER);
         env.storage().instance().set(&DataKey::PartialReleaseResponseDeadline, &DEFAULT_PARTIAL_RELEASE_RESPONSE_DEADLINE);
         env.storage().instance().set(&DataKey2::MaxBountyRejectionRounds, &DEFAULT_MAX_BOUNTY_REJECTION_ROUNDS);
+        env.storage().instance().set(&DataKey2::MaxEscrowBatchSize, &DEFAULT_MAX_BATCH_ESCROWS);
 
         env.storage()
             .instance()
@@ -1336,7 +1356,8 @@ impl AhjoorEscrowContract {
         if escrow_configs.is_empty() {
             panic_with_error!(&env, EscrowError::BatchMustContainAtLeastOneEscrowConfig);
         }
-        if escrow_configs.len() > MAX_BATCH_ESCROWS {
+        let max_batch_size: u32 = env.storage().instance().get(&DataKey2::MaxEscrowBatchSize).unwrap_or(DEFAULT_MAX_BATCH_ESCROWS);
+        if escrow_configs.len() > max_batch_size {
             panic_with_error!(&env, EscrowError::BatchSizeExceedsMaximum10Escrows);
         }
 
@@ -4210,6 +4231,43 @@ impl AhjoorEscrowContract {
         }
     }
 
+    /// Cancel a pending amendment proposal before it is applied.
+    pub fn cancel_amendment_proposal(env: Env, caller: Address, escrow_id: u32, nonce: u32) {
+        Self::require_not_paused(&env);
+        caller.require_auth();
+
+        let escrow: Escrow = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Escrow(escrow_id))
+            .expect("Escrow not found");
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .unwrap_or(escrow.buyer.clone());
+        if caller != escrow.buyer && caller != escrow.seller && caller != stored_admin {
+            panic_with_error!(&env, EscrowErrorExt::OnlyBuyerOrSellerCanProposeAmendment);
+        }
+
+        let key = DataKey2::AmendmentProposal(escrow_id);
+        let proposal: AmendmentProposal = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .expect("No amendment proposal found");
+        if proposal.nonce != nonce {
+            panic_with_error!(&env, EscrowErrorExt2::AmendmentNonceMismatch);
+        }
+        if Self::is_terminal_escrow_status(escrow.status) {
+            panic_with_error!(&env, EscrowErrorExt2::CannotAmendTerminalEscrow);
+        }
+
+        env.storage().persistent().remove(&key);
+        events::emit_amendment_cancelled(&env, escrow_id, nonce, caller);
+        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+    }
+
     /// Apply a fully signed amendment to an escrow.
     pub fn apply_amendment(env: Env, escrow_id: u32, nonce: u32) {
         Self::require_not_paused(&env);
@@ -6027,6 +6085,10 @@ impl AhjoorEscrowContract {
             PERSISTENT_BUMP_AMOUNT,
         );
 
+        let submissions_key = DataKey2::BountySubmissions(escrow_id);
+        env.storage().persistent().set(&submissions_key, &Vec::<BountySubmission>::new(&env));
+        env.storage().persistent().extend_ttl(&submissions_key, PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
+
         // Store bounty metadata
         let bounty_data = BountyData {
             description_hash: description_hash.clone(),
@@ -6158,9 +6220,21 @@ impl AhjoorEscrowContract {
 
         // Store submission hash
         bounty_data.submission_hash = Some(submission_hash.clone());
-        env.storage()
+        env.storage().persistent().set(&DataKey2::BountyData(escrow_id), &bounty_data);
+
+        let submissions_key = DataKey2::BountySubmissions(escrow_id);
+        let mut submissions: Vec<BountySubmission> = env
+            .storage()
             .persistent()
-            .set(&DataKey2::BountyData(escrow_id), &bounty_data);
+            .get(&submissions_key)
+            .unwrap_or(Vec::new(&env));
+        submissions.push_back(BountySubmission {
+            solver: solver.clone(),
+            submission_hash: submission_hash.clone(),
+            submitted_at: env.ledger().timestamp(),
+        });
+        env.storage().persistent().set(&submissions_key, &submissions);
+        env.storage().persistent().extend_ttl(&submissions_key, PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
         env.storage().persistent().extend_ttl(
             &DataKey2::BountyData(escrow_id),
             PERSISTENT_LIFETIME_THRESHOLD,
@@ -6361,6 +6435,27 @@ impl AhjoorEscrowContract {
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
+    /// Admin function to set max batch size for batch escrow creation.
+    pub fn set_max_batch_size(env: Env, admin: Address, max_batch_size: u32) {
+        Self::require_not_paused(&env);
+        admin.require_auth();
+
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .expect("Not initialized");
+        if admin != stored_admin {
+            panic_with_error!(&env, EscrowErrorExt3::OnlyAdminCanSetMaxBountyRejectionRounds);
+        }
+        if max_batch_size == 0 {
+            panic_with_error!(&env, EscrowError::BatchMustContainAtLeastOneEscrowConfig);
+        }
+
+        env.storage().instance().set(&DataKey2::MaxEscrowBatchSize, &max_batch_size);
+        env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+    }
+
     /// Admin function to set max bounty rejection rounds.
     pub fn set_max_bounty_rejection_rounds(env: Env, admin: Address, max_rounds: u32) {
         Self::require_not_paused(&env);
@@ -6388,6 +6483,22 @@ impl AhjoorEscrowContract {
         env.storage()
             .persistent()
             .get(&DataKey2::BountyData(escrow_id))
+    }
+
+    /// List bounty submissions in a paginated manner for a given bounty.
+    pub fn list_bounty_submissions(env: Env, escrow_id: u32, offset: u32, limit: u32) -> Vec<BountySubmission> {
+        let submissions: Vec<BountySubmission> = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::BountySubmissions(escrow_id))
+            .unwrap_or(Vec::new(&env));
+        let mut result = Vec::new(&env);
+        let end = if limit == 0 { submissions.len() } else { offset.saturating_add(limit).min(submissions.len()) };
+        for i in offset..end {
+            let submission = submissions.get(i).unwrap();
+            result.push_back(submission);
+        }
+        result
     }
 
     // ── #376: Bounty Board Milestone Gating with Verifier Sign-Off Chain ──────
@@ -6829,6 +6940,57 @@ impl AhjoorEscrowContract {
         env.storage().persistent().set(&DataKey2::CollateralOracle(escrow_id), &oracle);
         env.storage().persistent().extend_ttl(&DataKey2::CollateralOracle(escrow_id), PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
         env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+    }
+
+    /// Read-only collateral health status for a specific escrow.
+    pub fn get_collateral_health_status(env: Env, escrow_id: u32) -> CollateralHealthStatus {
+        Self::require_not_paused(&env);
+        let escrow: Escrow = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Escrow(escrow_id))
+            .expect("Escrow not found");
+
+        let min_ratio_bps: u32 = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::CollateralMinRatioBps(escrow_id))
+            .expect("Collateral health not configured for this escrow");
+
+        let oracle_addr: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::CollateralOracle(escrow_id))
+            .expect("Collateral oracle not configured");
+
+        let collateral: i128 = env
+            .storage()
+            .persistent()
+            .get(&DataKey::SellerCollateral(escrow_id))
+            .unwrap_or(0);
+
+        let oracle_client = oracle::OracleClient::new(&env, &oracle_addr);
+        let price_data = oracle_client
+            .lastprice(&escrow.token, &escrow.token)
+            .unwrap_or(PriceData { price: 10_000_000, timestamp: env.ledger().timestamp() });
+
+        let collateral_value = if price_data.price > 0 {
+            (collateral * price_data.price) / 10_000_000
+        } else {
+            collateral
+        };
+
+        let health_ratio = if escrow.amount > 0 {
+            ((collateral_value * 10_000) / escrow.amount) as u32
+        } else {
+            10_000u32
+        };
+
+        if health_ratio < min_ratio_bps {
+            CollateralHealthStatus::UnderCollateralized
+        } else {
+            CollateralHealthStatus::Healthy
+        }
     }
 
     /// Check collateral health via oracle. Returns current ratio in bps.

@@ -242,6 +242,33 @@ fn test_amendment_past_deadline_rejected() {
 }
 
 #[test]
+fn test_cancel_amendment_proposal_before_application() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    let escrow_id = s.client.create_escrow(
+        &buyer,
+        &seller,
+        &Address::generate(&s.env),
+        &200,
+        &s.token_addr,
+        &(s.env.ledger().timestamp() + 1000),
+        &None,
+        &Vec::new(&s.env),
+        &false,
+        &0u32,
+    );
+
+    let nonce = s.client.propose_amendment(&buyer, &escrow_id, &None, &Some(s.env.ledger().timestamp() + 2000), &None);
+    s.client.cancel_amendment_proposal(&buyer, &escrow_id, &nonce);
+
+    let res = s.client.try_apply_amendment(&escrow_id, &nonce);
+    assert!(res.is_err());
+}
+
+#[test]
 fn test_future_deadline_amendment_applies() {
     let s = setup();
     s.env.ledger().with_mut(|li| li.timestamp = 1_000);
@@ -2673,6 +2700,32 @@ fn make_batch_config(
         auto_renew: false,
         renewal_count: 0,
     }
+}
+
+#[test]
+fn test_create_escrows_batch_respects_admin_configured_cap() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &20_000);
+
+    s.client.set_max_batch_size(&s.admin, &2);
+
+    let mut configs: Vec<EscrowBatchConfig> = Vec::new(&s.env);
+    let deadline = s.env.ledger().timestamp() + 1000;
+    for _ in 0..3 {
+        configs.push_back(make_batch_config(
+            &s.env,
+            Address::generate(&s.env),
+            Address::generate(&s.env),
+            100,
+            s.token_addr.clone(),
+            deadline,
+        ));
+    }
+
+    let res = s.client.try_create_escrows_batch(&buyer, &configs);
+    assert!(res.is_err());
+    assert_eq!(s.client.get_escrow_counter(), 0);
 }
 
 #[test]
