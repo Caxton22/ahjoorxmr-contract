@@ -5998,3 +5998,177 @@ fn test_withdrawal_default_limits_apply_to_new_merchant() {
     assert_eq!(new_window, 3600);
     assert_eq!(new_cap, 1000);
 }
+
+
+// ===========================================================================
+//  Customer Blocking Tests (#646)
+// ===========================================================================
+
+/// #646: get_block_entry returns None for an unblocked customer
+#[test]
+fn test_get_block_entry_unblocked_customer() {
+    let s = setup();
+    s.init();
+
+    let merchant = Address::generate(&s.env);
+    let customer = Address::generate(&s.env);
+
+    // Customer is not blocked
+    let entry = s.client.get_block_entry(&merchant, &customer);
+    assert_eq!(entry, None, "Unblocked customer should have no block entry");
+}
+
+/// #646: get_block_entry returns the BlockEntry for a blocked customer
+#[test]
+fn test_get_block_entry_blocked_customer() {
+    let s = setup();
+    s.init();
+
+    let merchant = Address::generate(&s.env);
+    let customer = Address::generate(&s.env);
+    let reason = Symbol::new(&s.env, "fraud");
+    let evidence_hash = BytesN::<32>::from_array(&s.env, &[1u8; 32]);
+
+    // Block the customer
+    s.client.block_customer(&merchant, &customer, &reason, &evidence_hash);
+
+    // Retrieve the block entry
+    let entry = s.client.get_block_entry(&merchant, &customer);
+    assert!(entry.is_some(), "Blocked customer should have a block entry");
+
+    let block_entry = entry.unwrap();
+    assert_eq!(block_entry.customer, customer, "Block entry customer should match");
+    assert_eq!(block_entry.reason_code, reason, "Block entry reason should match");
+    assert_eq!(block_entry.evidence_hash, evidence_hash, "Block entry evidence hash should match");
+    assert_eq!(
+        block_entry.blocked_at_ledger,
+        s.env.ledger().sequence(),
+        "Block entry blocked_at_ledger should be current ledger"
+    );
+}
+
+/// #646: get_block_entry returns None after customer is unblocked
+#[test]
+fn test_get_block_entry_after_unblock() {
+    let s = setup();
+    s.init();
+
+    let merchant = Address::generate(&s.env);
+    let customer = Address::generate(&s.env);
+    let reason = Symbol::new(&s.env, "suspicious");
+    let evidence_hash = BytesN::<32>::from_array(&s.env, &[2u8; 32]);
+
+    // Block the customer
+    s.client.block_customer(&merchant, &customer, &reason, &evidence_hash);
+    assert!(
+        s.client.get_block_entry(&merchant, &customer).is_some(),
+        "Customer should be blocked"
+    );
+
+    // Unblock the customer
+    s.client.unblock_customer(&merchant, &customer);
+
+    // Entry should be gone
+    let entry = s.client.get_block_entry(&merchant, &customer);
+    assert_eq!(entry, None, "Entry should be None after unblock");
+}
+
+/// #646: is_customer_blocked returns false for unblocked customer
+#[test]
+fn test_is_customer_blocked_false_for_unblocked() {
+    let s = setup();
+    s.init();
+
+    let merchant = Address::generate(&s.env);
+    let customer = Address::generate(&s.env);
+
+    let blocked = s.client.is_customer_blocked(&merchant, &customer);
+    assert!(!blocked, "Unblocked customer should return false");
+}
+
+/// #646: is_customer_blocked returns true for blocked customer
+#[test]
+fn test_is_customer_blocked_true_for_blocked() {
+    let s = setup();
+    s.init();
+
+    let merchant = Address::generate(&s.env);
+    let customer = Address::generate(&s.env);
+    let reason = Symbol::new(&s.env, "chargeback");
+    let evidence_hash = BytesN::<32>::from_array(&s.env, &[3u8; 32]);
+
+    // Block the customer
+    s.client.block_customer(&merchant, &customer, &reason, &evidence_hash);
+
+    let blocked = s.client.is_customer_blocked(&merchant, &customer);
+    assert!(blocked, "Blocked customer should return true");
+}
+
+/// #646: is_customer_blocked reflects unblock status
+#[test]
+fn test_is_customer_blocked_after_unblock() {
+    let s = setup();
+    s.init();
+
+    let merchant = Address::generate(&s.env);
+    let customer = Address::generate(&s.env);
+    let reason = Symbol::new(&s.env, "test");
+    let evidence_hash = BytesN::<32>::from_array(&s.env, &[4u8; 32]);
+
+    // Block and verify
+    s.client.block_customer(&merchant, &customer, &reason, &evidence_hash);
+    assert!(
+        s.client.is_customer_blocked(&merchant, &customer),
+        "Customer should be blocked"
+    );
+
+    // Unblock and verify
+    s.client.unblock_customer(&merchant, &customer);
+    assert!(
+        !s.client.is_customer_blocked(&merchant, &customer),
+        "Customer should not be blocked after unblock"
+    );
+}
+
+/// #646: Blocking is per-merchant (different merchants can block independently)
+#[test]
+fn test_block_entry_per_merchant_isolation() {
+    let s = setup();
+    s.init();
+
+    let merchant_a = Address::generate(&s.env);
+    let merchant_b = Address::generate(&s.env);
+    let customer = Address::generate(&s.env);
+    let reason_a = Symbol::new(&s.env, "fraud_a");
+    let reason_b = Symbol::new(&s.env, "fraud_b");
+    let evidence_a = BytesN::<32>::from_array(&s.env, &[5u8; 32]);
+    let evidence_b = BytesN::<32>::from_array(&s.env, &[6u8; 32]);
+
+    // Block by merchant_a
+    s.client.block_customer(&merchant_a, &customer, &reason_a, &evidence_a);
+
+    // Merchant_a should see the customer blocked
+    assert!(
+        s.client.is_customer_blocked(&merchant_a, &customer),
+        "Merchant_a should see customer blocked"
+    );
+
+    // Merchant_b should not see the customer blocked
+    assert!(
+        !s.client.is_customer_blocked(&merchant_b, &customer),
+        "Merchant_b should not see customer blocked by merchant_a"
+    );
+
+    // Merchant_b can block the same customer with different reason
+    s.client.block_customer(&merchant_b, &customer, &reason_b, &evidence_b);
+    assert!(
+        s.client.is_customer_blocked(&merchant_b, &customer),
+        "Merchant_b should now see customer blocked"
+    );
+
+    // Both merchants should have block entries
+    let entry_a = s.client.get_block_entry(&merchant_a, &customer).unwrap();
+    let entry_b = s.client.get_block_entry(&merchant_b, &customer).unwrap();
+    assert_eq!(entry_a.reason_code, reason_a, "Merchant_a entry should have its reason");
+    assert_eq!(entry_b.reason_code, reason_b, "Merchant_b entry should have its reason");
+}

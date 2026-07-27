@@ -1615,6 +1615,26 @@ impl AhjoorPaymentsContract {
         events::emit_customer_unblocked(&env, merchant.clone(), customer, merchant);
     }
 
+    /// #646: Returns the block entry for a customer, if one exists.
+    /// 
+    /// Allows customers and UIs to inspect why they are blocked before payment attempts.
+    /// Returns the full BlockEntry containing reason_code, evidence_hash, and blocked_at_ledger,
+    /// or None if the customer is not blocked.
+    pub fn get_block_entry(env: Env, merchant: Address, customer: Address) -> Option<BlockEntry> {
+        env.storage()
+            .persistent()
+            .get(&DataKey2::CustomerBlockEntry(merchant, customer))
+    }
+
+    /// #646: Convenience wrapper returning whether a customer is blocked by a merchant.
+    /// 
+    /// Returns true if the customer has a block entry, false otherwise.
+    pub fn is_customer_blocked(env: Env, merchant: Address, customer: Address) -> bool {
+        env.storage()
+            .persistent()
+            .has(&DataKey2::CustomerBlockEntry(merchant, customer))
+    }
+
     /// Create multiple payments atomically.
     /// Returns a Vec of payment IDs.
     pub fn create_payments_batch(
