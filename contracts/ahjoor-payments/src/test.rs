@@ -886,6 +886,131 @@ fn test_admin_can_update_rate_limit_config() {
     assert_eq!(cfg_after.window_size_ledgers, 42);
 }
 
+/// #649: get_customer_rate_limit_status returns (0, 0) for a fresh customer with no activity.
+#[test]
+fn test_get_customer_rate_limit_status_fresh_customer() {
+    let s = setup();
+    s.init();
+
+    let customer = Address::generate(&s.env);
+    let (count, window_start) = s.client.get_customer_rate_limit_status(&customer);
+    
+    // Fresh customer should have no recorded activity
+    assert_eq!(count, 0, "Fresh customer should have count 0");
+    assert_eq!(window_start, 0, "Fresh customer should return window_start_ledger 0");
+}
+
+/// #649: get_customer_rate_limit_status returns current count and window for active customer.
+#[test]
+fn test_get_customer_rate_limit_status_mid_window() {
+    let s = setup();
+    s.init();
+    // Set a rate limit of 3 payments per 10 ledger window
+    s.client.update_rate_limit_config(&s.admin, &3, &10);
+
+    let customer = Address::generate(&s.env);
+    let merchant = Address::generate(&s.env);
+    s.token_admin_client.mint(&customer, &1000);
+
+    // Record initial ledger before creating payments
+    let initial_ledger = s.env.ledger().sequence();
+
+    // Create first payment
+    s.client.create_payment(
+        &customer,
+        &merchant,
+        &100,
+        &s.token_addr,
+        &None,
+        &None,
+        &None,
+    );
+
+    // Check status: should show count=1, window_start at or near initial_ledger
+    let (count, window_start) = s.client.get_customer_rate_limit_status(&customer);
+    assert_eq!(count, 1, "Should have count=1 after first payment");
+    assert!(window_start >= initial_ledger, "window_start should be >= initial_ledger");
+
+    // Create second payment in same window
+    s.client.create_payment(
+        &customer,
+        &merchant,
+        &100,
+        &s.token_addr,
+        &None,
+        &None,
+        &None,
+    );
+
+    let (count2, window_start2) = s.client.get_customer_rate_limit_status(&customer);
+    assert_eq!(count2, 2, "Should have count=2 after second payment");
+    assert_eq!(window_start2, window_start, "window_start should not change within window");
+
+    // Create third payment (at max)
+    s.client.create_payment(
+        &customer,
+        &merchant,
+        &100,
+        &s.token_addr,
+        &None,
+        &None,
+        &None,
+    );
+
+    let (count3, window_start3) = s.client.get_customer_rate_limit_status(&customer);
+    assert_eq!(count3, 3, "Should have count=3 after third payment");
+    assert_eq!(window_start3, window_start, "window_start should remain consistent");
+}
+
+/// #649: get_customer_rate_limit_status shows window reset after window expires.
+#[test]
+fn test_get_customer_rate_limit_status_window_reset() {
+    let s = setup();
+    s.init();
+    // Set rate limit: 2 payments per 5 ledger window
+    s.client.update_rate_limit_config(&s.admin, &2, &5);
+
+    let customer = Address::generate(&s.env);
+    let merchant = Address::generate(&s.env);
+    s.token_admin_client.mint(&customer, &1000);
+
+    // Create payment in first window
+    s.client.create_payment(
+        &customer,
+        &merchant,
+        &100,
+        &s.token_addr,
+        &None,
+        &None,
+        &None,
+    );
+
+    let (count_before, window_start_before) =
+        s.client.get_customer_rate_limit_status(&customer);
+    assert_eq!(count_before, 1, "Should have 1 payment before window expires");
+
+    // Advance ledger by exactly the window size to expire the window
+    s.env
+        .ledger()
+        .set_sequence_number(s.env.ledger().sequence() + 5);
+
+    // Query status after window expires
+    let (count_after, window_start_after) = s.client.get_customer_rate_limit_status(&customer);
+    assert_eq!(
+        count_after, 0,
+        "Count should reset to 0 after window expires"
+    );
+    assert_ne!(
+        window_start_after, window_start_before,
+        "window_start should change after window expires"
+    );
+    assert_eq!(
+        window_start_after,
+        s.env.ledger().sequence(),
+        "window_start should be current ledger after reset"
+    );
+}
+
 #[test]
 fn test_is_disputed() {
     let s = setup();
