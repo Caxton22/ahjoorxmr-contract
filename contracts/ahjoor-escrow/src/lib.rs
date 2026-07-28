@@ -5052,6 +5052,17 @@ impl AhjoorEscrowContract {
         env.storage().persistent().get(&DataKey::TimeLockData(escrow_id))
     }
 
+    /// #650: Returns the pending cancellation request for an escrow, if one exists.
+    /// 
+    /// Allows the counterparty to inspect the cancellation reason and response deadline
+    /// before accepting, rejecting, or letting it expire.
+    /// Returns None once the request is accepted, rejected, or expired.
+    pub fn get_cancellation_request(env: Env, escrow_id: u32) -> Option<CancellationRequest> {
+        env.storage()
+            .persistent()
+            .get(&DataKey::CancellationRequest(escrow_id))
+    }
+
     // --- Token Whitelist Integration ---
 
     /// Set the token whitelist contract address (admin only)
