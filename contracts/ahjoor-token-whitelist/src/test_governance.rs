@@ -330,3 +330,37 @@ fn test_vote_weight_uses_snapshot_not_live_balance() {
     assert_eq!(proposal.approve_weight, 1_000);
     assert_eq!(proposal.status, ProposalStatus::PendingEnactment);
 }
+
+#[test]
+fn test_get_governance_config_defaults_when_unset() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let contract_id = env.register(TokenWhitelistContract, ());
+    let client = TokenWhitelistContractClient::new(&env, &contract_id);
+    client.initialize(&admin);
+
+    let (gov_token, min_stake, voting_window, enactment_delay, quorum_bps) =
+        client.get_governance_config();
+
+    assert!(gov_token.is_none());
+    assert_eq!(min_stake, 1);
+    assert_eq!(voting_window, 120_960);
+    assert_eq!(enactment_delay, 34_560);
+    assert_eq!(quorum_bps, 5_000);
+}
+
+#[test]
+fn test_get_governance_config_returns_admin_configured_values() {
+    let (_env, _admin, client, gov_token) = setup_governance();
+
+    let (got_token, min_stake, voting_window, enactment_delay, quorum_bps) =
+        client.get_governance_config();
+
+    assert_eq!(got_token, Some(gov_token));
+    assert_eq!(min_stake, 100);
+    assert_eq!(voting_window, 100);
+    assert_eq!(enactment_delay, 50);
+    assert_eq!(quorum_bps, 5_000);
+}
