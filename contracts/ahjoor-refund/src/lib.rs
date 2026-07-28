@@ -4151,6 +4151,24 @@ impl AhjoorRefundContract {
             .unwrap_or(0)
     }
 
+    /// Whether a merchant is flagged for reserve non-compliance.
+    /// Returns `false` if the merchant has never been flagged.
+    pub fn is_merchant_flagged(env: Env, merchant: Address) -> bool {
+        env.storage()
+            .persistent()
+            .get(&DataKey::MerchantFlagged(merchant))
+            .unwrap_or(false)
+    }
+
+    /// Get the recorded payment volume for a merchant.
+    /// Returns `0` if the merchant has no recorded volume.
+    pub fn get_merchant_volume(env: Env, merchant: Address) -> i128 {
+        env.storage()
+            .persistent()
+            .get(&DataKey::MerchantVolume(merchant))
+            .unwrap_or(0)
+    }
+
     /// Record payment volume for a merchant (called when a payment is created).
     /// Adds `amount` to the merchant's tracked volume used for reserve compliance.
     pub fn record_payment_volume(env: Env, merchant: Address, amount: i128) {
@@ -5524,6 +5542,21 @@ impl AhjoorRefundContract {
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+    }
+
+    /// Get the active reserve-waiver expiry ledger for a merchant.
+    /// Returns `None` when the merchant has no waiver, or the waiver has expired.
+    pub fn get_reserve_waiver_expiry(env: Env, merchant: Address) -> Option<u32> {
+        let expiry: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey2::ReserveWaiverExpiryLedger(merchant))
+            .unwrap_or(0);
+        if expiry > env.ledger().sequence() {
+            Some(expiry)
+        } else {
+            None
+        }
     }
 
     pub fn set_reserve_config(
