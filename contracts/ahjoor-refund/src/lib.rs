@@ -330,6 +330,8 @@ pub enum DataKey2 {
     // --- Feature: Evidence Hash Anchoring (#365) ---
     /// On-chain SHA-256 content hash anchor per (refund_id, submitter) (#365)
     EvidenceHash(u32, Address),
+    /// Ordered history of counter-offer rounds for a refund (Vec<CounterOffer>)
+    CounterOfferHistory(u32),
 }
 
 mod events;
@@ -3527,7 +3529,10 @@ impl AhjoorRefundContract {
     }
 
     /// Merchant submits a counter-offer (partial amount) for a refund request.
-    /// Only one counter-offer is permitted per refund.
+    ///
+    /// The first offer requires `Requested` status. Subsequent offers while the
+    /// refund is still `CounterOffered` replace the live offer and append to
+    /// the negotiation history so multi-round bargaining is queryable.
     pub fn counter_offer_refund(env: Env, merchant: Address, refund_id: u32, amount: i128) {
         Self::require_not_paused(&env);
         merchant.require_auth();
@@ -3542,8 +3547,10 @@ impl AhjoorRefundContract {
             .get(&DataKey::Refund(refund_id))
             .expect("Refund not found");
 
-        if refund.status != RefundStatus::Requested {
-            panic!("Refund is not in Requested state");
+        if refund.status != RefundStatus::Requested
+            && refund.status != RefundStatus::CounterOffered
+        {
+            panic!("Refund is not open for counter-offer");
         }
 
         if merchant != refund.merchant {
@@ -3552,15 +3559,6 @@ impl AhjoorRefundContract {
 
         if amount > refund.amount {
             panic!("Counter-offer cannot exceed original refund amount");
-        }
-
-        // Prevent duplicate counter-offers
-        if env
-            .storage()
-            .persistent()
-            .has(&DataKey::CounterOffer(refund_id))
-        {
-            panic!("Counter-offer already submitted for this refund");
         }
 
         let expiry_seconds: u64 = env
@@ -3581,6 +3579,21 @@ impl AhjoorRefundContract {
             .set(&DataKey::CounterOffer(refund_id), &offer);
         env.storage().persistent().extend_ttl(
             &DataKey::CounterOffer(refund_id),
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+
+        // Append to negotiation history (preserved after accept/reject).
+        let history_key = DataKey2::CounterOfferHistory(refund_id);
+        let mut history: Vec<CounterOffer> = env
+            .storage()
+            .persistent()
+            .get(&history_key)
+            .unwrap_or(Vec::new(&env));
+        history.push_back(offer.clone());
+        env.storage().persistent().set(&history_key, &history);
+        env.storage().persistent().extend_ttl(
+            &history_key,
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
@@ -3739,6 +3752,15 @@ impl AhjoorRefundContract {
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
+    }
+
+    /// Returns every counter-offer round for `refund_id` in submission order.
+    /// Refunds with no negotiation return an empty vec.
+    pub fn get_counter_offer_history(env: Env, refund_id: u32) -> Vec<CounterOffer> {
+        env.storage()
+            .persistent()
+            .get(&DataKey2::CounterOfferHistory(refund_id))
+            .unwrap_or(Vec::new(&env))
     }
 
     // --- Issue #238: Refund Priority Labelling ---

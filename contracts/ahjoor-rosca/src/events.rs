@@ -42,6 +42,16 @@ pub struct RoundClosed {
     pub defaulters: Vec<Address>,
 }
 
+/// Event: Round closed via `close_round` without a preceding `finalize_round`.
+///
+/// Distinguishes an admin-only state advance (no pot payout / audit trail)
+/// from the normal finalize-then-reset flow.
+#[contractevent]
+#[derive(Clone, Debug)]
+pub struct RoundClosedWithoutPayout {
+    pub round: u32,
+}
+
 /// Event: Payout order finalized via randomization (#315)
 #[contractevent]
 #[derive(Clone, Debug)]
@@ -461,6 +471,10 @@ pub fn emit_milestone(e: &Env, milestone: u32, total_collected: i128) {
 
 pub fn emit_closed(e: &Env, round: u32, defaulters: Vec<Address>) {
     RoundClosed { round, defaulters }.publish(e);
+}
+
+pub fn emit_round_closed_without_payout(e: &Env, round: u32) {
+    RoundClosedWithoutPayout { round }.publish(e);
 }
 
 pub fn emit_payout_order_finalized(e: &Env, round: u32, payout_order: Vec<Address>) {

@@ -847,6 +847,45 @@ impl TokenWhitelistContract {
         env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
+    /// Returns the current governance configuration as
+    /// `(governance_token, min_stake, voting_window_ledgers, enactment_delay_ledgers, quorum_bps)`.
+    ///
+    /// Unset scalar values fall back to the same defaults used by proposal/voting
+    /// flows. `governance_token` is `None` until `set_governance_token` is called.
+    pub fn get_governance_config(env: Env) -> (Option<Address>, i128, u32, u32, u32) {
+        let governance_token: Option<Address> = env
+            .storage()
+            .instance()
+            .get(&DataKey::GovernanceToken);
+        let min_stake: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::MinProposalStake)
+            .unwrap_or(1);
+        let voting_window_ledgers: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::VotingWindowLedgers)
+            .unwrap_or(DEFAULT_VOTING_WINDOW_LEDGERS);
+        let enactment_delay_ledgers: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::EnactmentDelayLedgers)
+            .unwrap_or(DEFAULT_ENACTMENT_DELAY_LEDGERS);
+        let quorum_bps: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::QuorumBps)
+            .unwrap_or(DEFAULT_QUORUM_BPS);
+        (
+            governance_token,
+            min_stake,
+            voting_window_ledgers,
+            enactment_delay_ledgers,
+            quorum_bps,
+        )
+    }
+
     pub fn propose_token_listing(env: Env, proposer: Address, token: Address, rationale_hash: BytesN<32>) -> u32 {
         proposer.require_auth();
         let governance_token: Address = env

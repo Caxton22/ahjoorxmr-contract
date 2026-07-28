@@ -1380,6 +1380,9 @@ impl AhjoorContract {
             .get(&DataKey::CurrentRound)
             .unwrap();
         events::emit_closed(&env, current_round, defaulters);
+        // Signal that this round was advanced without finalize_round (no pot
+        // payout / audit trail). The normal finalize_round path does not emit this.
+        events::emit_round_closed_without_payout(&env, current_round);
         env.storage()
             .instance()
             .set(&DataKey4::LastRoundDeadline, &deadline);

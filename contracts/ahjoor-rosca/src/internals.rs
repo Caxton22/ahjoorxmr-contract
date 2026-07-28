@@ -708,29 +708,34 @@ pub(crate) fn execute_rule_change(env: &Env, new_quorum: Option<i128>) {
 }
 
 /// Updates the maximum member limit if the value is within [1, 100] and >= current count.
+///
+/// Validates the i128 range (including negativity) *before* casting to u32 so a
+/// negative input cannot wrap to a large u32 and rely on a later bounds check.
 pub(crate) fn execute_max_members_update(env: &Env, new_max_val: Option<i128>) {
     if let Some(new_max_i128) = new_max_val {
+        if new_max_i128 < 1 || new_max_i128 > 100 {
+            panic_with_error!(env, Error::InvalidMaxMembers);
+        }
         let new_max = new_max_i128 as u32;
-        if new_max >= 1 && new_max <= 100 {
-            let current_members: Vec<Address> = env
+
+        let current_members: Vec<Address> = env
+            .storage()
+            .instance()
+            .get(&DataKey::Members)
+            .unwrap_or(Vec::new(env));
+
+        if new_max >= current_members.len() as u32 {
+            let old_max: u32 = env
                 .storage()
                 .instance()
-                .get(&DataKey::Members)
-                .unwrap_or(Vec::new(env));
+                .get(&DataKey::MaxMembers)
+                .unwrap_or(50);
 
-            if new_max >= current_members.len() as u32 {
-                let old_max: u32 = env
-                    .storage()
-                    .instance()
-                    .get(&DataKey::MaxMembers)
-                    .unwrap_or(50);
+            env.storage()
+                .instance()
+                .set(&DataKey::MaxMembers, &new_max);
 
-                env.storage()
-                    .instance()
-                    .set(&DataKey::MaxMembers, &new_max);
-
-                events::emit_max_members_upd(env, old_max, new_max);
-            }
+            events::emit_max_members_upd(env, old_max, new_max);
         }
     }
 }
