@@ -2768,6 +2768,17 @@ impl AhjoorContract {
             .unwrap_or(Vec::new(&env))
     }
 
+    /// #644: Returns the current contents of DataKey3::AuctionBids for the active round.
+    /// 
+    /// This getter allows inspection of all current (non-sealed) auction bids before
+    /// resolution. Each SlotBid includes the bidder, desired slot, amount, and timestamp.
+    pub fn get_slot_bids(env: Env) -> Vec<SlotBid> {
+        env.storage()
+            .instance()
+            .get(&DataKey3::AuctionBids)
+            .unwrap_or(Vec::new(&env))
+    }
+
     // ─── Cross-Group Member Migration ────────────────────────────────────────
 
     /// Returns the base token address of this group (used by cross-contract migration checks).
