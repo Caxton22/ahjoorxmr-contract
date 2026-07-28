@@ -1607,6 +1607,14 @@ impl AhjoorPaymentsContract {
         env.storage().persistent().remove(&DataKey2::UnblockRequest(request_id));
     }
 
+    /// Returns a pending unblock request by `request_id` (issue #648).
+    /// Returns `None` once the request has been resolved or never existed.
+    pub fn get_unblock_request(env: Env, request_id: u32) -> Option<UnblockRequest> {
+        env.storage()
+            .persistent()
+            .get(&DataKey2::UnblockRequest(request_id))
+    }
+
     /// Merchant voluntarily unblocks a customer immediately.
     pub fn unblock_customer(env: Env, merchant: Address, customer: Address) {
         Self::require_not_paused(&env);

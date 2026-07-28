@@ -9008,6 +9008,17 @@ impl AhjoorContract {
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
+    /// Returns the proxy authorization record for `member` in `group_id` (issue #643).
+    /// Returns `None` if no proxy has been authorized or if it was revoked.
+    pub fn get_proxy_authorization(env: Env, group_id: u32, member: Address, _proxy: Address) -> Option<ProxyAuthorization> {
+        let proxy_auths: Map<(u32, Address), ProxyAuthorization> = env
+            .storage()
+            .instance()
+            .get(&DataKey3::ProxyAuthorizations)
+            .unwrap_or(Map::new(&env));
+        proxy_auths.get((group_id, member))
+    }
+
     /// Co-signer pays on behalf of a defaulting member during the grace window.
     /// The contribution is recorded as the member's own.
     pub fn co_signer_contribute(
@@ -9119,6 +9130,18 @@ impl AhjoorContract {
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
+
+    /// Returns the co-signer record for `member` (issue #642).
+    /// Returns `None` if no co-signer has ever been set for that member.
+    pub fn get_co_signer_record(env: Env, _group_id: u32, member: Address) -> Option<CoSignerRecord> {
+        let co_signers: Map<Address, CoSignerRecord> = env
+            .storage()
+            .instance()
+            .get(&DataKey4::CoSigners)
+            .unwrap_or(Map::new(&env));
+        co_signers.get(member)
+    }
+
     /// Returns the freeze log (read-only, available even when frozen).
     pub fn get_freeze_log(env: Env) -> Vec<FreezeRecord> {
         env.storage()
@@ -10863,6 +10886,15 @@ impl AhjoorContract {
             .persistent()
             .get(&DataKey3::EmergencyLoan(loan_id))
             .expect("Loan not found")
+    }
+
+    /// Returns the total number of emergency loans ever issued (issue #645).
+    /// Returns `0` when no loan has ever been requested.
+    pub fn get_emergency_loan_counter(env: Env) -> u32 {
+        env.storage()
+            .persistent()
+            .get(&DataKey3::EmergencyLoanCounter)
+            .unwrap_or(0)
     }
 
     /// Get member's active loan ID (0 if none)
