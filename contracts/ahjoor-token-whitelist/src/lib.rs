@@ -325,6 +325,12 @@ impl TokenWhitelistContract {
         TierLimits { name: soroban_sdk::String::from_str(&env, "tier-default"), max_single_tx_amount: 0, max_daily_volume: 0 }
     }
 
+    /// Get the raw risk-tier definition for `tier_id`.
+    /// Returns `None` if the tier was never defined.
+    pub fn get_risk_tier(env: Env, tier_id: u32) -> Option<TierLimits> {
+        env.storage().instance().get(&DataKey::RiskTier(tier_id))
+    }
+
     pub fn set_token_metadata(env: Env, admin: Address, token: Address, decimals: u32, symbol: soroban_sdk::String, logo_hash: BytesN<32>, canonical_oracle: Option<Address>) {
         admin.require_auth();
         Self::require_admin(&env, &admin);

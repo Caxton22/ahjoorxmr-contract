@@ -628,3 +628,19 @@ fn test_is_whitelisted_cost_is_constant_at_scale() {
         large_whitelist_cost
     );
 }
+
+#[test]
+fn test_get_risk_tier_defined_and_undefined() {
+    let (env, admin, client) = setup_test();
+
+    assert!(client.get_risk_tier(&99u32).is_none());
+
+    let name = soroban_sdk::String::from_str(&env, "standard");
+    client.set_risk_tier(&admin, &2u32, &name, &1_000i128, &50_000i128);
+
+    let tier = client.get_risk_tier(&2u32).expect("tier should be defined");
+    assert_eq!(tier.name, name);
+    assert_eq!(tier.max_single_tx_amount, 1_000i128);
+    assert_eq!(tier.max_daily_volume, 50_000i128);
+    assert!(client.get_risk_tier(&99u32).is_none());
+}
