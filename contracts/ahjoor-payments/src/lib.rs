@@ -9762,6 +9762,36 @@ impl AhjoorPaymentsContract {
         next_id
     }
 
+    /// Returns all currently-active consent records for `customer`.
+    /// Records are excluded when revoked, expired, or not yet signed.
+    pub fn list_active_consent_records(env: Env, customer: Address) -> Vec<ConsentRecord> {
+        let counter: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey2::ConsentRecordCounter)
+            .unwrap_or(0);
+        let now = env.ledger().sequence() as u64;
+        let mut result = Vec::new(&env);
+        for consent_id in 0..counter {
+            let consent: ConsentRecord = match env
+                .storage()
+                .persistent()
+                .get(&DataKey2::ConsentRecord(consent_id))
+            {
+                Some(c) => c,
+                None => continue,
+            };
+            if consent.customer != customer {
+                continue;
+            }
+            if consent.is_revoked || !consent.is_signed || consent.expires_at <= now {
+                continue;
+            }
+            result.push_back(consent);
+        }
+        result
+    }
+
     /// Retry a failed debit. Enforces the exponential back-off schedule.
     /// Returns `RetryNotDue` if the back-off interval has not elapsed.
     /// On max attempts the record is moved to `AbandonedDebit` status.
