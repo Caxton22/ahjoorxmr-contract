@@ -3553,6 +3553,14 @@ impl AhjoorPaymentsContract {
             .get(&DataKey::MultisigPolicy(merchant))
     }
 
+    /// Get the approval state for a payment.
+    /// Returns `None` for payments that were never routed through multisig approval.
+    pub fn get_approval_state(env: Env, payment_id: u32) -> Option<ApprovalState> {
+        env.storage()
+            .persistent()
+            .get(&DataKey2::ApprovalState(payment_id))
+    }
+
     /// A signer approves a PendingApproval payment.
     /// Once `m` approvals are recorded the payment transitions to Pending.
     pub fn approve_payment(env: Env, signer: Address, payment_id: u32) {
@@ -3636,6 +3644,15 @@ impl AhjoorPaymentsContract {
         state.approvals.push_back(signer.clone());
         events::emit_payment_approved(&env, payment_id, signer);
 
+        env.storage()
+            .persistent()
+            .set(&DataKey2::ApprovalState(payment_id), &state);
+        env.storage().persistent().extend_ttl(
+            &DataKey2::ApprovalState(payment_id),
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+
         if state.approvals.len() >= policy.m {
             // Quorum reached — transition to Pending
             let old_status = payment.status;
@@ -3653,15 +3670,6 @@ impl AhjoorPaymentsContract {
                 payment_id,
                 old_status,
                 PaymentStatus::Pending,
-            );
-        } else {
-            env.storage()
-                .persistent()
-                .set(&DataKey2::ApprovalState(payment_id), &state);
-            env.storage().persistent().extend_ttl(
-                &DataKey2::ApprovalState(payment_id),
-                PERSISTENT_LIFETIME_THRESHOLD,
-                PERSISTENT_BUMP_AMOUNT,
             );
         }
 
