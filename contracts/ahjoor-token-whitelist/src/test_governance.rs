@@ -364,3 +364,28 @@ fn test_get_governance_config_returns_admin_configured_values() {
     assert_eq!(enactment_delay, 50);
     assert_eq!(quorum_bps, 5_000);
 }
+
+#[test]
+fn test_get_vote_record() {
+    let (env, admin, client, gov_token) = setup_governance();
+
+    let proposer = Address::generate(&env);
+    let approver = Address::generate(&env);
+    let rejecter = Address::generate(&env);
+    let nonvoter = Address::generate(&env);
+    let new_token = Address::generate(&env);
+
+    mint_gov_tokens(&env, &gov_token, &admin, &proposer, 200);
+    mint_gov_tokens(&env, &gov_token, &admin, &approver, 600);
+    mint_gov_tokens(&env, &gov_token, &admin, &rejecter, 400);
+
+    let rationale = BytesN::from_array(&env, &[0xABu8; 32]);
+    let proposal_id = client.propose_token_listing(&proposer, &new_token, &rationale);
+
+    client.vote_listing(&approver, &proposal_id, &true, &600i128);
+    client.vote_listing(&rejecter, &proposal_id, &false, &400i128);
+
+    assert_eq!(client.get_vote_record(&proposal_id, &approver), Some(true));
+    assert_eq!(client.get_vote_record(&proposal_id, &rejecter), Some(false));
+    assert_eq!(client.get_vote_record(&proposal_id, &nonvoter), None);
+}

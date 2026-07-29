@@ -488,7 +488,7 @@ pub mod refund {
 
 pub mod whitelist {
     /// See [`crate::rosca::COUNT`] for why this exists.
-    pub const COUNT: usize = 8;
+    pub const COUNT: usize = 9;
 
     pub const NOT_INITIALIZED: u32            = 5001;
     pub const ALREADY_INITIALIZED: u32        = 5002;
@@ -498,6 +498,7 @@ pub mod whitelist {
     pub const QUOTA_EXCEEDED: u32             = 5006;
     pub const TOKEN_ALREADY_HAS_QUOTA: u32    = 5007;
     pub const TOKEN_HAS_NO_QUOTA: u32         = 5008;
+    pub const RISK_TIER_NOT_DEFINED: u32     = 5009;
 }
 
 // ---------------------------------------------------------------------------
@@ -943,6 +944,7 @@ pub static ALL_ERRORS: &[ErrorEntry] = &[
     ErrorEntry { code: whitelist::QUOTA_EXCEEDED, name: "QuotaExceeded", contract: "ahjoor-token-whitelist" },
     ErrorEntry { code: whitelist::TOKEN_ALREADY_HAS_QUOTA, name: "TokenAlreadyHasQuota", contract: "ahjoor-token-whitelist" },
     ErrorEntry { code: whitelist::TOKEN_HAS_NO_QUOTA, name: "TokenHasNoQuota", contract: "ahjoor-token-whitelist" },
+    ErrorEntry { code: whitelist::RISK_TIER_NOT_DEFINED, name: "RiskTierNotDefined", contract: "ahjoor-token-whitelist" },
 ];
 
 /// Look up an `ErrorEntry` by its numeric code.

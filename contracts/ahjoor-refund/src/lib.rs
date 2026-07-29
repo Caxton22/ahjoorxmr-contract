@@ -4916,6 +4916,14 @@ impl AhjoorRefundContract {
             .unwrap_or(5_000u32)
     }
 
+    /// Get the configured rapid-submission window in ledgers (default: 720).
+    pub fn get_rapid_submission_window(env: Env) -> u32 {
+        env.storage()
+            .instance()
+            .get(&DataKey2::RapidSubmissionWindowLedgers)
+            .unwrap_or(DEFAULT_RAPID_SUBMISSION_WINDOW_LEDGERS)
+    }
+
     // --- Internal abuse-score helpers ---
 
     fn load_abuse_record_with_decay(env: &Env, customer: &Address) -> RefundAbuseRecord {

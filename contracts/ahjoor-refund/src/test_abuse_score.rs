@@ -326,3 +326,22 @@ fn test_list_abuse_flagged_customers_pagination() {
     }
     assert_eq!(collected, customers);
 }
+
+#[test]
+fn test_get_rapid_submission_window() {
+    let (env, refund_client, _payment_client, admin, _token, _token_client, _token_admin) =
+        setup_abuse();
+
+    // Default value when not explicitly set
+    let default_client = {
+        let env = Env::default();
+        env.mock_all_auths();
+        let refund_id = env.register(AhjoorRefundContract, ());
+        AhjoorRefundContractClient::new(&env, &refund_id)
+    };
+    assert_eq!(default_client.get_rapid_submission_window(), 720);
+
+    // Explicitly set value
+    refund_client.set_rapid_submission_window(&admin, &500u32);
+    assert_eq!(refund_client.get_rapid_submission_window(), 500);
+}

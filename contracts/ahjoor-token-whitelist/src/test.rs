@@ -644,3 +644,30 @@ fn test_get_risk_tier_defined_and_undefined() {
     assert_eq!(tier.max_daily_volume, 50_000i128);
     assert!(client.get_risk_tier(&99u32).is_none());
 }
+
+#[test]
+#[should_panic(expected = "RiskTierNotDefined")]
+fn test_assign_token_tier_panics_on_undefined_tier() {
+    let (env, admin, client) = setup_test();
+
+    let token = Address::generate(&env);
+    client.assign_token_tier(&admin, &token, &99u32);
+}
+
+#[test]
+fn test_assign_token_tier_accepts_defined_tier() {
+    let (env, admin, client) = setup_test();
+
+    let name = soroban_sdk::String::from_str(&env, "standard");
+    client.set_risk_tier(&admin, &2u32, &name, &1_000i128, &50_000i128);
+
+    let token = Address::generate(&env);
+    client.assign_token_tier(&admin, &token, &2u32);
+
+    let tier_id: u32 = env
+        .storage()
+        .persistent()
+        .get(&crate::DataKey::TokenTier(token))
+        .unwrap();
+    assert_eq!(tier_id, 2);
+}

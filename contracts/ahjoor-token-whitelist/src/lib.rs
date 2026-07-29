@@ -39,6 +39,7 @@ pub enum Error {
     TokenAlreadyHasQuota = 7,
     TokenHasNoQuota = 8,
     SuspensionExtensionOverflow = 9,
+    RiskTierNotDefined = 10,
 }
 
 #[contracttype]
@@ -296,6 +297,9 @@ impl TokenWhitelistContract {
     pub fn assign_token_tier(env: Env, admin: Address, token: Address, tier_id: u32) {
         admin.require_auth();
         Self::require_admin(&env, &admin);
+        if env.storage().instance().get::<_, TierLimits>(&DataKey::RiskTier(tier_id)).is_none() {
+            panic!("RiskTierNotDefined");
+        }
         env.storage().persistent().set(&DataKey::TokenTier(token.clone()), &tier_id);
         env.storage().persistent().extend_ttl(&DataKey::TokenTier(token.clone()), PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
         events::emit_token_tier_assigned(&env, token, tier_id);
@@ -1064,5 +1068,11 @@ impl TokenWhitelistContract {
 
     pub fn get_proposal_counter(env: Env) -> u32 {
         env.storage().instance().get(&DataKey::ProposalCounter).unwrap_or(0)
+    }
+
+    /// Returns `Some(true)` if the voter approved, `Some(false)` if they
+    /// rejected, or `None` if they have not voted on this proposal.
+    pub fn get_vote_record(env: Env, proposal_id: u32, voter: Address) -> Option<bool> {
+        env.storage().persistent().get::<DataKey, (bool, i128)>(&DataKey::VoteRecord(proposal_id, voter)).map(|(approve, _)| approve)
     }
 }
