@@ -8918,7 +8918,12 @@ impl AhjoorEscrowContract {
             panic_with_error!(&env, EscrowErrorExt4::VetoWindowHasNotExpiredYet);
         }
         escrow.seller = proposal.new_seller.clone();
+        let old_status = escrow.status;
         escrow.status = EscrowStatus::Active;
+        
+        // #578: Update active dispute count
+        Self::update_dispute_count(&env, old_status, EscrowStatus::Active);
+        
         Self::record_status_history(&env, escrow_id, EscrowStatus::Active);
         env.storage()
             .persistent()
@@ -9007,7 +9012,12 @@ impl AhjoorEscrowContract {
         }
         let amount = escrow.amount;
         Self::transfer_to_buyers(&env, &escrow, amount, escrow_id);
+        let old_status = escrow.status;
         escrow.status = EscrowStatus::Refunded;
+        
+        // #578: Update active dispute count
+        Self::update_dispute_count(&env, old_status, EscrowStatus::Refunded);
+        
         Self::record_status_history(&env, escrow_id, EscrowStatus::Refunded);
         env.storage()
             .persistent()
@@ -9409,3 +9419,6 @@ mod test_bounty_board;
 mod test_bounty_milestone;
 #[cfg(test)]
 mod test_multi_buyer;
+
+#[cfg(test)]
+mod test_dispute_count;
