@@ -782,6 +782,8 @@ pub enum DataKey2 {
     EscrowStatusHistory(u32),
     /// #571: insurance claim details per escrow (escrow_id → InsuranceClaimRecord)
     InsuranceClaimRecord(u32),
+    /// #578: running counter of escrows currently in a disputed state (Disputed, PartiallyDisputed, AwaitingBuyerVetoDecision)
+    ActiveDisputeCount,
 }
 
 /// #357: On-chain reputation record for an inspector.
@@ -2795,11 +2797,18 @@ impl AhjoorEscrowContract {
         }
 
         escrow.amount = dispute_amount;
+        let old_status = escrow.status;
         escrow.status = if released_amount > 0 {
             EscrowStatus::PartiallyDisputed
         } else {
             EscrowStatus::Disputed
         };
+        
+        // #578: Update active dispute count
+        Self::update_dispute_count(&env, old_status, escrow.status);
+        
+        // Record status transition in history
+        Self::record_status_history(&env, escrow_id, escrow.status);
 
         env.storage()
             .persistent()
@@ -2900,7 +2909,12 @@ impl AhjoorEscrowContract {
                 PERSISTENT_BUMP_AMOUNT,
             );
 
+            let old_status = escrow.status;
             escrow.status = EscrowStatus::CoolingOff;
+            
+            // #578: Update active dispute count (CoolingOff is not a dispute state)
+            Self::update_dispute_count(&env, old_status, EscrowStatus::CoolingOff);
+            
             Self::record_status_history(&env, escrow_id, EscrowStatus::CoolingOff);
             env.storage()
                 .persistent()
@@ -3216,6 +3230,7 @@ impl AhjoorEscrowContract {
             env.storage().persistent().remove(&DataKey::SellerCollateral(escrow_id));
         }
 
+        let old_status = escrow.status;
         escrow.status = if buyer_percent == 100 {
             EscrowStatus::Refunded
         } else if buyer_percent == 0 {
@@ -3223,6 +3238,12 @@ impl AhjoorEscrowContract {
         } else {
             EscrowStatus::Resolved
         };
+        
+        // #578: Update active dispute count
+        Self::update_dispute_count(env, old_status, escrow.status);
+        
+        // Record status transition in history
+        Self::record_status_history(env, escrow_id, escrow.status);
 
         env.storage()
             .persistent()
@@ -3479,6 +3500,7 @@ impl AhjoorEscrowContract {
         let client = token::Client::new(&env, &escrow.token);
         let release_to_seller = matches!(default_winner_enum, DisputeDefaultWinner::Seller);
 
+        let old_status = escrow.status;
         if release_to_seller {
             client.transfer(
                 &env.current_contract_address(),
@@ -3486,10 +3508,18 @@ impl AhjoorEscrowContract {
                 &escrow.amount,
             );
             escrow.status = EscrowStatus::Released;
+            
+            // #578: Update active dispute count
+            Self::update_dispute_count(&env, old_status, EscrowStatus::Released);
+            
             Self::record_status_history(&env, escrow_id, EscrowStatus::Released);
         } else {
             Self::transfer_to_buyers(&env, &escrow, escrow.amount, escrow_id);
             escrow.status = EscrowStatus::Refunded;
+            
+            // #578: Update active dispute count
+            Self::update_dispute_count(&env, old_status, EscrowStatus::Refunded);
+            
             Self::record_status_history(&env, escrow_id, EscrowStatus::Refunded);
         }
 
@@ -4368,6 +4398,15 @@ impl AhjoorEscrowContract {
             .unwrap_or(Vec::new(&env))
     }
 
+    /// #578: Get the count of escrows currently in a disputed state (Disputed, PartiallyDisputed, AwaitingBuyerVetoDecision).
+    /// Returns the running counter maintained by the contract.
+    pub fn get_active_dispute_count(env: Env) -> u32 {
+        env.storage()
+            .instance()
+            .get(&DataKey2::ActiveDisputeCount)
+            .unwrap_or(0)
+    }
+
     /// Get list of sellers for an escrow (#317)
     pub fn get_escrow_sellers(env: Env, escrow_id: u32) -> Vec<(Address, u32)> {
         let escrow: Escrow = env
@@ -4741,7 +4780,12 @@ impl AhjoorEscrowContract {
 
         // Escalate to full dispute
         let mut escrow_mut = escrow;
+        let old_status = escrow_mut.status;
         escrow_mut.status = EscrowStatus::Disputed;
+        
+        // #578: Update active dispute count
+        Self::update_dispute_count(&env, old_status, EscrowStatus::Disputed);
+        
         Self::record_status_history(&env, escrow_id, EscrowStatus::Disputed);
 
         env.storage()
@@ -7721,6 +7765,63 @@ impl AhjoorEscrowContract {
         );
     }
 
+    /// #578: Check if a status is a dispute-related status that should be tracked in the active dispute count.
+    fn is_dispute_status(status: EscrowStatus) -> bool {
+        matches!(
+            status,
+            EscrowStatus::Disputed | EscrowStatus::PartiallyDisputed | EscrowStatus::AwaitingBuyerVetoDecision
+        )
+    }
+
+    /// #578: Increment the active dispute count when an escrow enters a disputed state.
+    fn increment_dispute_count(env: &Env) {
+        let key = DataKey2::ActiveDisputeCount;
+        let current: u32 = env
+            .storage()
+            .instance()
+            .get(&key)
+            .unwrap_or(0);
+        env.storage()
+            .instance()
+            .set(&key, &(current + 1));
+        env.storage().instance().extend_ttl(
+            INSTANCE_LIFETIME_THRESHOLD,
+            INSTANCE_BUMP_AMOUNT,
+        );
+    }
+
+    /// #578: Decrement the active dispute count when an escrow exits a disputed state.
+    fn decrement_dispute_count(env: &Env) {
+        let key = DataKey2::ActiveDisputeCount;
+        let current: u32 = env
+            .storage()
+            .instance()
+            .get(&key)
+            .unwrap_or(0);
+        if current > 0 {
+            env.storage()
+                .instance()
+                .set(&key, &(current - 1));
+            env.storage().instance().extend_ttl(
+                INSTANCE_LIFETIME_THRESHOLD,
+                INSTANCE_BUMP_AMOUNT,
+            );
+        }
+    }
+
+    /// #578: Update the active dispute count when an escrow status changes.
+    /// Call this whenever escrow.status is updated.
+    fn update_dispute_count(env: &Env, old_status: EscrowStatus, new_status: EscrowStatus) {
+        let was_disputed = Self::is_dispute_status(old_status);
+        let is_disputed = Self::is_dispute_status(new_status);
+        
+        if !was_disputed && is_disputed {
+            Self::increment_dispute_count(env);
+        } else if was_disputed && !is_disputed {
+            Self::decrement_dispute_count(env);
+        }
+    }
+
     /// Validates that a token is allowed via the whitelist contract
     fn require_token_allowed(env: &Env, token: &Address) {
         if let Some(whitelist_contract) = env
@@ -8646,7 +8747,12 @@ impl AhjoorEscrowContract {
             .get(&DataKey2::SellerTransferProposal(escrow_id))
             .expect("Proposal not found");
         escrow.seller = proposal.new_seller.clone();
+        let old_status = escrow.status;
         escrow.status = EscrowStatus::Active;
+        
+        // #578: Update active dispute count
+        Self::update_dispute_count(&env, old_status, EscrowStatus::Active);
+        
         Self::record_status_history(&env, escrow_id, EscrowStatus::Active);
         env.storage()
             .persistent()
@@ -8812,7 +8918,12 @@ impl AhjoorEscrowContract {
             panic_with_error!(&env, EscrowErrorExt4::VetoWindowHasNotExpiredYet);
         }
         escrow.seller = proposal.new_seller.clone();
+        let old_status = escrow.status;
         escrow.status = EscrowStatus::Active;
+        
+        // #578: Update active dispute count
+        Self::update_dispute_count(&env, old_status, EscrowStatus::Active);
+        
         Self::record_status_history(&env, escrow_id, EscrowStatus::Active);
         env.storage()
             .persistent()
@@ -8863,7 +8974,12 @@ impl AhjoorEscrowContract {
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
+        let old_status = escrow.status;
         escrow.status = EscrowStatus::AwaitingBuyerVetoDecision;
+        
+        // #578: Update active dispute count
+        Self::update_dispute_count(&env, old_status, EscrowStatus::AwaitingBuyerVetoDecision);
+        
         Self::record_status_history(&env, escrow_id, EscrowStatus::AwaitingBuyerVetoDecision);
         env.storage()
             .persistent()
@@ -8896,7 +9012,12 @@ impl AhjoorEscrowContract {
         }
         let amount = escrow.amount;
         Self::transfer_to_buyers(&env, &escrow, amount, escrow_id);
+        let old_status = escrow.status;
         escrow.status = EscrowStatus::Refunded;
+        
+        // #578: Update active dispute count
+        Self::update_dispute_count(&env, old_status, EscrowStatus::Refunded);
+        
         Self::record_status_history(&env, escrow_id, EscrowStatus::Refunded);
         env.storage()
             .persistent()
@@ -9298,3 +9419,6 @@ mod test_bounty_board;
 mod test_bounty_milestone;
 #[cfg(test)]
 mod test_multi_buyer;
+
+#[cfg(test)]
+mod test_dispute_count;
