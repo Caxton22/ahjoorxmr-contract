@@ -106,7 +106,6 @@ fn test_receipt_transfer_and_release_to_new_holder() {
 }
 
 #[test]
-#[should_panic(expected = "Only current holder can transfer receipt")]
 fn test_non_holder_transfer_rejected() {
     let s = setup();
 
@@ -122,11 +121,11 @@ fn test_non_holder_transfer_rejected() {
     let receipt_id = receipt.receipt_id;
 
     // Arbiter is not the holder — should panic
-    s.client.transfer_escrow_receipt(&arbiter, &receipt_id, &Address::generate(&s.env));
+    let __typed_err_result = s.client.try_transfer_escrow_receipt(&arbiter, &receipt_id, &Address::generate(&s.env));
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowError::OnlyCurrentHolderCanTransferReceipt.into());
 }
 
 #[test]
-#[should_panic(expected = "ActiveMilestoneInProgress")]
 fn test_mid_milestone_transfer_rejection() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -141,7 +140,8 @@ fn test_mid_milestone_transfer_rejection() {
     let receipt_id = receipt.receipt_id;
 
     // Seller cannot transfer while milestones present
-    s.client.transfer_escrow_receipt(&seller, &receipt_id, &Address::generate(&s.env));
+    let __typed_err_result = s.client.try_transfer_escrow_receipt(&seller, &receipt_id, &Address::generate(&s.env));
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowError::ActiveMilestoneInProgress.into());
 }
 
 #[test]
@@ -161,8 +161,146 @@ fn test_burn_on_cancel() {
     assert!(s.client.get_escrow_receipt(&escrow_id).is_none());
 }
 
+/// #650: get_cancellation_request returns None when no pending request exists
 #[test]
-#[should_panic(expected = "Escrow amount must be positive")]
+fn test_get_cancellation_request_none_when_no_pending() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    let deadline = s.env.ledger().timestamp() + 1000;
+    let escrow_id = s.client.create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+
+    // No cancellation request has been made
+    let request = s.client.get_cancellation_request(&escrow_id);
+    assert_eq!(request, None, "Should return None when no cancellation request exists");
+}
+
+/// #650: get_cancellation_request returns pending request with full details
+#[test]
+fn test_get_cancellation_request_returns_pending_request() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    let deadline = s.env.ledger().timestamp() + 1000;
+    let escrow_id = s.client.create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+
+    // Record the current timestamp before requesting cancellation
+    let request_timestamp = s.env.ledger().timestamp();
+    let reason_hash = BytesN::from_array(&s.env, &[42u8; 32]);
+
+    // Request cancellation from seller
+    s.client.request_cancellation(&seller, &escrow_id, &reason_hash);
+
+    // Retrieve the cancellation request
+    let request = s.client.get_cancellation_request(&escrow_id);
+    assert!(request.is_some(), "Should return a cancellation request");
+
+    let cancel_req = request.unwrap();
+    assert_eq!(cancel_req.initiator, seller, "Initiator should be the seller");
+    assert_eq!(cancel_req.reason_hash, reason_hash, "Reason hash should match");
+    assert_eq!(cancel_req.requested_at, request_timestamp, "Requested at should match");
+    
+    // expires_at should be requested_at + window (default 7 days = 604800 seconds)
+    let default_window: u64 = 7 * 24 * 60 * 60;
+    assert_eq!(cancel_req.expires_at, request_timestamp + default_window, "Expires at should be requested_at + window");
+}
+
+/// #650: get_cancellation_request returns None after acceptance
+#[test]
+fn test_get_cancellation_request_none_after_acceptance() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    let deadline = s.env.ledger().timestamp() + 1000;
+    let escrow_id = s.client.create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+
+    let reason_hash = BytesN::from_array(&s.env, &[1u8; 32]);
+    s.client.request_cancellation(&seller, &escrow_id, &reason_hash);
+
+    // Verify request exists
+    assert!(s.client.get_cancellation_request(&escrow_id).is_some(), "Request should exist");
+
+    // Accept the cancellation
+    s.client.accept_cancellation(&buyer, &escrow_id);
+
+    // Request should now be gone
+    let request = s.client.get_cancellation_request(&escrow_id);
+    assert_eq!(request, None, "Should return None after acceptance");
+}
+
+/// #650: get_cancellation_request returns None after rejection
+#[test]
+fn test_get_cancellation_request_none_after_rejection() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    let deadline = s.env.ledger().timestamp() + 1000;
+    let escrow_id = s.client.create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+
+    let reason_hash = BytesN::from_array(&s.env, &[2u8; 32]);
+    s.client.request_cancellation(&seller, &escrow_id, &reason_hash);
+
+    // Verify request exists
+    assert!(s.client.get_cancellation_request(&escrow_id).is_some(), "Request should exist");
+
+    // Reject the cancellation
+    s.client.reject_cancellation(&buyer, &escrow_id);
+
+    // Request should now be gone
+    let request = s.client.get_cancellation_request(&escrow_id);
+    assert_eq!(request, None, "Should return None after rejection");
+}
+
+/// #650: get_cancellation_request returns None after expiration
+#[test]
+fn test_get_cancellation_request_none_after_expiration() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    let deadline = s.env.ledger().timestamp() + 1000;
+    let escrow_id = s.client.create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+
+    let reason_hash = BytesN::from_array(&s.env, &[3u8; 32]);
+    s.client.request_cancellation(&seller, &escrow_id, &reason_hash);
+
+    // Verify request exists
+    assert!(s.client.get_cancellation_request(&escrow_id).is_some(), "Request should exist");
+
+    // Set admin's response window to 100 seconds for testing
+    s.client.set_cancellation_response_window(&s.admin, &100);
+
+    // Advance timestamp past expiry (default window was just set to 100 seconds)
+    // We requested at timestamp T, so it expires at T + 100
+    let request_before = s.client.get_cancellation_request(&escrow_id).unwrap();
+    let expires_at = request_before.expires_at;
+    
+    // Advance to after expiry
+    s.env.ledger().set_timestamp(expires_at + 1);
+
+    // Expire the cancellation
+    s.client.expire_cancellation(&escrow_id);
+
+    // Request should now be gone
+    let request = s.client.get_cancellation_request(&escrow_id);
+    assert_eq!(request, None, "Should return None after expiration");
+}
+
+#[test]
 fn test_create_escrow_zero_amount_panics() {
     let s = setup();
 
@@ -172,12 +310,12 @@ fn test_create_escrow_zero_amount_panics() {
     s.token_admin_client.mint(&buyer, &1000);
 
     let deadline = s.env.ledger().timestamp() + 1000;
-    s.client
-        .create_escrow(&buyer, &seller, &arbiter, &0, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+    let __typed_err_result = s.client
+        .try_create_escrow(&buyer, &seller, &arbiter, &0, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowError::EscrowAmountMustBePositive.into());
 }
 
 #[test]
-#[should_panic(expected = "Deadline must be in the future")]
 fn test_create_escrow_past_deadline_panics() {
     let s = setup();
 
@@ -187,8 +325,9 @@ fn test_create_escrow_past_deadline_panics() {
     s.token_admin_client.mint(&buyer, &1000);
 
     let deadline = s.env.ledger().timestamp();
-    s.client
-        .create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+    let __typed_err_result = s.client
+        .try_create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowError::DeadlineMustBeFuture.into());
 }
 
 // ===========================================================================
@@ -239,6 +378,33 @@ fn test_amendment_past_deadline_rejected() {
 
     let escrow = s.client.get_escrow(&escrow_id);
     assert_eq!(escrow.deadline, deadline);
+}
+
+#[test]
+fn test_cancel_amendment_proposal_before_application() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    let escrow_id = s.client.create_escrow(
+        &buyer,
+        &seller,
+        &Address::generate(&s.env),
+        &200,
+        &s.token_addr,
+        &(s.env.ledger().timestamp() + 1000),
+        &None,
+        &Vec::new(&s.env),
+        &false,
+        &0u32,
+    );
+
+    let nonce = s.client.propose_amendment(&buyer, &escrow_id, &None, &Some(s.env.ledger().timestamp() + 2000), &None);
+    s.client.cancel_amendment_proposal(&buyer, &escrow_id, &nonce);
+
+    let res = s.client.try_apply_amendment(&escrow_id, &nonce);
+    assert!(res.is_err());
 }
 
 #[test]
@@ -392,7 +558,6 @@ fn test_partial_release_over_release_attempt_rejected() {
 }
 
 #[test]
-#[should_panic(expected = "Only buyer or arbiter can release escrow")]
 fn test_release_escrow_by_seller_panics() {
     let s = setup();
 
@@ -405,12 +570,11 @@ fn test_release_escrow_by_seller_panics() {
     let escrow_id =
         s.client
             .create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
-
-    s.client.release_escrow(&seller, &escrow_id);
+    let __typed_err_result = s.client.try_release_escrow(&seller, &escrow_id);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowError::OnlyBuyerOrArbiterCanReleaseEscrow.into());
 }
 
 #[test]
-#[should_panic(expected = "Escrow is not active")]
 fn test_release_escrow_already_released_panics() {
     let s = setup();
 
@@ -425,7 +589,8 @@ fn test_release_escrow_already_released_panics() {
             .create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
 
     s.client.release_escrow(&buyer, &escrow_id);
-    s.client.release_escrow(&buyer, &escrow_id); // Should panic
+    let __typed_err_result = s.client.try_release_escrow(&buyer, &escrow_id);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowError::EscrowIsNotActive.into());
 }
 
 // ===========================================================================
@@ -486,7 +651,6 @@ fn test_dispute_escrow_by_seller() {
 }
 
 #[test]
-#[should_panic(expected = "Only buyer or seller can dispute escrow")]
 fn test_dispute_escrow_by_arbiter_panics() {
     let s = setup();
 
@@ -499,13 +663,13 @@ fn test_dispute_escrow_by_arbiter_panics() {
     let escrow_id =
         s.client
             .create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
-
-    s.client.dispute_escrow(
+    let __typed_err_result = s.client.try_dispute_escrow(
         &arbiter,
         &escrow_id,
         &String::from_str(&s.env, "Invalid"),
         &250,
     );
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::OnlyBuyerOrSellerCanDisputeEscrow.into());
 }
 
 #[test]
@@ -635,7 +799,6 @@ fn test_escalation_emits_event_with_effective_timeout() {
 }
 
 #[test]
-#[should_panic(expected = "dispute_timeout_seconds must be positive")]
 fn test_create_escrow_with_zero_dispute_timeout_panics() {
     let s = setup();
 
@@ -645,7 +808,7 @@ fn test_create_escrow_with_zero_dispute_timeout_panics() {
     s.token_admin_client.mint(&buyer, &1000);
 
     let deadline = s.env.ledger().timestamp() + 1000;
-    s.client.create_escrow_w_timeout(
+    let __typed_err_result = s.client.try_create_escrow_w_timeout(
         &buyer,
         &seller,
         &arbiter,
@@ -657,14 +820,15 @@ fn test_create_escrow_with_zero_dispute_timeout_panics() {
         &0u32,
         &0u64,
     );
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowError::DisputeTimeoutSecondsMustBePositive.into());
 }
 
 #[test]
-#[should_panic(expected = "Timeout must be positive")]
 fn test_update_default_dispute_timeout_zero_panics() {
     let s = setup();
-    s.client
-        .update_default_dispute_timeout(&s.admin, &0u64);
+    let __typed_err_result = s.client
+        .try_update_default_dispute_timeout(&s.admin, &0u64);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::TimeoutMustBePositive.into());
 }
 
 // ===========================================================================
@@ -896,7 +1060,6 @@ fn test_resolve_dispute_to_buyer() {
 }
 
 #[test]
-#[should_panic(expected = "Only arbiter can resolve dispute")]
 fn test_resolve_dispute_by_buyer_panics() {
     let s = setup();
 
@@ -916,7 +1079,8 @@ fn test_resolve_dispute_by_buyer_panics() {
         &String::from_str(&s.env, "Item not received"),
         &250,
     );
-    s.client.resolve_dispute(&buyer, &escrow_id, &0u32);
+    let __typed_err_result = s.client.try_resolve_dispute(&buyer, &escrow_id, &0u32);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::OnlyArbiterCanResolveDispute.into());
 }
 
 // ===========================================================================
@@ -1030,7 +1194,6 @@ fn test_resolve_dispute_0_100_is_full_seller_win() {
 }
 
 #[test]
-#[should_panic(expected = "buyer_percent must be between 0 and 100")]
 fn test_resolve_dispute_invalid_percent_panics() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -1044,7 +1207,8 @@ fn test_resolve_dispute_invalid_percent_panics() {
             .create_escrow(&buyer, &seller, &arbiter, &500, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
 
     s.client.dispute_escrow(&buyer, &escrow_id, &String::from_str(&s.env, "d"), &500);
-    s.client.resolve_dispute(&arbiter, &escrow_id, &101u32);
+    let __typed_err_result = s.client.try_resolve_dispute(&arbiter, &escrow_id, &101u32);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::BuyerPercentMustBeBetween0And100.into());
 }
 
 // ===========================================================================
@@ -1240,7 +1404,6 @@ fn test_auto_release_expired() {
 }
 
 #[test]
-#[should_panic(expected = "Escrow has not expired yet")]
 fn test_auto_release_not_expired_panics() {
     let s = setup();
 
@@ -1253,12 +1416,11 @@ fn test_auto_release_not_expired_panics() {
     let escrow_id =
         s.client
             .create_escrow(&buyer, &seller, &arbiter, &250, &s.token_addr, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
-
-    s.client.auto_release_expired(&escrow_id);
+    let __typed_err_result = s.client.try_auto_release_expired(&escrow_id);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::EscrowHasNotExpiredYet.into());
 }
 
 #[test]
-#[should_panic(expected = "Escrow is not active")]
 fn test_auto_release_disputed_panics() {
     let s = setup();
 
@@ -1281,8 +1443,8 @@ fn test_auto_release_disputed_panics() {
 
     // Advance time past deadline
     s.env.ledger().set_timestamp(deadline + 1);
-
-    s.client.auto_release_expired(&escrow_id);
+    let __typed_err_result = s.client.try_auto_release_expired(&escrow_id);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowError::EscrowIsNotActive.into());
 }
 
 // ===========================================================================
@@ -1883,7 +2045,6 @@ fn test_non_admin_cannot_add_or_remove_allowed_token() {
 }
 
 #[test]
-#[should_panic(expected = "TokenNotAllowed")]
 fn test_create_escrow_with_disallowed_token_panics_token_not_allowed() {
     let s = setup();
     let unallowed_token = Address::generate(&s.env);
@@ -1894,8 +2055,9 @@ fn test_create_escrow_with_disallowed_token_panics_token_not_allowed() {
     s.token_admin_client.mint(&buyer, &1000);
 
     let deadline = s.env.ledger().timestamp() + 1000;
-    s.client
-        .create_escrow(&buyer, &seller, &arbiter, &250, &unallowed_token, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+    let __typed_err_result = s.client
+        .try_create_escrow(&buyer, &seller, &arbiter, &250, &unallowed_token, &deadline, &None, &Vec::new(&s.env), &false, &0u32);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt2::TokenNotAllowed.into());
 }
 
 // ===========================================================================
@@ -2045,7 +2207,6 @@ fn test_update_metadata_multiple_times_only_latest_stored() {
 }
 
 #[test]
-#[should_panic(expected = "Only buyer or seller can update metadata")]
 fn test_update_metadata_unauthorized_panics() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -2069,7 +2230,8 @@ fn test_update_metadata_unauthorized_panics() {
     );
 
     let hash = BytesN::from_array(&s.env, &[6u8; 32]);
-    s.client.update_metadata(&outsider, &escrow_id, &hash);
+    let __typed_err_result = s.client.try_update_metadata(&outsider, &escrow_id, &hash);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt2::OnlyBuyerOrSellerCanUpdateMetadata.into());
 }
 
 // ===========================================================================
@@ -2220,7 +2382,6 @@ fn test_release_multi_party_dust_goes_to_first_seller() {
 }
 
 #[test]
-#[should_panic(expected = "Seller allocations must sum to 10000 bps")]
 fn test_create_multi_party_escrow_invalid_bps_panics() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -2234,7 +2395,7 @@ fn test_create_multi_party_escrow_invalid_bps_panics() {
     sellers.push_back((seller2.clone(), 3000u32)); // only 8000 bps total
 
     let deadline = s.env.ledger().timestamp() + 1000;
-    s.client.create_escrow(
+    let __typed_err_result = s.client.try_create_escrow(
         &buyer,
         &seller1,
         &arbiter,
@@ -2246,10 +2407,10 @@ fn test_create_multi_party_escrow_invalid_bps_panics() {
         &false,
         &0u32,
     );
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowError::SellerAllocationsMustSumTo10000Bps.into());
 }
 
 #[test]
-#[should_panic(expected = "Maximum 5 sellers allowed")]
 fn test_create_multi_party_escrow_too_many_sellers_panics() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -2266,7 +2427,7 @@ fn test_create_multi_party_escrow_too_many_sellers_panics() {
     sellers.push_back((Address::generate(&s.env), 1000u32)); // 6th seller
 
     let deadline = s.env.ledger().timestamp() + 1000;
-    s.client.create_escrow(
+    let __typed_err_result = s.client.try_create_escrow(
         &buyer,
         &Address::generate(&s.env),
         &arbiter,
@@ -2278,6 +2439,7 @@ fn test_create_multi_party_escrow_too_many_sellers_panics() {
         &false,
         &0u32,
     );
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowError::Maximum5SellersAllowed.into());
 }
 
 // ===========================================================================
@@ -2680,6 +2842,32 @@ fn make_batch_config(
 }
 
 #[test]
+fn test_create_escrows_batch_respects_admin_configured_cap() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &20_000);
+
+    s.client.set_max_batch_size(&s.admin, &2);
+
+    let mut configs: Vec<EscrowBatchConfig> = Vec::new(&s.env);
+    let deadline = s.env.ledger().timestamp() + 1000;
+    for _ in 0..3 {
+        configs.push_back(make_batch_config(
+            &s.env,
+            Address::generate(&s.env),
+            Address::generate(&s.env),
+            100,
+            s.token_addr.clone(),
+            deadline,
+        ));
+    }
+
+    let res = s.client.try_create_escrows_batch(&buyer, &configs);
+    assert!(res.is_err());
+    assert_eq!(s.client.get_escrow_counter(), 0);
+}
+
+#[test]
 fn test_create_escrows_batch_max_size_contiguous_and_events() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -2913,6 +3101,49 @@ fn test_insurance_claim_after_trigger_period() {
 }
 
 #[test]
+fn test_get_insurance_claim_status_before_and_after_claim() {
+    let s = setup();
+    setup_insurance(&s);
+
+    let contributor = Address::generate(&s.env);
+    s.token_admin_client.mint(&contributor, &10_000);
+    s.client.contribute_to_insurance(&contributor, &10_000);
+
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1000);
+
+    s.env.ledger().set_timestamp(1000);
+    let deadline = s.env.ledger().timestamp() + 10_000;
+    let escrow_id = s.client.create_escrow(
+        &buyer, &seller, &arbiter, &1000, &s.token_addr, &deadline,
+        &None, &Vec::new(&s.env), &false, &0u32,
+    );
+
+    // No claim on record yet
+    assert_eq!(s.client.get_insurance_claim_status(&escrow_id), None);
+
+    s.client.dispute_escrow(&buyer, &escrow_id, &String::from_str(&s.env, "stuck"), &1000);
+
+    // Advance past 7-day trigger (7 * 24 * 60 * 60 = 604800 seconds)
+    s.env.ledger().set_timestamp(1000 + 604_801);
+
+    s.client.confirm_insurance_inactivity(&s.admin, &escrow_id, &true);
+
+    // Still no claim on record before claim_insurance is called
+    assert_eq!(s.client.get_insurance_claim_status(&escrow_id), None);
+
+    s.client.claim_insurance(&buyer, &escrow_id);
+
+    let status = s.client.get_insurance_claim_status(&escrow_id);
+    let record = status.expect("expected an insurance claim record after claiming");
+    assert_eq!(record.claimant, buyer);
+    assert_eq!(record.amount, 500);
+    assert_eq!(record.claimed_at, s.env.ledger().timestamp());
+}
+
+#[test]
 fn test_insurance_claim_capped_at_50_percent() {
     let s = setup();
     setup_insurance(&s);
@@ -3062,6 +3293,196 @@ fn test_insurance_pool_capped_by_pool_balance() {
 
     assert_eq!(s.token_client.balance(&buyer), 100);
     assert_eq!(s.client.get_insurance_pool(), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Insurance double-payment prevention tests (fix #b)
+// ---------------------------------------------------------------------------
+
+/// Scenario 1: Claimant wins the verdict.
+/// Buyer claims insurance (500) while disputed, then arbiter rules 100% for buyer.
+/// Total received by buyer must not exceed the original escrow amount (1000).
+/// execute_verdict should pay buyer at most 1000 - 500 = 500 from the verdict.
+#[test]
+fn test_insurance_no_double_payment_claimant_wins() {
+    let s = setup();
+    setup_insurance(&s);
+
+    // Fund the insurance pool generously
+    let contributor = Address::generate(&s.env);
+    s.token_admin_client.mint(&contributor, &10_000);
+    s.client.contribute_to_insurance(&contributor, &10_000);
+
+    let buyer  = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 10_000;
+    let escrow_id = s.client.create_escrow(
+        &buyer, &seller, &arbiter, &1_000, &s.token_addr, &deadline,
+        &None, &Vec::new(&s.env), &false, &0u32,
+    );
+
+    // Open dispute for the full escrow amount
+    s.client.dispute_escrow(
+        &buyer, &escrow_id,
+        &String::from_str(&s.env, "stuck"), &1_000,
+    );
+
+    // Advance past 7-day insurance trigger
+    s.env.ledger().set_timestamp(1_000 + 604_801);
+    s.client.confirm_insurance_inactivity(&s.admin, &escrow_id, &true);
+
+    // Buyer claims insurance: capped at 50% of 1000 = 500
+    s.client.claim_insurance(&buyer, &escrow_id);
+    let bal_after_insurance = s.token_client.balance(&buyer);
+    assert_eq!(bal_after_insurance, 500, "insurance payout should be 500");
+
+    // Arbiter resolves 100% in buyer's favour (no cooling-off configured)
+    s.client.resolve_dispute(&arbiter, &escrow_id, &100u32);
+
+    let bal_after_verdict = s.token_client.balance(&buyer);
+    // Total received = insurance (500) + verdict payout
+    // Verdict payout must be capped so total ≤ original escrow amount (1000)
+    assert_eq!(
+        bal_after_verdict, 1_000,
+        "buyer total receipts must not exceed original escrow amount"
+    );
+    // Specifically the verdict should have paid 500 (1000 - 500 insurance)
+    assert_eq!(
+        bal_after_verdict - bal_after_insurance, 500,
+        "verdict payout must be reduced by the already-paid insurance amount"
+    );
+}
+
+/// Scenario 2: Claimant (buyer) claimed insurance but loses the verdict.
+/// Seller wins 100%, so the insurance deduction applies to the buyer's share,
+/// which is already 0 — no extra deduction needed.  Seller should receive
+/// the full distributable amount; buyer keeps the insurance payment but
+/// receives nothing from the verdict.
+#[test]
+fn test_insurance_no_double_payment_claimant_loses() {
+    let s = setup();
+    setup_insurance(&s);
+
+    let contributor = Address::generate(&s.env);
+    s.token_admin_client.mint(&contributor, &10_000);
+    s.client.contribute_to_insurance(&contributor, &10_000);
+
+    let buyer  = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 10_000;
+    let escrow_id = s.client.create_escrow(
+        &buyer, &seller, &arbiter, &1_000, &s.token_addr, &deadline,
+        &None, &Vec::new(&s.env), &false, &0u32,
+    );
+
+    s.client.dispute_escrow(
+        &buyer, &escrow_id,
+        &String::from_str(&s.env, "stuck"), &1_000,
+    );
+
+    s.env.ledger().set_timestamp(1_000 + 604_801);
+    s.client.confirm_insurance_inactivity(&s.admin, &escrow_id, &true);
+
+    // Buyer claims 500 insurance
+    s.client.claim_insurance(&buyer, &escrow_id);
+    let buyer_bal_after_insurance = s.token_client.balance(&buyer);
+    assert_eq!(buyer_bal_after_insurance, 500);
+
+    let seller_bal_before = s.token_client.balance(&seller);
+
+    // Arbiter rules 0% for buyer → seller wins outright
+    s.client.resolve_dispute(&arbiter, &escrow_id, &0u32);
+
+    let buyer_bal_final  = s.token_client.balance(&buyer);
+    let seller_bal_final = s.token_client.balance(&seller);
+
+    // Buyer receives nothing from the verdict (seller won)
+    assert_eq!(
+        buyer_bal_final, buyer_bal_after_insurance,
+        "buyer should receive nothing from a verdict they lost"
+    );
+
+    // Seller receives the full distributable (1000, no fees configured)
+    // The insurance deduction only affects the winner's share; seller won 100%
+    // and the insurance was paid to the buyer-side, so deduction hits buyer's
+    // already-zero share → seller gets the full 1000.
+    assert_eq!(
+        seller_bal_final - seller_bal_before, 1_000,
+        "seller should receive the full escrow amount when buyer claimed insurance and lost"
+    );
+}
+
+/// Scenario 3: Claimant (buyer) claimed insurance and gets a split verdict (50/50).
+/// Buyer's split share is 500; insurance already paid 500 → verdict pays buyer 0.
+/// Seller's split share is 500 and is unaffected.
+#[test]
+fn test_insurance_no_double_payment_split_verdict() {
+    let s = setup();
+    setup_insurance(&s);
+
+    let contributor = Address::generate(&s.env);
+    s.token_admin_client.mint(&contributor, &10_000);
+    s.client.contribute_to_insurance(&contributor, &10_000);
+
+    let buyer  = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 10_000;
+    let escrow_id = s.client.create_escrow(
+        &buyer, &seller, &arbiter, &1_000, &s.token_addr, &deadline,
+        &None, &Vec::new(&s.env), &false, &0u32,
+    );
+
+    s.client.dispute_escrow(
+        &buyer, &escrow_id,
+        &String::from_str(&s.env, "stuck"), &1_000,
+    );
+
+    s.env.ledger().set_timestamp(1_000 + 604_801);
+    s.client.confirm_insurance_inactivity(&s.admin, &escrow_id, &true);
+
+    // Buyer claims 500 insurance (50% of 1000)
+    s.client.claim_insurance(&buyer, &escrow_id);
+    assert_eq!(s.token_client.balance(&buyer), 500);
+
+    let seller_bal_before = s.token_client.balance(&seller);
+
+    // 50/50 split verdict — buyer_percent == seller_percent == 50
+    // buyer's raw share = 500, insurance_paid = 500 → buyer verdict payout = 0
+    // seller's raw share = 500, untouched
+    s.client.resolve_dispute(&arbiter, &escrow_id, &50u32);
+
+    let buyer_bal_final  = s.token_client.balance(&buyer);
+    let seller_bal_final = s.token_client.balance(&seller);
+
+    // Buyer: 500 (insurance) + 0 (verdict, deducted) = 500 total
+    assert_eq!(
+        buyer_bal_final, 500,
+        "buyer verdict payout should be zero after full insurance offset"
+    );
+
+    // Seller: receives their 500 split share unaffected
+    assert_eq!(
+        seller_bal_final - seller_bal_before, 500,
+        "seller split share should be unaffected by buyer's insurance claim"
+    );
+
+    // Grand total paid out: 500 (insurance) + 0 (buyer verdict) + 500 (seller verdict) = 1000
+    // This equals the original escrow amount — no over-payment.
+    let total_paid = (buyer_bal_final)   // buyer net (started with 0 after escrow deposit)
+        + (seller_bal_final - seller_bal_before); // seller net
+    assert_eq!(total_paid, 1_000, "grand total payout must equal original escrow amount");
 }
 
 // ===========================================================================
@@ -4087,7 +4508,6 @@ fn test_milestone_full_release_transitions_to_released() {
 }
 
 #[test]
-#[should_panic(expected = "Milestone not pending")]
 fn test_double_approve_milestone_panics() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -4106,11 +4526,11 @@ fn test_double_approve_milestone_panics() {
     );
 
     s.client.approve_milestone(&buyer, &escrow_id, &0);
-    s.client.approve_milestone(&buyer, &escrow_id, &0);
+    let __typed_err_result = s.client.try_approve_milestone(&buyer, &escrow_id, &0);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::MilestoneNotPending.into());
 }
 
 #[test]
-#[should_panic(expected = "Only buyer or arbiter can approve milestones")]
 fn test_seller_cannot_approve_own_milestone() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -4127,12 +4547,11 @@ fn test_seller_cannot_approve_own_milestone() {
         &deadline,
         &make_milestones(&s.env, &[100, 200, 300]),
     );
-
-    s.client.approve_milestone(&seller, &escrow_id, &0);
+    let __typed_err_result = s.client.try_approve_milestone(&seller, &escrow_id, &0);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::OnlyBuyerOrArbiterCanApproveMilestones.into());
 }
 
 #[test]
-#[should_panic(expected = "Milestone amount must be positive")]
 fn test_zero_milestone_amount_rejected() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -4141,7 +4560,7 @@ fn test_zero_milestone_amount_rejected() {
     s.token_admin_client.mint(&buyer, &1000);
 
     let deadline = s.env.ledger().timestamp() + 1000;
-    s.client.create_milestone_escrow(
+    let __typed_err_result = s.client.try_create_milestone_escrow(
         &buyer,
         &seller,
         &arbiter,
@@ -4149,10 +4568,10 @@ fn test_zero_milestone_amount_rejected() {
         &deadline,
         &make_milestones(&s.env, &[0, 100]),
     );
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::MilestoneAmountMustBePositive.into());
 }
 
 #[test]
-#[should_panic(expected = "At least one milestone required")]
 fn test_empty_milestones_rejected() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -4161,7 +4580,7 @@ fn test_empty_milestones_rejected() {
     s.token_admin_client.mint(&buyer, &1000);
 
     let deadline = s.env.ledger().timestamp() + 1000;
-    s.client.create_milestone_escrow(
+    let __typed_err_result = s.client.try_create_milestone_escrow(
         &buyer,
         &seller,
         &arbiter,
@@ -4169,10 +4588,10 @@ fn test_empty_milestones_rejected() {
         &deadline,
         &make_milestones(&s.env, &[]),
     );
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::AtLeastOneMilestoneRequired.into());
 }
 
 #[test]
-#[should_panic(expected = "Milestone index out of range")]
 fn test_milestone_out_of_range_rejected() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -4189,8 +4608,8 @@ fn test_milestone_out_of_range_rejected() {
         &deadline,
         &make_milestones(&s.env, &[100, 200]),
     );
-
-    s.client.approve_milestone(&buyer, &escrow_id, &5);
+    let __typed_err_result = s.client.try_approve_milestone(&buyer, &escrow_id, &5);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::MilestoneIndexOutRange.into());
 }
 
 // ------------------------------
@@ -4278,7 +4697,6 @@ fn test_multiple_top_ups() {
 }
 
 #[test]
-#[should_panic(expected = "Top-up limit exceeded")]
 fn test_top_up_limit_exceeded() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -4301,11 +4719,11 @@ fn test_top_up_limit_exceeded() {
     );
 
     // Max top-up is 3x original (200*3=600, so 400 extra allowed)
-    s.client.top_up_escrow(&buyer, &escrow_id, &450); // Will panic
+    let __typed_err_result = s.client.try_top_up_escrow(&buyer, &escrow_id, &450);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt2::TopUpLimitExceeded.into());
 }
 
 #[test]
-#[should_panic(expected = "Escrow is not active or awaiting inspection")]
 fn test_top_up_after_release_rejected() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -4331,7 +4749,8 @@ fn test_top_up_after_release_rejected() {
     s.client.release_escrow(&buyer, &escrow_id);
 
     // Try to top up
-    s.client.top_up_escrow(&buyer, &escrow_id, &100);
+    let __typed_err_result = s.client.try_top_up_escrow(&buyer, &escrow_id, &100);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt2::EscrowIsNotActiveOrAwaitingInspection.into());
 }
 
 #[test]
@@ -4473,7 +4892,6 @@ fn test_partial_release_reject() {
 }
 
 #[test]
-#[should_panic(expected = "Request already pending")]
 fn test_duplicate_partial_release() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -4500,7 +4918,8 @@ fn test_duplicate_partial_release() {
     s.client.request_partial_release(&seller, &escrow_id, &100, &justification_hash);
 
     // Second request (should panic)
-    s.client.request_partial_release(&seller, &escrow_id, &100, &justification_hash);
+    let __typed_err_result = s.client.try_request_partial_release(&seller, &escrow_id, &100, &justification_hash);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt2::RequestAlreadyPending.into());
 }
 
 #[test]
@@ -4541,7 +4960,6 @@ fn test_partial_release_escalate() {
 }
 
 #[test]
-#[should_panic(expected = "Partial release only allowed on active escrow")]
 fn test_partial_release_non_active() {
     let s = setup();
     let buyer = Address::generate(&s.env);
@@ -4568,7 +4986,8 @@ fn test_partial_release_non_active() {
 
     // Try to request partial release (should panic)
     let justification_hash = BytesN::from_array(&s.env, &[1u8; 32]);
-    s.client.request_partial_release(&seller, &escrow_id, &100, &justification_hash);
+    let __typed_err_result = s.client.try_request_partial_release(&seller, &escrow_id, &100, &justification_hash);
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt2::PartialReleaseOnlyAllowedActiveEscrow.into());
 }
 
 // ===========================================================================
@@ -4662,4 +5081,44 @@ fn test_withdraw_fees_zero_balance_on_fresh_contract_rejected() {
         &s.admin, &1, &s.token_addr, &Address::generate(&s.env),
     );
     assert!(result.is_err());
+}
+
+// ===========================================================================
+//  Issue #572: remove_arbiter batch length cap
+// ===========================================================================
+
+#[test]
+fn test_remove_arbiter_oversized_batch_rejected() {
+    let s = setup();
+
+    let arbiter = Address::generate(&s.env);
+    s.client.add_arbiter(&s.admin, &arbiter);
+
+    let mut escrow_ids = Vec::new(&s.env);
+    for i in 0..21u32 {
+        escrow_ids.push_back(i);
+    }
+
+    let result = s.client.try_remove_arbiter(&s.admin, &arbiter, &escrow_ids);
+    assert!(result.is_err());
+
+    // Storage must not have been mutated: arbiter is still in the pool.
+    let result_second_remove = s.client.try_remove_arbiter(&s.admin, &arbiter, &Vec::new(&s.env));
+    assert!(result_second_remove.is_ok());
+}
+
+#[test]
+fn test_remove_arbiter_valid_size_batch_still_works() {
+    let s = setup();
+
+    let arbiter = Address::generate(&s.env);
+    s.client.add_arbiter(&s.admin, &arbiter);
+
+    let mut escrow_ids = Vec::new(&s.env);
+    for i in 0..20u32 {
+        escrow_ids.push_back(i);
+    }
+
+    let result = s.client.try_remove_arbiter(&s.admin, &arbiter, &escrow_ids);
+    assert!(result.is_ok());
 }

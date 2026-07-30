@@ -22,6 +22,13 @@ const TEMP_BUMP_AMOUNT: u32 = 15_000;
 
 pub(crate) const MIGRATION_TIMEOUT_SECONDS: u64 = 604800; // 7 days in seconds
 
+// Maximum number of consecutive close_round calls allowed without an
+// intervening finalize_round. close_round only advances round state; it
+// never pays out the pot, records the audit trail, or mints contribution
+// receipts. This cap forces the admin back to finalize_round instead of
+// letting contributions accumulate un-paid indefinitely.
+pub(crate) const MAX_CONSECUTIVE_UNFINALIZED_ROUNDS: u32 = 3;
+
 pub mod types;
 pub use types::*;
 
@@ -710,6 +717,12 @@ impl AhjoorContract {
             .unwrap_or(0)
     }
 
+    /// Read-only balance view for integrators expecting a group-scoped API.
+    /// `group_id` is currently unused because this contract manages one group.
+    pub fn get_insurance_pool_balance(env: Env, _group_id: u32) -> i128 {
+        Self::get_insurance_pool(env)
+    }
+
     /// Get the proposed admin address, if any.
     pub fn get_proposed_admin(env: Env) -> Option<Address> {
         env.storage().instance().get(&DataKey2::ProposedAdmin)
@@ -1289,6 +1302,22 @@ impl AhjoorContract {
             .expect("Admin not set");
         admin.require_auth();
 
+        // Guard against an admin calling close_round repeatedly instead of
+        // finalize_round: close_round never pays out the pot, never records
+        // audit trail (CycleRecord/CycleSnapshotData), and never mints
+        // contribution receipts — only finalize_round does. Cap how many
+        // rounds in a row can be closed without an intervening
+        // finalize_round so contributions cannot accumulate un-paid
+        // indefinitely.
+        let unfinalized_streak: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey4::UnfinalizedRoundStreak)
+            .unwrap_or(0);
+        if unfinalized_streak >= MAX_CONSECUTIVE_UNFINALIZED_ROUNDS {
+            panic_with_error!(&env, ExtError2::RoundPendingFinalization);
+        }
+
         let use_timestamp: bool = env
             .storage()
             .instance()
@@ -1351,9 +1380,15 @@ impl AhjoorContract {
             .get(&DataKey::CurrentRound)
             .unwrap();
         events::emit_closed(&env, current_round, defaulters);
+        // Signal that this round was advanced without finalize_round (no pot
+        // payout / audit trail). The normal finalize_round path does not emit this.
+        events::emit_round_closed_without_payout(&env, current_round);
         env.storage()
             .instance()
             .set(&DataKey4::LastRoundDeadline, &deadline);
+        env.storage()
+            .instance()
+            .set(&DataKey4::UnfinalizedRoundStreak, &(unfinalized_streak + 1));
 
         internals::reset_round_state(&env, current_round);
     }
@@ -1385,8 +1420,20 @@ impl AhjoorContract {
         audit_trail::get_retention_window(&env)
     }
 
-    pub fn get_member_contribution_history(env: Env, member: Address) -> Vec<ContributionEntry> {
-        audit_trail::get_member_contribution_history(&env, member)
+    /// Returns `member`'s contribution entries within an optional cycle window.
+    ///
+    /// When both bounds are omitted, this returns the most recent
+    /// `audit_trail::DEFAULT_CONTRIBUTION_HISTORY_WINDOW` cycles.
+    /// When one bound is omitted, the other side is expanded by that same
+    /// default window. Any resolved range is still capped by
+    /// `audit_trail::MAX_CONTRIBUTION_HISTORY_RANGE` (100) cycles per call.
+    pub fn get_member_contribution_history(
+        env: Env,
+        member: Address,
+        from_cycle: Option<u32>,
+        to_cycle: Option<u32>,
+    ) -> Vec<ContributionEntry> {
+        audit_trail::get_member_contribution_history(&env, member, from_cycle, to_cycle)
     }
 
     pub fn finalize_round(env: Env) {
@@ -1399,6 +1446,12 @@ impl AhjoorContract {
             .expect("Admin not set");
         admin.require_auth();
         Self::process_pending_penalties(&env);
+
+        // finalize_round pays out the pot and records the audit trail /
+        // receipts, so the "rounds closed without finalizing" streak resets.
+        env.storage()
+            .instance()
+            .set(&DataKey4::UnfinalizedRoundStreak, &0u32);
 
         let use_timestamp: bool = env
             .storage()
@@ -2718,6 +2771,17 @@ impl AhjoorContract {
             .unwrap_or(Vec::new(&env))
     }
 
+    /// #644: Returns the current contents of DataKey3::AuctionBids for the active round.
+    /// 
+    /// This getter allows inspection of all current (non-sealed) auction bids before
+    /// resolution. Each SlotBid includes the bidder, desired slot, amount, and timestamp.
+    pub fn get_slot_bids(env: Env) -> Vec<SlotBid> {
+        env.storage()
+            .instance()
+            .get(&DataKey3::AuctionBids)
+            .unwrap_or(Vec::new(&env))
+    }
+
     // ─── Cross-Group Member Migration ────────────────────────────────────────
 
     /// Returns the base token address of this group (used by cross-contract migration checks).
@@ -3267,6 +3331,64 @@ impl AhjoorContract {
                     .set(&DataKey3::IncomingMigrations, &incoming);
             }
         }
+    }
+
+    /// Admin override to force-cancel a stalled migration request.
+    ///
+    /// Unlike `cancel_migration`, this does not require timeout expiry and can
+    /// remove migration state at any intermediate approval stage.
+    ///
+    /// Removes, when present, both:
+    /// - `MigrationRequests[member]`   (source-side request record)
+    /// - `IncomingMigrations[member]`  (destination-side approval record)
+    ///
+    /// Panics with `MigrationNotFound` if no migration state exists for `member`
+    /// on this contract.
+    pub fn admin_cancel_migration(env: Env, member: Address) {
+        internals::check_not_paused(&env);
+
+        let admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .expect("Not initialized");
+        admin.require_auth();
+
+        let mut changed = false;
+
+        let mut requests: Map<Address, MigrationRequest> = env
+            .storage()
+            .instance()
+            .get(&DataKey3::MigrationRequests)
+            .unwrap_or(Map::new(&env));
+        if requests.contains_key(member.clone()) {
+            requests.remove(member.clone());
+            env.storage()
+                .instance()
+                .set(&DataKey3::MigrationRequests, &requests);
+            changed = true;
+        }
+
+        let mut incoming: Map<Address, IncomingMigration> = env
+            .storage()
+            .instance()
+            .get(&DataKey3::IncomingMigrations)
+            .unwrap_or(Map::new(&env));
+        if incoming.contains_key(member.clone()) {
+            incoming.remove(member.clone());
+            env.storage()
+                .instance()
+                .set(&DataKey3::IncomingMigrations, &incoming);
+            changed = true;
+        }
+
+        if !changed {
+            panic_with_error!(&env, ExtError2::MigrationNotFound);
+        }
+
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
     /// Returns the pending outbound migration request for `member`, if any.
@@ -5906,11 +6028,87 @@ impl AhjoorContract {
         (contributed, remaining)
     }
 
-    pub fn get_round_history(env: Env) -> Vec<PayoutRecord> {
-        env.storage()
+    /// Paginated round-by-round payout history for a group (#555).
+    ///
+    /// `group_id` is accepted for API/event-payload consistency with other
+    /// group-scoped functions (see `freeze_group`); this contract manages a
+    /// single group per instance, so it is not used to key storage.
+    ///
+    /// Returns the slice `[offset, offset + limit)` of `RoundHistory`. An
+    /// out-of-range `offset` (>= total number of rounds) returns an empty
+    /// vec rather than panicking.
+    pub fn get_round_history(
+        env: Env,
+        _group_id: u32,
+        offset: u32,
+        limit: u32,
+    ) -> Vec<PayoutRecord> {
+        let history: Vec<PayoutRecord> = env
+            .storage()
             .persistent()
             .get(&PersistentKey::RoundHistory)
-            .unwrap_or(Vec::new(&env))
+            .unwrap_or(Vec::new(&env));
+
+        let total = history.len();
+        let start = offset.min(total);
+        let end = start.saturating_add(limit).min(total);
+
+        let mut page = Vec::new(&env);
+        for i in start..end {
+            page.push_back(history.get(i).unwrap());
+        }
+        page
+    }
+
+    /// Admin view of the current pending-penalty queue (#556).
+    ///
+    /// Penalties move through `request_penalty_grace` (deferred into the
+    /// queue when requested within the grace window) →
+    /// `process_pending_penalties` (applied once the grace period elapses
+    /// or the round advances) → `apply_penalty`. This surfaces which
+    /// members currently have an unprocessed pending penalty, without
+    /// mutating state or triggering processing.
+    ///
+    /// `group_id` is accepted for API consistency with other group-scoped
+    /// functions (see `freeze_group`); this contract manages a single group
+    /// per instance, so it is not used to key storage.
+    pub fn get_pending_penalties(env: Env, _group_id: u32) -> Vec<(Address, PendingPenaltyInfo)> {
+        let pending_penalties: Map<Address, u32> = env
+            .storage()
+            .instance()
+            .get(&DataKey4::PendingPenalties)
+            .unwrap_or(Map::new(&env));
+
+        let penalty_amount: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::PenaltyAmount)
+            .unwrap_or(0);
+        let grace_period_ledgers: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey4::GracePeriodLedgers)
+            .unwrap_or(0);
+        let round_deadline: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey4::LastRoundDeadline)
+            .or(env.storage().instance().get(&DataKey::RoundDeadline))
+            .unwrap_or(0);
+        let grace_expires_at = round_deadline.saturating_add(grace_period_ledgers as u64);
+
+        let mut result = Vec::new(&env);
+        for (member, round) in pending_penalties.iter() {
+            result.push_back((
+                member,
+                PendingPenaltyInfo {
+                    round,
+                    penalty_amount,
+                    grace_expires_at,
+                },
+            ));
+        }
+        result
     }
 
     pub fn get_state(env: Env) -> (u32, Vec<Address>, u64, PayoutStrategy, Address) {
@@ -6593,6 +6791,28 @@ impl AhjoorContract {
         env.storage()
             .temporary()
             .set(&DataKey2::ExitRequests, &requests);
+
+        // #389: Compact PayoutOrder so renumbered slots no longer point at
+        // the exited member. Skipped automatically when the member's slot was
+        // already paid out by an earlier round. `skip_reason = 0` means the
+        // compactor ran; `1` means past-slot guard tripped; `2` means the
+        // member was absent from `PayoutOrder` (defensive).
+        let current_round: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey::CurrentRound)
+            .unwrap_or(0);
+        let (_, slot_index, old_len, new_len, skip_reason) =
+            internals::compact_payout_order(&env, &member, current_round);
+        events::emit_payout_order_compacted(
+            &env,
+            member.clone(),
+            slot_index,
+            old_len,
+            new_len,
+            current_round,
+            skip_reason,
+        );
 
         Self::update_credit_score_internal(&env, &member, Symbol::new(&env, "early_exit"));
         events::emit_exit_ok(&env, member.clone(), refund_amount);
@@ -7314,6 +7534,32 @@ impl AhjoorContract {
             .instance()
             .set(&DataKey2::InsuranceCoverageMode, &mode);
         events::emit_insurance_coverage_mode_set(&env, mode as u32);
+    }
+
+    pub fn set_insurance_pool_low_threshold(env: Env, admin: Address, threshold: i128) {
+        admin.require_auth();
+        internals::check_not_paused(&env);
+        let a: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .expect("No admin");
+        if admin != a {
+            panic_with_error!(&env, ExtError::OnlyAdminAllowed);
+        }
+        if threshold < 0 {
+            panic_with_error!(&env, ExtError::InvalidAmount);
+        }
+        env.storage()
+            .instance()
+            .set(&DataKey4::InsurancePoolLowThreshold, &threshold);
+    }
+
+    pub fn get_insurance_pool_low_threshold(env: Env) -> i128 {
+        env.storage()
+            .instance()
+            .get(&DataKey4::InsurancePoolLowThreshold)
+            .unwrap_or(0)
     }
 
     pub fn get_insurance_claims(env: Env, round: u32) -> Vec<InsuranceClaim> {
@@ -8762,6 +9008,17 @@ impl AhjoorContract {
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
+    /// Returns the proxy authorization record for `member` in `group_id` (issue #643).
+    /// Returns `None` if no proxy has been authorized or if it was revoked.
+    pub fn get_proxy_authorization(env: Env, group_id: u32, member: Address, _proxy: Address) -> Option<ProxyAuthorization> {
+        let proxy_auths: Map<(u32, Address), ProxyAuthorization> = env
+            .storage()
+            .instance()
+            .get(&DataKey3::ProxyAuthorizations)
+            .unwrap_or(Map::new(&env));
+        proxy_auths.get((group_id, member))
+    }
+
     /// Co-signer pays on behalf of a defaulting member during the grace window.
     /// The contribution is recorded as the member's own.
     pub fn co_signer_contribute(
@@ -8873,6 +9130,18 @@ impl AhjoorContract {
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
+
+    /// Returns the co-signer record for `member` (issue #642).
+    /// Returns `None` if no co-signer has ever been set for that member.
+    pub fn get_co_signer_record(env: Env, _group_id: u32, member: Address) -> Option<CoSignerRecord> {
+        let co_signers: Map<Address, CoSignerRecord> = env
+            .storage()
+            .instance()
+            .get(&DataKey4::CoSigners)
+            .unwrap_or(Map::new(&env));
+        co_signers.get(member)
+    }
+
     /// Returns the freeze log (read-only, available even when frozen).
     pub fn get_freeze_log(env: Env) -> Vec<FreezeRecord> {
         env.storage()
@@ -9006,12 +9275,20 @@ impl AhjoorContract {
             state_hash: state_hash.clone(),
         };
 
-        log.push_back(snapshot);
+        log.push_back(snapshot.clone());
         env.storage()
             .persistent()
             .set(&PersistentKey::SnapshotLog, &log);
         env.storage().persistent().extend_ttl(
             &PersistentKey::SnapshotLog,
+            PERSISTENT_LIFETIME_THRESHOLD,
+            PERSISTENT_BUMP_AMOUNT,
+        );
+        env.storage()
+            .persistent()
+            .set(&PersistentKey::SnapshotByRound(current_round), &snapshot);
+        env.storage().persistent().extend_ttl(
+            &PersistentKey::SnapshotByRound(current_round),
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
@@ -9052,6 +9329,55 @@ impl AhjoorContract {
             .get(&PersistentKey::SnapshotLog)
             .unwrap_or(Vec::new(&env));
         log.len() as u32
+    }
+
+    /// Returns the latest snapshot captured for `round`, if one exists.
+    /// `group_id` is accepted for interface consistency but ignored (each contract is one group).
+    pub fn get_group_snapshot_at(env: Env, _group_id: u32, round: u32) -> Option<GroupSnapshot> {
+        if let Some(snapshot) = env
+            .storage()
+            .persistent()
+            .get::<PersistentKey, GroupSnapshot>(&PersistentKey::SnapshotByRound(round))
+        {
+            env.storage().persistent().extend_ttl(
+                &PersistentKey::SnapshotByRound(round),
+                PERSISTENT_LIFETIME_THRESHOLD,
+                PERSISTENT_BUMP_AMOUNT,
+            );
+            env.storage()
+                .instance()
+                .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+            return Some(snapshot);
+        }
+
+        // Backward-compat fallback for snapshots created before round indexing existed.
+        let log: Vec<GroupSnapshot> = env
+            .storage()
+            .persistent()
+            .get(&PersistentKey::SnapshotLog)
+            .unwrap_or(Vec::new(&env));
+        for i in (0..log.len()).rev() {
+            let candidate = log.get(i).expect("snapshot index in bounds");
+            if candidate.round_number == round {
+                env.storage()
+                    .persistent()
+                    .set(&PersistentKey::SnapshotByRound(round), &candidate);
+                env.storage().persistent().extend_ttl(
+                    &PersistentKey::SnapshotByRound(round),
+                    PERSISTENT_LIFETIME_THRESHOLD,
+                    PERSISTENT_BUMP_AMOUNT,
+                );
+                env.storage()
+                    .instance()
+                    .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+                return Some(candidate);
+            }
+        }
+
+        env.storage()
+            .instance()
+            .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+        None
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -9380,6 +9706,23 @@ impl AhjoorContract {
             groups_completed: 0,
             score: 0,
         })
+    }
+
+    /// Batch-read member credit score records for UI/leaderboard rendering.
+    /// Returns entries in the same order as the `members` input.
+    /// `group_id` is currently unused because this contract manages one group.
+    pub fn get_member_scores(env: Env, _group_id: u32, members: Vec<Address>) -> Vec<Option<MemberScore>> {
+        let scores: Map<Address, MemberScore> = env
+            .storage()
+            .persistent()
+            .get(&PersistentKey::MemberCreditScores)
+            .unwrap_or(Map::new(&env));
+
+        let mut result: Vec<Option<MemberScore>> = Vec::new(&env);
+        for member in members.iter() {
+            result.push_back(scores.get(member));
+        }
+        result
     }
 
     /// #457: Cross-contract credit score oracle.
@@ -10545,6 +10888,15 @@ impl AhjoorContract {
             .expect("Loan not found")
     }
 
+    /// Returns the total number of emergency loans ever issued (issue #645).
+    /// Returns `0` when no loan has ever been requested.
+    pub fn get_emergency_loan_counter(env: Env) -> u32 {
+        env.storage()
+            .persistent()
+            .get(&DataKey3::EmergencyLoanCounter)
+            .unwrap_or(0)
+    }
+
     /// Get member's active loan ID (0 if none)
     pub fn get_member_active_loan(env: Env, member: Address) -> u32 {
         env.storage()
@@ -11311,6 +11663,7 @@ impl AhjoorContract {
 }
 
 mod test;
+mod test_audit_trail;
 mod test_contrib_delegation;
 mod test_cosigner_guarantee;
 mod test_emergency_reserve;
