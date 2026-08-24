@@ -304,6 +304,15 @@ pub enum EscrowErrorExt4 {
     ArbiterIdsBatchTooLarge = 50,
 }
 
+/// Extension error codes — split from EscrowErrorExt4 because #[contracterror]
+/// is bounded by the soroban XDR 50-case limit.
+#[contracterror]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EscrowErrorExt5 {
+    /// Inspector must be an independent third party, not the buyer or seller.
+    InspectorCannotBeBuyerOrSeller = 1,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[contracttype]
 pub enum EscrowStatus {
@@ -1424,8 +1433,13 @@ impl AhjoorEscrowContract {
     ) -> u32 {
         Self::require_not_paused(&env);
         buyer.require_auth();
-        // #357: Enforce inspector score threshold for high-value escrows
         if let Some(ref insp) = inspector {
+            // An inspector who is also a party to the escrow has a conflict of
+            // interest and cannot provide an independent quality verdict.
+            if *insp == buyer || *insp == request.seller {
+                panic_with_error!(&env, EscrowErrorExt5::InspectorCannotBeBuyerOrSeller);
+            }
+            // #357: Enforce inspector score threshold for high-value escrows
             Self::require_inspector_score_ok(&env, insp, request.amount);
         }
         let escrow_id = Self::create_escrow_core(&env, &buyer, request);
@@ -1449,8 +1463,18 @@ impl AhjoorEscrowContract {
         let mut escrow: Escrow = env
             .storage().persistent().get(&DataKey::Escrow(escrow_id)).expect("Escrow not found");
         if escrow.seller != seller { panic_with_error!(&env, EscrowError::OnlySellerCanMarkComplete); }
-        if !Self::is_open_escrow_status(escrow.status) { panic_with_error!(&env, EscrowError::EscrowIsNotActive); }
-        if escrow.extensions.inspector.is_none() { panic_with_error!(&env, EscrowError::NoInspectorSetUseReleaseEscrowDirectly); }
+
+        if escrow.extensions.inspector.is_none() {
+            // No inspector configured — nothing to gate; buyer can release directly.
+            if !Self::is_open_escrow_status(escrow.status) { panic_with_error!(&env, EscrowError::EscrowIsNotActive); }
+            return;
+        }
+
+        // Allow resubmission after a prior inspection failure, in addition to the
+        // normal open statuses.
+        if !Self::is_open_escrow_status(escrow.status) && escrow.status != EscrowStatus::InspectionFailed {
+            panic_with_error!(&env, EscrowError::EscrowIsNotActive);
+        }
         escrow.status = EscrowStatus::AwaitingInspection;
         Self::record_status_history(&env, escrow_id, EscrowStatus::AwaitingInspection);
         env.storage().persistent().set(&DataKey::Escrow(escrow_id), &escrow);
@@ -3168,17 +3192,20 @@ impl AhjoorEscrowContract {
         let raw_buyer_amount = (distributable * buyer_percent as i128) / 100;
         let raw_seller_amount = distributable - raw_buyer_amount;
 
-        // Deduct insurance from the winning side's share (floor at 0).
-        // For a split verdict both sides "won" a portion, so we conservatively
-        // deduct from whichever side received the larger share. If split is
-        // exactly equal we deduct from buyer (to be safe).
+        // Deduct insurance from whichever party actually claimed it (floor at 0).
+        // The claimant is recorded in InsuranceClaimRecord when the claim is made;
+        // deducting based on verdict share size (rather than claimant identity)
+        // would wrongly reduce the other party's payout when the claimant loses.
         let (buyer_amount, seller_amount) = if insurance_paid > 0 {
-            if buyer_percent >= seller_percent {
-                // Buyer's side received more (or equal) → deduct from buyer
+            let claim_record: InsuranceClaimRecord = env
+                .storage()
+                .persistent()
+                .get(&DataKey2::InsuranceClaimRecord(escrow_id))
+                .expect("InsuranceClaimRecord must exist when InsuranceClaimed is set");
+            if claim_record.claimant == escrow.buyer {
                 let buyer_net = (raw_buyer_amount - insurance_paid).max(0);
                 (buyer_net, raw_seller_amount)
             } else {
-                // Seller's side received more → deduct from seller
                 let seller_net = (raw_seller_amount - insurance_paid).max(0);
                 (raw_buyer_amount, seller_net)
             }

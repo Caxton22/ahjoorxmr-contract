@@ -427,6 +427,7 @@ fn test_list_active_consent_records() {
     // Sign the active and revoked record; leave unsigned unsigned
     s.client.sign_consent(&customer, &consent_active);
     s.client.sign_consent(&customer, &consent_revoked);
+    s.client.sign_consent(&other_customer, &consent_other);
 
     // Revoke the second record
     s.client.revoke_consent(&merchant, &consent_revoked);

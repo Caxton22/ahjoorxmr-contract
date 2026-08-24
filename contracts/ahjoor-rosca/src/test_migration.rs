@@ -209,8 +209,10 @@ fn test_admin_cancel_migration_clears_destination_incoming() {
     let dest_member = Address::generate(&env);
     let dest_client = setup_group(&env, &dest_admin, &dest_member, &token);
 
-    src_client.request_group_migration(&member, &dest_client.address, &0u32);
-    dest_client.approve_migration_entry(&member, &src_client.address, &0u32);
+    // Destination group already has one member occupying slot 0, so the
+    // incoming member must target slot 1 (append at end) to avoid SlotOccupied.
+    src_client.request_group_migration(&member, &dest_client.address, &1u32);
+    dest_client.approve_migration_entry(&member, &src_client.address, &1u32);
 
     // Force-cancel on destination before source reaches BothApproved.
     dest_client.admin_cancel_migration(&member);

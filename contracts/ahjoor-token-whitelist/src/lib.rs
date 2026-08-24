@@ -95,6 +95,20 @@ pub struct TokenMetadata {
     pub canonical_oracle: Option<Address>,
 }
 
+/// Result of a contract-level allowlist lookup.
+///
+/// Not represented as `Option<Option<u32>>`: the SDK's blanket `Option<T>`
+/// Val conversion collapses `None` (outer, absent) and `Some(None)` (inner,
+/// permanent) to the same `Val::VOID` when crossing the contract-call
+/// boundary, making the two states indistinguishable to callers.
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ContractTokenEntry {
+    Absent,
+    Permanent,
+    Expires(u32),
+}
+
 #[contracttype]
 #[derive(Clone)]
 pub enum DataKey {
@@ -643,9 +657,13 @@ impl TokenWhitelistContract {
         env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
-    pub fn get_contract_token_entry(env: Env, contract_id: Address, token: Address) -> Option<Option<u32>> {
+    pub fn get_contract_token_entry(env: Env, contract_id: Address, token: Address) -> ContractTokenEntry {
         let key = DataKey::ContractTokenAllowlist(contract_id, token);
-        env.storage().persistent().get::<_, Option<u32>>(&key)
+        match env.storage().persistent().get::<_, Option<u32>>(&key) {
+            None => ContractTokenEntry::Absent,
+            Some(None) => ContractTokenEntry::Permanent,
+            Some(Some(expiry)) => ContractTokenEntry::Expires(expiry),
+        }
     }
 
     /// Permissionlessly remove a contract-level allowlist entry once its

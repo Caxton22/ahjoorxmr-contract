@@ -168,14 +168,18 @@ fn test_insurance_pool_low_emits_once_then_exhausts() {
     let member1 = members.get(1).unwrap();
 
     // Round 0: draw 100 from 250 -> 150 (crosses below 200; low event should fire once).
+    // Event counts must be read immediately after finalize_round(): this test
+    // environment's event log only retains events since the last contract
+    // invocation, so any further client call (even a read-only getter) before
+    // checking events would observe an empty log.
     env.ledger().with_mut(|l| l.timestamp = 100);
     client.contribute(&member0, &token_addr, &100);
     client.contribute(&member1, &token_addr, &100);
     env.ledger().with_mut(|l| l.timestamp = 3800);
     client.finalize_round();
-    assert_eq!(client.get_insurance_pool(), 150);
     assert_eq!(count_topic_events(&env, "insurance_pool_low"), 1);
     assert_eq!(count_topic_events(&env, "InsExhausted"), 0);
+    assert_eq!(client.get_insurance_pool(), 150);
 
     // Round 1: draw 100 from 150 -> 50 (already below threshold; no new low event).
     env.ledger().with_mut(|l| l.timestamp = 3900);
@@ -183,9 +187,9 @@ fn test_insurance_pool_low_emits_once_then_exhausts() {
     client.contribute(&member1, &token_addr, &100);
     env.ledger().with_mut(|l| l.timestamp = 7600);
     client.finalize_round();
-    assert_eq!(client.get_insurance_pool(), 50);
-    assert_eq!(count_topic_events(&env, "insurance_pool_low"), 1);
+    assert_eq!(count_topic_events(&env, "insurance_pool_low"), 0);
     assert_eq!(count_topic_events(&env, "InsExhausted"), 0);
+    assert_eq!(client.get_insurance_pool(), 50);
 
     // Round 2: draw remaining 50 from 50 -> 0; pool exhausted event should fire.
     env.ledger().with_mut(|l| l.timestamp = 7700);
@@ -193,7 +197,7 @@ fn test_insurance_pool_low_emits_once_then_exhausts() {
     client.contribute(&member1, &token_addr, &100);
     env.ledger().with_mut(|l| l.timestamp = 11400);
     client.finalize_round();
-    assert_eq!(client.get_insurance_pool(), 0);
-    assert_eq!(count_topic_events(&env, "insurance_pool_low"), 1);
+    assert_eq!(count_topic_events(&env, "insurance_pool_low"), 0);
     assert_eq!(count_topic_events(&env, "InsExhausted"), 1);
+    assert_eq!(client.get_insurance_pool(), 0);
 }

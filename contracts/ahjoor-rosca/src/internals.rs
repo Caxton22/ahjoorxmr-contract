@@ -298,7 +298,13 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
         let mut balance = client.balance(&env.current_contract_address());
 
         if token_addr == base_token {
+            // Insurance reserve funds are held in the same token custody as round
+            // contributions but tracked separately via `InsurancePool`; they must
+            // never be swept into the round payout, or the reserve gets drained
+            // to the payout recipient instead of remaining available for future
+            // shortfalls.
             balance -= reward_pool;
+            balance -= insurance_pool;
             total_payout_history_amt = balance;
         }
 

@@ -9780,7 +9780,7 @@ impl AhjoorPaymentsContract {
             .unwrap_or(0);
         let now = env.ledger().sequence() as u64;
         let mut result = Vec::new(&env);
-        for consent_id in 0..counter {
+        for consent_id in 1..=counter {
             let consent: ConsentRecord = match env
                 .storage()
                 .persistent()

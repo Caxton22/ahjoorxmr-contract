@@ -10,7 +10,7 @@
 //! - Permanent (None expiry) vs time-bounded (Some(n)) approvals
 //! - get_contract_token_entry query returns the stored entry correctly
 
-use crate::{TokenWhitelistContract, TokenWhitelistContractClient};
+use crate::{ContractTokenEntry, TokenWhitelistContract, TokenWhitelistContractClient};
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
     Address, Env,
@@ -311,10 +311,13 @@ fn test_get_contract_token_entry_none_when_absent() {
     let contract_id = Address::generate(&env);
     let token = Address::generate(&env);
 
-    assert_eq!(client.get_contract_token_entry(&contract_id, &token), None);
+    assert_eq!(
+        client.get_contract_token_entry(&contract_id, &token),
+        ContractTokenEntry::Absent
+    );
 }
 
-/// Returns Some(None) for a permanent entry.
+/// Returns Permanent for a permanent entry.
 #[test]
 fn test_get_contract_token_entry_permanent() {
     let (env, admin, client) = setup();
@@ -324,11 +327,11 @@ fn test_get_contract_token_entry_permanent() {
     client.set_contract_token(&admin, &contract_id, &token, &None);
     assert_eq!(
         client.get_contract_token_entry(&contract_id, &token),
-        Some(None)
+        ContractTokenEntry::Permanent
     );
 }
 
-/// Returns Some(Some(n)) for a time-bounded entry.
+/// Returns Expires(n) for a time-bounded entry.
 #[test]
 fn test_get_contract_token_entry_time_bounded() {
     let (env, admin, client) = setup();
@@ -339,11 +342,11 @@ fn test_get_contract_token_entry_time_bounded() {
     client.set_contract_token(&admin, &contract_id, &token, &Some(expiry));
     assert_eq!(
         client.get_contract_token_entry(&contract_id, &token),
-        Some(Some(expiry))
+        ContractTokenEntry::Expires(expiry)
     );
 }
 
-/// After removal, get_contract_token_entry returns None again.
+/// After removal, get_contract_token_entry returns Absent again.
 #[test]
 fn test_get_contract_token_entry_cleared_after_removal() {
     let (env, admin, client) = setup();
@@ -351,10 +354,16 @@ fn test_get_contract_token_entry_cleared_after_removal() {
     let token = Address::generate(&env);
 
     client.set_contract_token(&admin, &contract_id, &token, &None);
-    assert!(client.get_contract_token_entry(&contract_id, &token).is_some());
+    assert_ne!(
+        client.get_contract_token_entry(&contract_id, &token),
+        ContractTokenEntry::Absent
+    );
 
     client.remove_contract_token(&admin, &contract_id, &token);
-    assert_eq!(client.get_contract_token_entry(&contract_id, &token), None);
+    assert_eq!(
+        client.get_contract_token_entry(&contract_id, &token),
+        ContractTokenEntry::Absent
+    );
 }
 
 // ─── Per-contract isolation ───────────────────────────────────────────────────
@@ -470,7 +479,10 @@ fn test_cleanup_removes_expired_entry() {
     // Anyone (no admin auth) can trigger cleanup once expired.
     client.cleanup_expired_contract_token(&contract_id, &token);
 
-    assert_eq!(client.get_contract_token_entry(&contract_id, &token), None);
+    assert_eq!(
+        client.get_contract_token_entry(&contract_id, &token),
+        ContractTokenEntry::Absent
+    );
 }
 
 /// Cleanup on a not-yet-expired, time-bounded entry fails and leaves the
@@ -534,16 +546,19 @@ fn test_cleanup_mix_of_expired_and_active_entries() {
 
     // Only contract_a's entry is expired and cleanable.
     client.cleanup_expired_contract_token(&contract_a, &token);
-    assert_eq!(client.get_contract_token_entry(&contract_a, &token), None);
+    assert_eq!(
+        client.get_contract_token_entry(&contract_a, &token),
+        ContractTokenEntry::Absent
+    );
 
     // contract_b and contract_c entries are untouched.
     assert_eq!(
         client.get_contract_token_entry(&contract_b, &token),
-        Some(Some(base + 1000))
+        ContractTokenEntry::Expires(base + 1000)
     );
     assert_eq!(
         client.get_contract_token_entry(&contract_c, &token),
-        Some(None)
+        ContractTokenEntry::Permanent
     );
 
     // Attempting cleanup on the still-active or permanent entries fails and
@@ -553,6 +568,12 @@ fn test_cleanup_mix_of_expired_and_active_entries() {
     let result_c = client.try_cleanup_expired_contract_token(&contract_c, &token);
     assert!(result_c.is_err());
 
-    assert!(client.get_contract_token_entry(&contract_b, &token).is_some());
-    assert!(client.get_contract_token_entry(&contract_c, &token).is_some());
+    assert_ne!(
+        client.get_contract_token_entry(&contract_b, &token),
+        ContractTokenEntry::Absent
+    );
+    assert_ne!(
+        client.get_contract_token_entry(&contract_c, &token),
+        ContractTokenEntry::Absent
+    );
 }
