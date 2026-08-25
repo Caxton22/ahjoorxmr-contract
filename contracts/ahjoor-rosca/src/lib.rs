@@ -2782,6 +2782,38 @@ impl AhjoorContract {
             .unwrap_or(Vec::new(&env))
     }
 
+    /// #749: Returns (auction_enabled, auction_window_ledgers, auction_open_until, auction_round)
+    /// so callers can check whether an auction is currently open, which round it targets,
+    /// and when the bidding window closes, without inferring it from bid events.
+    pub fn get_auction_status(env: Env) -> (bool, u64, u64, u32) {
+        let auction_enabled: bool = env
+            .storage()
+            .instance()
+            .get(&DataKey3::AuctionEnabled)
+            .unwrap_or(false);
+        let auction_window_ledgers: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey3::AuctionWindowLedgers)
+            .unwrap_or(0);
+        let auction_open_until: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey3::AuctionOpenUntil)
+            .unwrap_or(0);
+        let auction_round: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey3::AuctionRound)
+            .unwrap_or(0);
+        (
+            auction_enabled,
+            auction_window_ledgers,
+            auction_open_until,
+            auction_round,
+        )
+    }
+
     // ─── Cross-Group Member Migration ────────────────────────────────────────
 
     /// Returns the base token address of this group (used by cross-contract migration checks).
