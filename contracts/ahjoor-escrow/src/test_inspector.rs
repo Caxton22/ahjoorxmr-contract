@@ -558,6 +558,25 @@ fn test_inspector_score_threshold_below_amount_allows_escrow() {
 }
 
 #[test]
+fn test_get_inspector_ruling_appealed() {
+    let (env, admin, buyer, seller, arbiter, token, client) = setup_test_env();
+    let inspector = Address::generate(&env);
+
+    let req = make_request(&env, &seller, &arbiter, &token, 1000);
+    let eid = client.create_escrow_with_inspector(&buyer, &req, &Some(inspector.clone()));
+    client.dispute_escrow(&buyer, &eid, &String::from_str(&env, "d"), &1000);
+    client.resolve_dispute(&arbiter, &eid, &0);
+
+    // False before any appeal.
+    assert_eq!(client.get_inspector_ruling_appealed(&eid), false);
+
+    client.appeal_inspector_ruling(&admin, &eid);
+
+    // True after appeal.
+    assert_eq!(client.get_inspector_ruling_appealed(&eid), true);
+}
+
+#[test]
 fn test_inspector_double_submission_rejected() {
     let (env, _admin, buyer, seller, arbiter, token, client) = setup_test_env();
     let inspector = Address::generate(&env);

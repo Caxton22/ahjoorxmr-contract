@@ -391,6 +391,44 @@ fn test_cancel_auto_renewal_no_config_panics() {
     assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowError::NoAutoRenewConfigSetEscrow.into());
 }
 
+/// get_auto_renewal_cancelled reflects cancellation state and a cancelled
+/// escrow's auto-renewal is skipped on release.
+#[test]
+fn test_get_auto_renewal_cancelled() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 500;
+
+    let cfg = AutoRenewConfig {
+        max_renewals: 3,
+        renewal_interval_ledgers: 100,
+    };
+
+    let escrow_id = s.client.create_escrow_with_auto_renew(
+        &buyer, &seller, &arbiter, &200, &s.token_addr, &deadline, &None, &cfg,
+    );
+
+    // Initially false.
+    assert_eq!(s.client.get_auto_renewal_cancelled(&escrow_id), false);
+
+    approve_allowance(&s, &buyer, 200 * 3);
+
+    s.client.cancel_auto_renewal(&buyer, &escrow_id);
+
+    // True after cancellation.
+    assert_eq!(s.client.get_auto_renewal_cancelled(&escrow_id), true);
+
+    // Release should succeed but NOT trigger renewal, matching the flag.
+    s.client.release_escrow(&buyer, &escrow_id);
+    let result = s.client.try_get_escrow(&1u32);
+    assert!(result.is_err(), "Renewal should be skipped once cancelled flag is set");
+}
+
 /// Max renewals cap: renewals_completed == max_renewals means no further renewal.
 #[test]
 fn test_max_renewals_cap_enforced() {

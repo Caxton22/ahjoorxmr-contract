@@ -793,6 +793,10 @@ pub enum DataKey2 {
     InsuranceClaimRecord(u32),
     /// #578: running counter of escrows currently in a disputed state (Disputed, PartiallyDisputed, AwaitingBuyerVetoDecision)
     ActiveDisputeCount,
+    /// Auto-renewal: maps a renewed (successor) escrow ID back to the original
+    /// escrow ID that started its renewal chain, so history can be accumulated
+    /// under a single key across multi-hop chains.
+    RenewalOriginalId(u32),
 }
 
 /// #357: On-chain reputation record for an inspector.
@@ -1660,6 +1664,14 @@ impl AhjoorEscrowContract {
         };
         events::emit_inspector_score_updated(&env, inspector, score.total_rulings, score.correct_rulings, accuracy_bps);
         env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+    }
+
+    /// Returns whether the inspector ruling for this escrow has already been appealed.
+    pub fn get_inspector_ruling_appealed(env: Env, escrow_id: u32) -> bool {
+        env.storage()
+            .persistent()
+            .get(&DataKey2::InspectorRulingAppealed(escrow_id))
+            .unwrap_or(false)
     }
 
     /// Internal: record a ruling for an inspector (increment total + correct).
@@ -2531,6 +2543,14 @@ impl AhjoorEscrowContract {
             .persistent()
             .get(&DataKey2::RenewalHistory(escrow_id))
             .unwrap_or(Vec::new(&env))
+    }
+
+    /// Returns whether the buyer has cancelled future auto-renewals for this escrow.
+    pub fn get_auto_renewal_cancelled(env: Env, escrow_id: u32) -> bool {
+        env.storage()
+            .persistent()
+            .get(&DataKey2::AutoRenewalCancelled(escrow_id))
+            .unwrap_or(false)
     }
 
     /// Release part of the escrowed funds to seller. Can be called by buyer or arbiter.
@@ -7399,6 +7419,20 @@ impl AhjoorEscrowContract {
             .unwrap_or(Vec::new(&env))
     }
 
+    /// Returns the multi-party approval configuration for an escrow: (approvers, threshold).
+    /// Returns None if `set_multiparty_approval` has never been called for this escrow.
+    pub fn get_multiparty_config(env: Env, escrow_id: u32) -> Option<(Vec<Address>, u32)> {
+        let approvers: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::MultiPartyApprovers(escrow_id))?;
+        let threshold: u32 = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::MultiPartyThreshold(escrow_id))?;
+        Some((approvers, threshold))
+    }
+
     // ── #353: Time-Locked Staged Release ─────────────────────────────────────
 
     /// Create an escrow with a staged release schedule.
@@ -8219,10 +8253,26 @@ impl AhjoorEscrowContract {
                 );
             }
 
-            // Append new_escrow_id to the renewal history of the original escrow
-            // The "original" escrow is tracked by walking back: we store history keyed
-            // by old_escrow_id so callers can call get_renewal_history(original_id).
-            let history_key = DataKey2::RenewalHistory(old_escrow_id);
+            // Append new_escrow_id to the renewal history of the ORIGINAL escrow.
+            // old_escrow_id may itself be a renewed successor several hops into the
+            // chain, so resolve the true original via RenewalOriginalId before
+            // appending, and propagate that original id forward to new_escrow_id.
+            let original_id: u32 = env
+                .storage()
+                .persistent()
+                .get(&DataKey2::RenewalOriginalId(old_escrow_id))
+                .unwrap_or(old_escrow_id);
+
+            env.storage()
+                .persistent()
+                .set(&DataKey2::RenewalOriginalId(new_escrow_id), &original_id);
+            env.storage().persistent().extend_ttl(
+                &DataKey2::RenewalOriginalId(new_escrow_id),
+                PERSISTENT_LIFETIME_THRESHOLD,
+                PERSISTENT_BUMP_AMOUNT,
+            );
+
+            let history_key = DataKey2::RenewalHistory(original_id);
             let mut history: Vec<u32> = env
                 .storage()
                 .persistent()
@@ -8754,6 +8804,15 @@ impl AhjoorEscrowContract {
             .unwrap_or(DEFAULT_VETO_COOLDOWN_SECONDS)
     }
 
+    /// Returns the pending seller transfer proposal for an escrow, if any.
+    /// None once the proposal has been resolved (approved, vetoed, or expired-approved)
+    /// or if no transfer was ever proposed.
+    pub fn get_seller_transfer_proposal(env: Env, escrow_id: u32) -> Option<SellerTransferProposal> {
+        env.storage()
+            .persistent()
+            .get(&DataKey2::SellerTransferProposal(escrow_id))
+    }
+
     /// Buyer explicitly approves the seller transfer, finalising it immediately.
     pub fn approve_seller_transfer(env: Env, buyer: Address, escrow_id: u32) {
         buyer.require_auth();
@@ -8776,10 +8835,10 @@ impl AhjoorEscrowContract {
         escrow.seller = proposal.new_seller.clone();
         let old_status = escrow.status;
         escrow.status = EscrowStatus::Active;
-        
+
         // #578: Update active dispute count
         Self::update_dispute_count(&env, old_status, EscrowStatus::Active);
-        
+
         Self::record_status_history(&env, escrow_id, EscrowStatus::Active);
         env.storage()
             .persistent()
@@ -8789,6 +8848,9 @@ impl AhjoorEscrowContract {
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
+        env.storage()
+            .persistent()
+            .remove(&DataKey2::SellerTransferProposal(escrow_id));
         events::emit_seller_transfer_approved(&env, escrow_id, proposal.new_seller);
         env.storage()
             .instance()
@@ -8947,10 +9009,10 @@ impl AhjoorEscrowContract {
         escrow.seller = proposal.new_seller.clone();
         let old_status = escrow.status;
         escrow.status = EscrowStatus::Active;
-        
+
         // #578: Update active dispute count
         Self::update_dispute_count(&env, old_status, EscrowStatus::Active);
-        
+
         Self::record_status_history(&env, escrow_id, EscrowStatus::Active);
         env.storage()
             .persistent()
@@ -8960,6 +9022,9 @@ impl AhjoorEscrowContract {
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
+        env.storage()
+            .persistent()
+            .remove(&DataKey2::SellerTransferProposal(escrow_id));
         events::emit_seller_transfer_expired_approved(&env, escrow_id, proposal.new_seller);
         env.storage()
             .instance()
@@ -9054,6 +9119,9 @@ impl AhjoorEscrowContract {
             PERSISTENT_LIFETIME_THRESHOLD,
             PERSISTENT_BUMP_AMOUNT,
         );
+        env.storage()
+            .persistent()
+            .remove(&DataKey2::SellerTransferProposal(escrow_id));
         events::emit_seller_transfer_vetoed(&env, escrow_id, buyer, amount);
         env.storage()
             .instance()
@@ -9449,3 +9517,9 @@ mod test_multi_buyer;
 
 #[cfg(test)]
 mod test_dispute_count;
+
+#[cfg(test)]
+mod test_auto_renewal;
+
+#[cfg(test)]
+mod test_multiparty_approval;
