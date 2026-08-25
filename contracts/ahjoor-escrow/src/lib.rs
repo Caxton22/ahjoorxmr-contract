@@ -4417,6 +4417,32 @@ impl AhjoorEscrowContract {
             .expect("Escrow not found")
     }
 
+    /// #719: Get a multi-buyer escrow's participant list, per-buyer
+    /// contribution shares, and the buyers who have already approved
+    /// release. Returns empty collections for an escrow that was not
+    /// created via `create_multi_buyer_escrow`.
+    pub fn get_multi_buyer_details(
+        env: Env,
+        escrow_id: u32,
+    ) -> (Vec<Address>, Map<Address, i128>, Vec<Address>) {
+        let buyers: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::MultiBuyerList(escrow_id))
+            .unwrap_or(Vec::new(&env));
+        let shares: Map<Address, i128> = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::BuyerShares(escrow_id))
+            .unwrap_or(Map::new(&env));
+        let approvals: Vec<Address> = env
+            .storage()
+            .persistent()
+            .get(&DataKey2::MultiBuyerReleaseApprovals(escrow_id))
+            .unwrap_or(Vec::new(&env));
+        (buyers, shares, approvals)
+    }
+
     /// #574: Get the bounded status-transition history for an escrow, oldest first.
     pub fn get_escrow_status_history(env: Env, escrow_id: u32) -> Vec<(EscrowStatus, u64)> {
         env.storage()

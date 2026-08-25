@@ -100,3 +100,80 @@ fn test_multi_buyer_refund_proportional_on_expiry() {
     assert_eq!(token_client.balance(&buyer1), 1_000);
     assert_eq!(token_client.balance(&buyer2), 1_000);
 }
+
+#[test]
+fn test_get_multi_buyer_details() {
+    let (env, client, _admin, token_addr, token_client, token_admin_client) = setup();
+    let buyer1 = Address::generate(&env);
+    let buyer2 = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let arbiter = Address::generate(&env);
+
+    token_admin_client.mint(&buyer1, &1_000);
+    token_admin_client.mint(&buyer2, &1_000);
+    token_client.approve(&buyer1, &client.address, &300, &(env.ledger().sequence() + 10_000));
+    token_client.approve(&buyer2, &client.address, &700, &(env.ledger().sequence() + 10_000));
+
+    let mut buyers: Vec<(Address, i128)> = Vec::new(&env);
+    buyers.push_back((buyer1.clone(), 300));
+    buyers.push_back((buyer2.clone(), 700));
+
+    let deadline = env.ledger().timestamp() + 1_000;
+    let escrow_id = client.create_multi_buyer_escrow(
+        &buyers,
+        &seller,
+        &arbiter,
+        &token_addr,
+        &deadline,
+    );
+
+    // Buyer list and per-buyer shares match creation inputs; no approvals yet.
+    let (buyer_list, shares, approvals) = client.get_multi_buyer_details(&escrow_id);
+    assert_eq!(buyer_list.len(), 2);
+    assert_eq!(buyer_list.get(0).unwrap(), buyer1);
+    assert_eq!(buyer_list.get(1).unwrap(), buyer2);
+    assert_eq!(shares.get(buyer1.clone()).unwrap(), 300);
+    assert_eq!(shares.get(buyer2.clone()).unwrap(), 700);
+    assert_eq!(approvals.len(), 0);
+
+    // Approvals grow as buyers approve release.
+    client.release_escrow(&buyer1, &escrow_id);
+    let (_, _, approvals_after_first) = client.get_multi_buyer_details(&escrow_id);
+    assert_eq!(approvals_after_first.len(), 1);
+    assert_eq!(approvals_after_first.get(0).unwrap(), buyer1);
+
+    client.release_escrow(&buyer2, &escrow_id);
+    let (_, _, approvals_after_second) = client.get_multi_buyer_details(&escrow_id);
+    assert_eq!(approvals_after_second.len(), 2);
+    assert_eq!(approvals_after_second.get(1).unwrap(), buyer2);
+}
+
+#[test]
+fn test_get_multi_buyer_details_for_non_multi_buyer_escrow_is_empty() {
+    let (env, client, _admin, token_addr, token_client, token_admin_client) = setup();
+    let buyer = Address::generate(&env);
+    let seller = Address::generate(&env);
+    let arbiter = Address::generate(&env);
+
+    token_admin_client.mint(&buyer, &1_000);
+    token_client.approve(&buyer, &client.address, &1_000, &(env.ledger().sequence() + 10_000));
+
+    let deadline = env.ledger().timestamp() + 1_000;
+    let escrow_id = client.create_escrow(
+        &buyer,
+        &seller,
+        &arbiter,
+        &1_000,
+        &token_addr,
+        &deadline,
+        &None,
+        &Vec::new(&env),
+        &false,
+        &0u32,
+    );
+
+    let (buyer_list, shares, approvals) = client.get_multi_buyer_details(&escrow_id);
+    assert_eq!(buyer_list.len(), 0);
+    assert_eq!(shares.len(), 0);
+    assert_eq!(approvals.len(), 0);
+}

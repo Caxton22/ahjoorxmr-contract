@@ -167,6 +167,24 @@ fn test_multiple_tokens() {
     assert_eq!(tokens.len(), 2);
 }
 
+/// #717: `client.rs` declares a hand-written `TokenWhitelistInterface` used
+/// by dependent contracts (ahjoor-escrow, ahjoor-payments, ahjoor-refund,
+/// ahjoor-rosca) for cross-contract calls, so it can drift from the real
+/// entry points in this file. Exercising the generated `TokenWhitelistClient`
+/// (not the contract's own `TokenWhitelistContractClient`) against the live
+/// contract catches that drift at compile/test time.
+#[test]
+fn test_cross_contract_client_get_whitelisted_tokens_signature() {
+    let (env, admin, client) = setup_test();
+    let token = Address::generate(&env);
+    client.add_token(&admin, &token);
+
+    let cross_contract_client = crate::TokenWhitelistClient::new(&env, &client.address);
+    let tokens = cross_contract_client.get_whitelisted_tokens(&0u32, &50u32);
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens.get(0).unwrap(), token);
+}
+
 #[test]
 fn test_admin_transfer() {
     let (env, admin, client) = setup_test();
@@ -220,6 +238,23 @@ fn test_accept_admin_without_proposal() {
 }
 
 #[test]
+fn test_get_proposed_admin() {
+    let (env, admin, client) = setup_test();
+    let new_admin = Address::generate(&env);
+
+    // Never proposed
+    assert_eq!(client.get_proposed_admin(), None);
+
+    // Propose then read back
+    client.propose_admin(&admin, &new_admin);
+    assert_eq!(client.get_proposed_admin(), Some(new_admin.clone()));
+
+    // Accepting clears the pending proposal
+    client.accept_admin(&new_admin);
+    assert_eq!(client.get_proposed_admin(), None);
+}
+
+#[test]
 fn test_token_delisted_mid_operation() {
     let (env, admin, client) = setup_test();
     let token = Address::generate(&env);
@@ -233,6 +268,60 @@ fn test_token_delisted_mid_operation() {
 
     // Token should no longer be allowed
     assert!(!client.is_token_allowed(&token));
+}
+
+#[test]
+fn test_remove_token_clears_quota_tier_override_metadata() {
+    let (env, admin, client) = setup_test();
+    let token = Address::generate(&env);
+
+    client.add_token(&admin, &token);
+
+    // Set a quota
+    client.set_token_quota(&admin, &token, &1_000_000i128, &100u32);
+    assert!(client.get_token_quota(&token).is_some());
+
+    // Set a risk tier + a per-token override
+    client.set_risk_tier(
+        &admin,
+        &2u32,
+        &soroban_sdk::String::from_str(&env, "tier-2"),
+        &500i128,
+        &1000i128,
+    );
+    client.assign_token_tier(&admin, &token, &2u32);
+    client.set_token_limit_override(&admin, &token, &777i128, &888i128);
+    let limits_before = client.get_token_tier_limits(&token);
+    assert_eq!(limits_before.max_single_tx_amount, 777);
+    assert_eq!(limits_before.max_daily_volume, 888);
+
+    // Set metadata
+    let logo_hash = BytesN::from_array(&env, &[9u8; 32]);
+    client.set_token_metadata(
+        &admin,
+        &token,
+        &6u32,
+        &soroban_sdk::String::from_str(&env, "TKN"),
+        &logo_hash,
+        &None,
+    );
+    assert!(client.try_get_token_metadata(&token).is_ok());
+
+    // Removing the token clears quota, tier, override, and metadata
+    client.remove_token(&admin, &token);
+    assert_eq!(client.get_token_quota(&token), None);
+    assert!(client.try_get_token_metadata(&token).is_err());
+    let limits_after_removal = client.get_token_tier_limits(&token);
+    assert_eq!(limits_after_removal.max_single_tx_amount, 0);
+    assert_eq!(limits_after_removal.max_daily_volume, 0);
+
+    // Re-adding the token must not resurface the pre-removal state
+    client.add_token(&admin, &token);
+    assert_eq!(client.get_token_quota(&token), None);
+    assert!(client.try_get_token_metadata(&token).is_err());
+    let limits_after_readd = client.get_token_tier_limits(&token);
+    assert_eq!(limits_after_readd.max_single_tx_amount, 0);
+    assert_eq!(limits_after_readd.max_daily_volume, 0);
 }
 
 // ── Suspension tests ──────────────────────────────────────────────────────────
