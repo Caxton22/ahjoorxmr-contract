@@ -208,4 +208,6 @@ pub enum ExtError2 {
     /// intervening finalize_round — the pot must be paid out (and audit
     /// trail/receipts recorded) before the round can advance again.
     RoundPendingFinalization = 119,
+    /// Slot swap not found for the given id (#748).
+    SwapNotFound = 120,
 }
