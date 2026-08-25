@@ -42,7 +42,7 @@ fn test_initialize() {
 #[should_panic(expected = "Already initialized")]
 fn test_initialize_twice_fails() {
     let (_, admin, client) = setup_test();
-    
+
     // Try to initialize again
     client.initialize(&admin);
 }
@@ -265,7 +265,8 @@ fn test_auto_reinstatement_on_expiry_query() {
     assert!(!client.is_token_allowed(&token));
 
     // Advance ledger past suspension expiry
-    env.ledger().with_mut(|l| l.sequence_number = start_seq + 51);
+    env.ledger()
+        .with_mut(|l| l.sequence_number = start_seq + 51);
 
     // Lazy reinstatement: first call after expiry clears the record and returns true
     assert!(client.is_token_allowed(&token));
@@ -303,11 +304,13 @@ fn test_suspension_extension() {
     client.extend_token_suspension(&admin, &token, &50u32);
 
     // Advance past original expiry (50) but before extended expiry (100)
-    env.ledger().with_mut(|l| l.sequence_number = start_seq + 55);
+    env.ledger()
+        .with_mut(|l| l.sequence_number = start_seq + 55);
     assert!(!client.is_token_allowed(&token));
 
     // Advance past extended expiry
-    env.ledger().with_mut(|l| l.sequence_number = start_seq + 101);
+    env.ledger()
+        .with_mut(|l| l.sequence_number = start_seq + 101);
     assert!(client.is_token_allowed(&token));
 }
 
@@ -352,7 +355,10 @@ fn test_suspension_history_capped_at_ten() {
     let history = client.get_suspension_history(&token);
     assert_eq!(history.len(), 10);
     // Oldest entry (i=0) must have been evicted; the first kept entry is i=1
-    assert_eq!(history.get(0).unwrap().reason_hash, BytesN::from_array(&env, &[1u8; 32]));
+    assert_eq!(
+        history.get(0).unwrap().reason_hash,
+        BytesN::from_array(&env, &[1u8; 32])
+    );
 }
 
 #[test]
@@ -527,16 +533,26 @@ fn test_record_token_volume_cost_bounded_at_max_period() {
     env.ledger().set_sequence_number(1_000);
 
     env.cost_estimate().budget().reset_default();
-    assert!(client.try_record_token_volume(&small_period_token, &1i128).is_ok());
+    assert!(client
+        .try_record_token_volume(&small_period_token, &1i128)
+        .is_ok());
     let small_period_cost = env.cost_estimate().budget().cpu_instruction_cost();
 
     let max_period_token = Address::generate(&env);
     client.add_token(&admin, &max_period_token);
-    client.set_token_quota(&admin, &max_period_token, &1_000_000_000i128, &MAX_QUOTA_PERIOD_LEDGERS);
-    env.ledger().set_sequence_number(MAX_QUOTA_PERIOD_LEDGERS + 1_000);
+    client.set_token_quota(
+        &admin,
+        &max_period_token,
+        &1_000_000_000i128,
+        &MAX_QUOTA_PERIOD_LEDGERS,
+    );
+    env.ledger()
+        .set_sequence_number(MAX_QUOTA_PERIOD_LEDGERS + 1_000);
 
     env.cost_estimate().budget().reset_default();
-    assert!(client.try_record_token_volume(&max_period_token, &1i128).is_ok());
+    assert!(client
+        .try_record_token_volume(&max_period_token, &1i128)
+        .is_ok());
     let max_period_cost = env.cost_estimate().budget().cpu_instruction_cost();
 
     // Cost is driven by the fixed VOLUME_AGG_BUCKET_COUNT, not by
@@ -669,4 +685,73 @@ fn test_assign_token_tier_accepts_defined_tier() {
             .unwrap()
     });
     assert_eq!(tier_id, 2);
+}
+
+// ── #710: get_token_tier ──────────────────────────────────────────────────
+
+#[test]
+fn test_get_token_tier_returns_assigned_and_none_when_unassigned() {
+    let (env, admin, client) = setup_test();
+
+    let name = soroban_sdk::String::from_str(&env, "standard");
+    client.set_risk_tier(&admin, &2u32, &name, &1_000i128, &50_000i128);
+
+    let token = Address::generate(&env);
+    let unassigned_token = Address::generate(&env);
+
+    assert!(client.get_token_tier(&token).is_none());
+
+    client.assign_token_tier(&admin, &token, &2u32);
+
+    assert_eq!(client.get_token_tier(&token), Some(2u32));
+    assert!(client.get_token_tier(&unassigned_token).is_none());
+}
+
+// ── #711: get_token_limit_override ──────────────────────────────────────────
+
+#[test]
+fn test_get_token_limit_override_returns_set_and_none_when_unset() {
+    let (env, admin, client) = setup_test();
+    let token = Address::generate(&env);
+    let plain_token = Address::generate(&env);
+
+    assert!(client.get_token_limit_override(&token).is_none());
+
+    client.set_token_limit_override(&admin, &token, &500i128, &10_000i128);
+
+    let override_limits = client
+        .get_token_limit_override(&token)
+        .expect("override should be set");
+    assert_eq!(override_limits.max_single_tx_amount, 500i128);
+    assert_eq!(override_limits.max_daily_volume, 10_000i128);
+
+    // Relying purely on tier-based limits leaves the override unset.
+    assert!(client.get_token_limit_override(&plain_token).is_none());
+}
+
+// ── #713: get_current_period_volume ─────────────────────────────────────────
+
+#[test]
+fn test_get_current_period_volume_matches_recorded_and_resets_after_rollover() {
+    let (env, admin, client) = setup_test();
+    let token = Address::generate(&env);
+    let unmetered_token = Address::generate(&env);
+    client.add_token(&admin, &token);
+    client.set_token_quota(&admin, &token, &100i128, &48u32);
+    env.ledger().set_sequence_number(1_000);
+
+    // No quota configured → 0, not a panic.
+    assert_eq!(client.get_current_period_volume(&unmetered_token), 0);
+
+    assert_eq!(client.get_current_period_volume(&token), 0);
+
+    client.record_token_volume(&token, &40);
+    client.record_token_volume(&token, &30);
+    assert_eq!(client.get_current_period_volume(&token), 70);
+
+    // Advance well past the full period so every aggregate bucket rolls out
+    // of the window; the getter should reflect the reset just like
+    // record_token_volume's internal accounting does.
+    env.ledger().set_sequence_number(1_000 + 48 * 2);
+    assert_eq!(client.get_current_period_volume(&token), 0);
 }

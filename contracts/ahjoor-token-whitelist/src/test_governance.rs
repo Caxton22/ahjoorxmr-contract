@@ -1,10 +1,10 @@
 #![cfg(test)]
 use crate::{ProposalStatus, TokenWhitelistContract, TokenWhitelistContractClient};
+use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
     Address, BytesN, Env,
 };
-use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
 
 fn setup_governance<'a>() -> (
     Env,
@@ -21,7 +21,9 @@ fn setup_governance<'a>() -> (
     client.initialize(&admin);
 
     // Deploy a stellar asset as the governance token
-    let gov_token = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let gov_token = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
 
     // Configure governance
     client.set_governance_token(&admin, &gov_token);
@@ -58,7 +60,8 @@ fn test_full_proposal_vote_enact_lifecycle() {
     client.vote_listing(&voter2, &proposal_id, &false, &400i128);
 
     // Close voting window
-    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 101);
 
     client.finalise_listing_proposal(&proposal_id);
 
@@ -66,7 +69,8 @@ fn test_full_proposal_vote_enact_lifecycle() {
     assert_eq!(proposal.status, ProposalStatus::PendingEnactment);
 
     // Advance past enactment delay
-    env.ledger().set_sequence_number(env.ledger().sequence() + 51);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 51);
 
     client.enact_listing(&proposal_id);
 
@@ -100,7 +104,8 @@ fn test_quorum_failure_marks_proposal_failed() {
     client.vote_listing(&rejecter, &proposal_id, &false, &700i128);
     // Now approve=400, total=1100, approve% = 36% < 50%
 
-    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 101);
     client.finalise_listing_proposal(&proposal_id);
 
     let proposal = client.get_listing_proposal(&proposal_id);
@@ -122,7 +127,8 @@ fn test_admin_veto_blocks_enactment() {
     let proposal_id = client.propose_token_listing(&proposer, &new_token, &rationale);
 
     client.vote_listing(&voter, &proposal_id, &true, &600i128);
-    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 101);
     client.finalise_listing_proposal(&proposal_id);
 
     // Admin vetoes before enactment
@@ -194,7 +200,8 @@ fn test_cannot_vote_after_window_closes() {
     let proposal_id = client.propose_token_listing(&proposer, &new_token, &rationale);
 
     // Close voting window
-    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 101);
 
     client.vote_listing(&voter, &proposal_id, &true, &500i128);
 }
@@ -234,7 +241,8 @@ fn test_cannot_enact_before_delay() {
     let proposal_id = client.propose_token_listing(&proposer, &new_token, &rationale);
     client.vote_listing(&voter, &proposal_id, &true, &600i128);
 
-    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 101);
     client.finalise_listing_proposal(&proposal_id);
 
     // Enactment delay not elapsed yet
@@ -265,7 +273,8 @@ fn test_balance_change_after_vote_does_not_affect_recorded_weight() {
     // recorded weight, since weight is fixed at first-vote time.
     mint_gov_tokens(&env, &gov_token, &admin, &voter, 5_000);
 
-    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 101);
     client.finalise_listing_proposal(&proposal_id);
 
     let proposal = client.get_listing_proposal(&proposal_id);
@@ -321,9 +330,13 @@ fn test_vote_weight_uses_snapshot_not_live_balance() {
     // Voter moves the tokens elsewhere before finalisation — the recorded
     // weight must not be affected by this post-vote balance change.
     soroban_sdk::token::Client::new(&env, &gov_token).transfer(&voter, &sink, &1_000i128);
-    assert_eq!(soroban_sdk::token::Client::new(&env, &gov_token).balance(&voter), 0);
+    assert_eq!(
+        soroban_sdk::token::Client::new(&env, &gov_token).balance(&voter),
+        0
+    );
 
-    env.ledger().set_sequence_number(env.ledger().sequence() + 101);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 101);
     client.finalise_listing_proposal(&proposal_id);
 
     let proposal = client.get_listing_proposal(&proposal_id);
@@ -388,4 +401,53 @@ fn test_get_vote_record() {
     assert_eq!(client.get_vote_record(&proposal_id, &approver), Some(true));
     assert_eq!(client.get_vote_record(&proposal_id, &rejecter), Some(false));
     assert_eq!(client.get_vote_record(&proposal_id, &nonvoter), None);
+}
+
+// ── #712: get_vote_weight_snapshot ──────────────────────────────────────────
+
+#[test]
+fn test_get_vote_weight_snapshot_stays_fixed_after_balance_changes() {
+    let (env, admin, client, gov_token) = setup_governance();
+
+    let proposer = Address::generate(&env);
+    let voter = Address::generate(&env);
+    let nonvoter = Address::generate(&env);
+    let new_token = Address::generate(&env);
+
+    mint_gov_tokens(&env, &gov_token, &admin, &proposer, 200);
+    mint_gov_tokens(&env, &gov_token, &admin, &voter, 600);
+
+    let rationale = BytesN::from_array(&env, &[0xCDu8; 32]);
+    let proposal_id = client.propose_token_listing(&proposer, &new_token, &rationale);
+
+    // No snapshot exists before the voter's first vote.
+    assert_eq!(client.get_vote_weight_snapshot(&proposal_id, &voter), None);
+
+    client.vote_listing(&voter, &proposal_id, &true, &400i128);
+
+    // Snapshot captures the live balance at first-vote time, not the weight cast.
+    assert_eq!(
+        client.get_vote_weight_snapshot(&proposal_id, &voter),
+        Some(600i128)
+    );
+
+    // Balance changes after voting must not move the snapshot.
+    mint_gov_tokens(&env, &gov_token, &admin, &voter, 1_000);
+    assert_eq!(
+        client.get_vote_weight_snapshot(&proposal_id, &voter),
+        Some(600i128)
+    );
+
+    // Re-voting with a higher weight (now allowed by the enlarged live
+    // balance) still leaves the original snapshot ceiling unchanged.
+    client.vote_listing(&voter, &proposal_id, &true, &600i128);
+    assert_eq!(
+        client.get_vote_weight_snapshot(&proposal_id, &voter),
+        Some(600i128)
+    );
+
+    assert_eq!(
+        client.get_vote_weight_snapshot(&proposal_id, &nonvoter),
+        None
+    );
 }

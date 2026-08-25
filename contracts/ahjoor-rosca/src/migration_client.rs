@@ -1,5 +1,5 @@
-use soroban_sdk::{contractclient, Address, Env};
 use crate::{MigratedMemberRecord, MigrationRequest};
+use soroban_sdk::{contractclient, Address, Env};
 
 /// Minimal cross-contract interface used by the destination group contract
 /// to interact with the source group contract during member migration.
@@ -15,5 +15,9 @@ pub trait RoscaMigrationInterface {
     /// Removes `member` from the source group, marks their slot Vacant,
     /// and returns their contribution history summary.
     /// Panics if the migration request is not in `BothApproved` state.
-    fn finalize_migration_exit(env: Env, member: Address, dest_contract: Address) -> MigratedMemberRecord;
+    fn finalize_migration_exit(
+        env: Env,
+        member: Address,
+        dest_contract: Address,
+    ) -> MigratedMemberRecord;
 }

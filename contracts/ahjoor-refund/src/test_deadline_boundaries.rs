@@ -34,9 +34,9 @@
 //! `auto_cancel_expired_request`, and `auto_reject_stale_refund` were
 //! aligned to the exclusive-boundary convention used everywhere else.
 use super::*;
+use ahjoor_payments::{AhjoorPaymentsContract, AhjoorPaymentsContractClient};
 use soroban_sdk::testutils::{Address as _, Ledger};
 use soroban_sdk::{Address, Env, String};
-use ahjoor_payments::{AhjoorPaymentsContract, AhjoorPaymentsContractClient};
 
 struct Setup<'a> {
     env: Env,

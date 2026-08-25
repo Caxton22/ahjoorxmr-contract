@@ -84,7 +84,15 @@ fn setup_insurance<'a>(
         client.contribute_to_insurance(&funder, &token_addr, &pool_amount);
     }
 
-    (env, client, admin, token_addr, token_client, token_admin_client, members)
+    (
+        env,
+        client,
+        admin,
+        token_addr,
+        token_client,
+        token_admin_client,
+        members,
+    )
 }
 
 fn count_topic_events(env: &Env, topic: &str) -> u32 {
@@ -127,8 +135,15 @@ fn test_insurance_pool_cannot_go_negative() {
     // Pool was 500; shortfall was 100 (one member defaulted out of 100 per member).
     // After draw: pool should be 400 (500 - 100), not negative.
     let pool_after = client.get_insurance_pool();
-    assert!(pool_after >= 0, "InsurancePool must never go negative, got {}", pool_after);
-    assert_eq!(pool_after, 400, "Pool should be 500 - 100 = 400 after covering shortfall");
+    assert!(
+        pool_after >= 0,
+        "InsurancePool must never go negative, got {}",
+        pool_after
+    );
+    assert_eq!(
+        pool_after, 400,
+        "Pool should be 500 - 100 = 400 after covering shortfall"
+    );
 }
 
 /// #395: When the pool is smaller than the shortfall in Full mode, the contract
@@ -151,8 +166,15 @@ fn test_insurance_pool_partial_cover_when_underfunded() {
 
     let pool_after = client.get_insurance_pool();
     // Pool had 50 < shortfall of 100; all 50 should be drawn, leaving 0.
-    assert!(pool_after >= 0, "InsurancePool must never go negative, got {}", pool_after);
-    assert_eq!(pool_after, 0, "Pool should be 0 after exhausting 50 towards 100 shortfall");
+    assert!(
+        pool_after >= 0,
+        "InsurancePool must never go negative, got {}",
+        pool_after
+    );
+    assert_eq!(
+        pool_after, 0,
+        "Pool should be 0 after exhausting 50 towards 100 shortfall"
+    );
 }
 
 #[test]

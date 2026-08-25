@@ -11,7 +11,9 @@ fn create_token_contract(e: &Env) -> Address {
 }
 
 fn create_funded_token(e: &Env, admin: &Address, buyer: &Address, amount: i128) -> Address {
-    let token_addr = e.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_addr = e
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     soroban_sdk::token::StellarAssetClient::new(e, &token_addr).mint(buyer, &amount);
     token_addr
 }
@@ -60,7 +62,8 @@ fn test_token_validation_in_escrow_creation() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let escrow_client = AhjoorEscrowContractClient::new(&e, &escrow_contract);
-    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client =
+        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     // Initialize contracts
     escrow_client.initialize(&admin);
@@ -114,7 +117,8 @@ fn test_token_validation_in_insurance_config() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let escrow_client = AhjoorEscrowContractClient::new(&e, &escrow_contract);
-    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client =
+        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     // Initialize contracts
     escrow_client.initialize(&admin);
@@ -145,7 +149,8 @@ fn test_is_token_allowed_function() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let escrow_client = AhjoorEscrowContractClient::new(&e, &escrow_contract);
-    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client =
+        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     // Initialize contracts
     escrow_client.initialize(&admin);
@@ -182,7 +187,9 @@ fn test_backward_compatibility_without_whitelist() {
     let buyer = Address::generate(&e);
     let seller = Address::generate(&e);
     let arbiter = Address::generate(&e);
-    let token_addr = e.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_addr = e
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     let token_admin = soroban_sdk::token::StellarAssetClient::new(&e, &token_addr);
     token_admin.mint(&buyer, &1000);
     let escrow_contract = create_escrow_contract(&e);
@@ -269,7 +276,8 @@ fn test_token_validation_with_multiple_tokens() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let escrow_client = AhjoorEscrowContractClient::new(&e, &escrow_contract);
-    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client =
+        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     // Initialize contracts
     escrow_client.initialize(&admin);
@@ -337,7 +345,8 @@ fn test_token_delisting_prevents_new_escrows() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let escrow_client = AhjoorEscrowContractClient::new(&e, &escrow_contract);
-    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client =
+        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     // Initialize contracts
     escrow_client.initialize(&admin);

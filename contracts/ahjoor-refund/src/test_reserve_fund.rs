@@ -1,12 +1,12 @@
 #![cfg(test)]
 extern crate std;
 
+use soroban_sdk::token::Client as TokenClient;
+use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
     Address, Env,
 };
-use soroban_sdk::token::Client as TokenClient;
-use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
 
 use crate::{AhjoorRefundContract, AhjoorRefundContractClient, RefundInitConfig};
 
@@ -25,7 +25,9 @@ fn setup(env: &Env) -> (AhjoorRefundContractClient<'static>, Address, Address) {
 }
 
 fn make_token<'a>(env: &'a Env, admin: &Address) -> (Address, TokenAdminClient<'a>) {
-    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_addr = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     let token_admin = TokenAdminClient::new(env, &token_addr);
     (token_addr, token_admin)
 }

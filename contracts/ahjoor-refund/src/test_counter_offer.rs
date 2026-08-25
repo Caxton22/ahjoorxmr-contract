@@ -1,9 +1,12 @@
 #![cfg(test)]
 use super::*;
+use ahjoor_payments::{AhjoorPaymentsContract, AhjoorPaymentsContractClient};
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env, String};
-use ahjoor_payments::{AhjoorPaymentsContract, AhjoorPaymentsContractClient};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, Env, String,
+};
 
 fn setup_counter_offer<'a>() -> (
     Env,
@@ -28,7 +31,9 @@ fn setup_counter_offer<'a>() -> (
     let admin = Address::generate(&env);
     let customer = Address::generate(&env);
     let merchant = Address::generate(&env);
-    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_addr = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     let token_client = TokenClient::new(&env, &token_addr);
     let token_admin_client = TokenAdminClient::new(&env, &token_addr);
 
@@ -39,7 +44,15 @@ fn setup_counter_offer<'a>() -> (
 
     // Fund customer and create a completed payment
     token_admin_client.mint(&customer, &2000);
-    let pid = payment_client.create_payment(&customer, &merchant, &1000, &token_addr, &None, &None, &None);
+    let pid = payment_client.create_payment(
+        &customer,
+        &merchant,
+        &1000,
+        &token_addr,
+        &None,
+        &None,
+        &None,
+    );
     payment_client.complete_payment(&pid);
 
     // Fund refund contract so it can pay out
@@ -47,10 +60,24 @@ fn setup_counter_offer<'a>() -> (
 
     // Customer requests refund
     refund_client.request_refund(
-        &customer, &pid, &1000, &String::from_str(&env, "bad product"), &0u32,
+        &customer,
+        &pid,
+        &1000,
+        &String::from_str(&env, "bad product"),
+        &0u32,
     );
 
-    (env, refund_client, payment_client, admin, customer, merchant, token_addr, token_client, token_admin_client)
+    (
+        env,
+        refund_client,
+        payment_client,
+        admin,
+        customer,
+        merchant,
+        token_addr,
+        token_client,
+        token_admin_client,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -58,7 +85,8 @@ fn setup_counter_offer<'a>() -> (
 // ---------------------------------------------------------------------------
 #[test]
 fn test_accept_counter_offer() {
-    let (_env, refund_client, _, _admin, customer, merchant, _token_addr, token_client, _) = setup_counter_offer();
+    let (_env, refund_client, _, _admin, customer, merchant, _token_addr, token_client, _) =
+        setup_counter_offer();
     let refund_id = 0u32;
 
     refund_client.counter_offer_refund(&merchant, &refund_id, &600);
@@ -79,7 +107,8 @@ fn test_accept_counter_offer() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_reject_counter_offer() {
-    let (_env, refund_client, _, _admin, customer, merchant, _token_addr, _token_client, _) = setup_counter_offer();
+    let (_env, refund_client, _, _admin, customer, merchant, _token_addr, _token_client, _) =
+        setup_counter_offer();
     let refund_id = 0u32;
 
     refund_client.counter_offer_refund(&merchant, &refund_id, &600);
@@ -94,7 +123,8 @@ fn test_reject_counter_offer() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_counter_offer_expiry_escalates() {
-    let (env, refund_client, _, admin, _customer, merchant, _token_addr, _token_client, _) = setup_counter_offer();
+    let (env, refund_client, _, admin, _customer, merchant, _token_addr, _token_client, _) =
+        setup_counter_offer();
     let refund_id = 0u32;
 
     let expiry = 3600u64;
@@ -205,7 +235,8 @@ fn test_counter_offer_history_multi_round_reject() {
 #[test]
 #[should_panic(expected = "Counter-offer cannot exceed original refund amount")]
 fn test_counter_offer_exceeds_original() {
-    let (_env, refund_client, _, _admin, _customer, merchant, _token_addr, _token_client, _) = setup_counter_offer();
+    let (_env, refund_client, _, _admin, _customer, merchant, _token_addr, _token_client, _) =
+        setup_counter_offer();
     let refund_id = 0u32;
 
     refund_client.counter_offer_refund(&merchant, &refund_id, &9999);

@@ -70,7 +70,15 @@ fn setup_with_members<'a>(
         &None,
     );
 
-    (env, client, admin, token_admin, token_client, token_admin_client, members)
+    (
+        env,
+        client,
+        admin,
+        token_admin,
+        token_client,
+        token_admin_client,
+        members,
+    )
 }
 
 #[test]
@@ -114,7 +122,7 @@ fn test_weighted_voting_power() {
 
     // Member 2 votes (weight 1000)
     client.vote_on_proposal(&member2, &prop_id, &false);
-    
+
     let prop = client.get_proposal(&prop_id).unwrap();
     assert_eq!(prop.votes_against, 100);
 
@@ -153,7 +161,7 @@ fn test_zero_contribution_cannot_vote_in_weighted_mode() {
         &86400,
         &None,
     );
-    
+
     client.vote_on_proposal(&member3, &0, &true);
 }
 
@@ -196,21 +204,21 @@ fn test_delegated_member_cannot_double_vote() {
         setup_with_members(3, VotingMode::WeightedByContributions);
 
     let delegator = members.get(0).unwrap();
-    let delegate  = members.get(1).unwrap();
-    let proposer  = members.get(2).unwrap();
+    let delegate = members.get(1).unwrap();
+    let proposer = members.get(2).unwrap();
 
     token_admin_client.mint(&delegator, &2000);
-    token_admin_client.mint(&delegate,  &2000);
-    token_admin_client.mint(&proposer,  &2000);
+    token_admin_client.mint(&delegate, &2000);
+    token_admin_client.mint(&proposer, &2000);
 
     // Build up contribution weight
     client.contribute(&delegator, &token_addr, &1000);
-    client.contribute(&delegate,  &token_addr, &1000);
+    client.contribute(&delegate, &token_addr, &1000);
 
     // Advance ledger; delegate vote expires at sequence 1_000_000
     env.ledger().with_mut(|l| {
         l.sequence_number = 100;
-        l.timestamp       = 200;
+        l.timestamp = 200;
     });
 
     // Delegator sets up a contribution delegation to delegate
@@ -238,12 +246,15 @@ fn test_delegated_member_cannot_double_vote() {
 
     let prop = client.get_proposal(&0).unwrap();
     // Both weights (1000 each) should be counted
-    assert_eq!(prop.votes_for, 2000, "delegate vote should carry delegator weight too");
+    assert_eq!(
+        prop.votes_for, 2000,
+        "delegate vote should carry delegator weight too"
+    );
 
     // Delegator can no longer vote (already marked as voted via delegation)
     let result2 = client.try_vote_on_proposal(&delegator, &0, &true);
-    assert!(result2.is_err(), "delegator should not be able to vote after delegate already voted");
+    assert!(
+        result2.is_err(),
+        "delegator should not be able to vote after delegate already voted"
+    );
 }
-
-
-

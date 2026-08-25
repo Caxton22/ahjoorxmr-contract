@@ -2,10 +2,7 @@
 
 use crate::{AhjoorPaymentsContract, AhjoorPaymentsContractClient, Error};
 use ahjoor_token_whitelist::{TokenWhitelistContract, TokenWhitelistContractClient};
-use soroban_sdk::{
-    testutils::{Address as _},
-    token, Address, Env, String,
-};
+use soroban_sdk::{testutils::Address as _, token, Address, Env, String};
 
 fn create_token_contract<'a>(e: &Env, admin: &Address) -> (Address, token::StellarAssetClient<'a>) {
     let contract = e.register_stellar_asset_contract_v2(admin.clone());
@@ -115,15 +112,8 @@ fn test_payment_with_whitelisted_token() {
     whitelist_client.add_token(&admin, &token);
 
     // Create payment should succeed
-    let payment_id = payments_client.create_payment(
-        &customer,
-        &merchant,
-        &1000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
+    let payment_id =
+        payments_client.create_payment(&customer, &merchant, &1000, &token, &None, &None, &None);
 
     // Verify payment was created
     let payment = payments_client.get_payment(&payment_id);
@@ -147,15 +137,8 @@ fn test_payment_with_non_whitelisted_token_fails() {
     // Don't add token to whitelist
 
     // Create payment should fail
-    let result = payments_client.try_create_payment(
-        &customer,
-        &merchant,
-        &1000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
+    let result = payments_client
+        .try_create_payment(&customer, &merchant, &1000, &token, &None, &None, &None);
 
     assert!(result.is_err());
     // Check that it's the correct error
@@ -223,11 +206,7 @@ fn test_subscription_with_non_whitelisted_token_fails() {
 
     // Create subscription should fail
     let result = payments_client.try_create_subscription(
-        &customer,
-        &merchant,
-        &1000,
-        &token,
-        &86400, // 1 day
+        &customer, &merchant, &1000, &token, &86400, // 1 day
         &10,    // max charges
     );
 
@@ -252,29 +231,15 @@ fn test_token_delisted_mid_operation() {
     whitelist_client.add_token(&admin, &token);
 
     // Create payment should succeed
-    let _payment_id = payments_client.create_payment(
-        &customer,
-        &merchant,
-        &1000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
+    let _payment_id =
+        payments_client.create_payment(&customer, &merchant, &1000, &token, &None, &None, &None);
 
     // Remove token from whitelist
     whitelist_client.remove_token(&admin, &token);
 
     // New payment should fail
-    let result = payments_client.try_create_payment(
-        &customer,
-        &merchant,
-        &1000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
+    let result = payments_client
+        .try_create_payment(&customer, &merchant, &1000, &token, &None, &None, &None);
 
     assert!(result.is_err());
     assert_eq!(result.unwrap_err().unwrap(), Error::TokenNotAllowed.into());

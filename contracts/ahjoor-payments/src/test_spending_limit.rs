@@ -2,9 +2,20 @@
 use super::*;
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, Env,
+};
 
-fn setup_spend<'a>() -> (Env, AhjoorPaymentsContractClient<'a>, Address, Address, Address, TokenClient<'a>, TokenAdminClient<'a>) {
+fn setup_spend<'a>() -> (
+    Env,
+    AhjoorPaymentsContractClient<'a>,
+    Address,
+    Address,
+    Address,
+    TokenClient<'a>,
+    TokenAdminClient<'a>,
+) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -13,7 +24,9 @@ fn setup_spend<'a>() -> (Env, AhjoorPaymentsContractClient<'a>, Address, Address
 
     let admin = Address::generate(&env);
     let merchant = Address::generate(&env);
-    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_addr = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     let token_client = TokenClient::new(&env, &token_addr);
     let token_admin_client = TokenAdminClient::new(&env, &token_addr);
 
@@ -21,7 +34,15 @@ fn setup_spend<'a>() -> (Env, AhjoorPaymentsContractClient<'a>, Address, Address
     client.set_min_collateral(&0i128);
     client.approve_merchant(&merchant);
 
-    (env, client, admin, merchant, token_addr, token_client, token_admin_client)
+    (
+        env,
+        client,
+        admin,
+        merchant,
+        token_addr,
+        token_client,
+        token_admin_client,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -169,7 +190,10 @@ fn test_window_resets_on_boundary() {
     // Payment 4 at t=3599 (still inside same window): would push spent=400 > 300, rejected
     let pid4 = client.create_payment(&customer, &merchant, &100, &token_addr, &None, &None, &None);
     let result = client.try_complete_payment(&pid4);
-    assert!(result.is_err(), "Fourth payment should exceed the cap within the window");
+    assert!(
+        result.is_err(),
+        "Fourth payment should exceed the cap within the window"
+    );
 
     // Jump past the window boundary: now >= window_start + window_seconds
     // window_start = 0, window_seconds = 3600, so at t=3600 the window resets

@@ -3345,9 +3345,10 @@ impl AhjoorRefundContract {
             .get(&DataKey::PaymentRefundedAmount(refund.payment_id))
             .unwrap_or(0);
         let new_processed_total = prev_processed + refund.amount;
-        env.storage()
-            .persistent()
-            .set(&DataKey::PaymentRefundedAmount(refund.payment_id), &new_processed_total);
+        env.storage().persistent().set(
+            &DataKey::PaymentRefundedAmount(refund.payment_id),
+            &new_processed_total,
+        );
         env.storage().persistent().extend_ttl(
             &DataKey::PaymentRefundedAmount(refund.payment_id),
             PERSISTENT_LIFETIME_THRESHOLD,
@@ -3362,18 +3363,24 @@ impl AhjoorRefundContract {
         let payment_client =
             payment_contract::PaymentContractClient::new(env, &payment_contract_addr);
 
-        let remaining_amount = if let Ok(Ok(payment)) = payment_client.try_get_payment(&refund.payment_id) {
-            let remaining_refundable = payment.amount - new_total;
-            if remaining_refundable <= payment.amount / 10 {
-                events::emit_partial_refund_cap_applied(env, refund_id, remaining_refundable);
-            }
-            remaining_refundable
-        } else {
-            0
-        };
+        let remaining_amount =
+            if let Ok(Ok(payment)) = payment_client.try_get_payment(&refund.payment_id) {
+                let remaining_refundable = payment.amount - new_total;
+                if remaining_refundable <= payment.amount / 10 {
+                    events::emit_partial_refund_cap_applied(env, refund_id, remaining_refundable);
+                }
+                remaining_refundable
+            } else {
+                0
+            };
 
         // #349: Emit PartialRefundProcessed with cumulative tracking
-        events::emit_partial_refund_processed(env, refund.payment_id, refund.amount, remaining_amount);
+        events::emit_partial_refund_processed(
+            env,
+            refund.payment_id,
+            refund.amount,
+            remaining_amount,
+        );
 
         refund.status = RefundStatus::Processed;
         refund.processed_at = Some(env.ledger().timestamp());
@@ -3547,8 +3554,7 @@ impl AhjoorRefundContract {
             .get(&DataKey::Refund(refund_id))
             .expect("Refund not found");
 
-        if refund.status != RefundStatus::Requested
-            && refund.status != RefundStatus::CounterOffered
+        if refund.status != RefundStatus::Requested && refund.status != RefundStatus::CounterOffered
         {
             panic!("Refund is not open for counter-offer");
         }
@@ -4250,7 +4256,9 @@ impl AhjoorRefundContract {
         if refund.merchant != merchant {
             panic!("Only the refund merchant can submit evidence");
         }
-        if refund.status != RefundStatus::Requested && refund.status != RefundStatus::EvidenceSubmitted {
+        if refund.status != RefundStatus::Requested
+            && refund.status != RefundStatus::EvidenceSubmitted
+        {
             panic!("Evidence can only be submitted for Requested or EvidenceSubmitted refunds");
         }
         // Window check: reject if deadline has passed
@@ -4287,9 +4295,10 @@ impl AhjoorRefundContract {
             PERSISTENT_BUMP_AMOUNT,
         );
         // #365: Anchor content hash on-chain; overwrites any prior hash while window is open
-        env.storage()
-            .persistent()
-            .set(&DataKey2::EvidenceHash(refund_id, merchant.clone()), &content_hash);
+        env.storage().persistent().set(
+            &DataKey2::EvidenceHash(refund_id, merchant.clone()),
+            &content_hash,
+        );
         env.storage().persistent().extend_ttl(
             &DataKey2::EvidenceHash(refund_id, merchant.clone()),
             PERSISTENT_LIFETIME_THRESHOLD,
@@ -5001,7 +5010,11 @@ impl AhjoorRefundContract {
                 let current = env.ledger().sequence() as u64;
                 current.saturating_sub(old_record.last_increment_ledger)
             };
-            let periods = if decay_period > 0 { (elapsed / decay_period) as u32 } else { 0 };
+            let periods = if decay_period > 0 {
+                (elapsed / decay_period) as u32
+            } else {
+                0
+            };
             events::emit_abuse_score_decayed(
                 env,
                 customer.clone(),
@@ -5412,9 +5425,10 @@ impl AhjoorRefundContract {
             .unwrap_or(0);
         balance += amount;
 
-        env.storage()
-            .persistent()
-            .set(&DataKey2::MerchantReserveBalance(merchant.clone()), &balance);
+        env.storage().persistent().set(
+            &DataKey2::MerchantReserveBalance(merchant.clone()),
+            &balance,
+        );
         env.storage().persistent().extend_ttl(
             &DataKey2::MerchantReserveBalance(merchant.clone()),
             PERSISTENT_LIFETIME_THRESHOLD,
@@ -5513,9 +5527,10 @@ impl AhjoorRefundContract {
         }
 
         balance -= amount;
-        env.storage()
-            .persistent()
-            .set(&DataKey2::MerchantReserveBalance(merchant.clone()), &balance);
+        env.storage().persistent().set(
+            &DataKey2::MerchantReserveBalance(merchant.clone()),
+            &balance,
+        );
 
         let token: Address = env
             .storage()
@@ -5577,7 +5592,9 @@ impl AhjoorRefundContract {
         Self::require_not_paused(&env);
         admin.require_auth();
         Self::require_admin(&env, &admin);
-        env.storage().instance().set(&DataKey2::ReserveToken, &token);
+        env.storage()
+            .instance()
+            .set(&DataKey2::ReserveToken, &token);
         env.storage()
             .instance()
             .set(&DataKey2::MinReserveBpsOfMonthlyVolume, &min_bps);
@@ -5666,9 +5683,10 @@ impl AhjoorRefundContract {
         Self::require_not_paused(&env);
         admin.require_auth();
         Self::require_admin(&env, &admin);
-        env.storage()
-            .instance()
-            .set(&DataKey2::MerchantResponseDeadlineLedgers, &deadline_ledgers);
+        env.storage().instance().set(
+            &DataKey2::MerchantResponseDeadlineLedgers,
+            &deadline_ledgers,
+        );
         env.storage()
             .instance()
             .set(&DataKey2::RefundExtensionLedgers, &extension_ledgers);
@@ -5706,7 +5724,9 @@ impl AhjoorRefundContract {
         if env
             .storage()
             .persistent()
-            .get::<DataKey2, bool>(&DataKey2::MerchantAutoApproveExempt(refund.merchant.clone()))
+            .get::<DataKey2, bool>(&DataKey2::MerchantAutoApproveExempt(
+                refund.merchant.clone(),
+            ))
             .unwrap_or(false)
         {
             panic!("MerchantAutoApprovalExempt");

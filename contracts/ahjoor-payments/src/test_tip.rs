@@ -284,8 +284,5 @@ fn test_tip_at_exact_max_bps_succeeds() {
     );
 
     s.client.complete_payment_with_tip(&pid, &customer, &150);
-    assert_eq!(
-        s.client.get_payment(&pid).status,
-        PaymentStatus::Completed
-    );
+    assert_eq!(s.client.get_payment(&pid).status, PaymentStatus::Completed);
 }

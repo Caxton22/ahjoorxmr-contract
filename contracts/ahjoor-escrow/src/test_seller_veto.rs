@@ -2,9 +2,22 @@
 use super::*;
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env, Vec};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, Env, Vec,
+};
 
-fn setup_veto<'a>() -> (Env, AhjoorEscrowContractClient<'a>, Address, Address, Address, Address, Address, TokenClient<'a>, TokenAdminClient<'a>) {
+fn setup_veto<'a>() -> (
+    Env,
+    AhjoorEscrowContractClient<'a>,
+    Address,
+    Address,
+    Address,
+    Address,
+    Address,
+    TokenClient<'a>,
+    TokenAdminClient<'a>,
+) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -15,7 +28,9 @@ fn setup_veto<'a>() -> (Env, AhjoorEscrowContractClient<'a>, Address, Address, A
     let buyer = Address::generate(&env);
     let seller = Address::generate(&env);
     let arbiter = Address::generate(&env);
-    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_addr = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     let token_client = TokenClient::new(&env, &token_addr);
     let token_admin_client = TokenAdminClient::new(&env, &token_addr);
 
@@ -25,11 +40,29 @@ fn setup_veto<'a>() -> (Env, AhjoorEscrowContractClient<'a>, Address, Address, A
 
     let deadline = env.ledger().timestamp() + 100_000;
     client.create_escrow(
-        &buyer, &seller, &arbiter, &500, &token_addr, &deadline,
-        &None, &Vec::new(&env), &false, &0u32,
+        &buyer,
+        &seller,
+        &arbiter,
+        &500,
+        &token_addr,
+        &deadline,
+        &None,
+        &Vec::new(&env),
+        &false,
+        &0u32,
     );
 
-    (env, client, admin, buyer, seller, arbiter, token_addr, token_client, token_admin_client)
+    (
+        env,
+        client,
+        admin,
+        buyer,
+        seller,
+        arbiter,
+        token_addr,
+        token_client,
+        token_admin_client,
+    )
 }
 
 #[test]
@@ -54,7 +87,8 @@ fn test_buyer_veto_refunds_buyer() {
 
 #[test]
 fn test_buyer_approval_finalises_transfer() {
-    let (env, client, _admin, buyer, seller, _arbiter, _token_addr, _token_client, _) = setup_veto();
+    let (env, client, _admin, buyer, seller, _arbiter, _token_addr, _token_client, _) =
+        setup_veto();
     let escrow_id = 0u32;
     let new_seller = Address::generate(&env);
 
@@ -68,7 +102,8 @@ fn test_buyer_approval_finalises_transfer() {
 
 #[test]
 fn test_window_expiry_auto_approves() {
-    let (env, client, admin, _buyer, seller, _arbiter, _token_addr, _token_client, _) = setup_veto();
+    let (env, client, admin, _buyer, seller, _arbiter, _token_addr, _token_client, _) =
+        setup_veto();
     let escrow_id = 0u32;
     let new_seller = Address::generate(&env);
 
@@ -88,14 +123,16 @@ fn test_window_expiry_auto_approves() {
 
 #[test]
 fn test_veto_window_configurable() {
-    let (env, client, admin, _buyer, _seller, _arbiter, _token_addr, _token_client, _) = setup_veto();
+    let (env, client, admin, _buyer, _seller, _arbiter, _token_addr, _token_client, _) =
+        setup_veto();
     // Just verify admin can set the window without panic
     client.set_seller_transfer_veto_window(&admin, &200u32);
 }
 
 #[test]
 fn test_only_seller_can_initiate_transfer() {
-    let (env, client, _admin, buyer, _seller, _arbiter, _token_addr, _token_client, _) = setup_veto();
+    let (env, client, _admin, buyer, _seller, _arbiter, _token_addr, _token_client, _) =
+        setup_veto();
     let escrow_id = 0u32;
     let new_seller = Address::generate(&env);
 
@@ -127,7 +164,9 @@ fn setup_veto_cooldown<'a>() -> (
     let buyer = Address::generate(&env);
     let seller = Address::generate(&env);
     let arbiter = Address::generate(&env);
-    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_addr = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     let token_admin_client = soroban_sdk::token::StellarAssetClient::new(&env, &token_addr);
 
     client.initialize(&admin);
@@ -136,8 +175,16 @@ fn setup_veto_cooldown<'a>() -> (
 
     let deadline = env.ledger().timestamp() + 200_000;
     let escrow_id = client.create_escrow(
-        &buyer, &seller, &arbiter, &500, &token_addr, &deadline,
-        &None, &Vec::new(&env), &false, &0u32,
+        &buyer,
+        &seller,
+        &arbiter,
+        &500,
+        &token_addr,
+        &deadline,
+        &None,
+        &Vec::new(&env),
+        &false,
+        &0u32,
     );
 
     (env, client, admin, buyer, seller, arbiter, escrow_id)
@@ -212,7 +259,10 @@ fn test_release_blocked_by_veto_cleared_by_override() {
 
     // Buyer tries to release — must fail.
     let result = client.try_release_escrow(&buyer, &escrow_id);
-    assert!(result.is_err(), "Release must be blocked while veto is active");
+    assert!(
+        result.is_err(),
+        "Release must be blocked while veto is active"
+    );
 
     // Admin overrides the veto and advances past the cooldown.
     client.admin_override_veto(&admin, &escrow_id);

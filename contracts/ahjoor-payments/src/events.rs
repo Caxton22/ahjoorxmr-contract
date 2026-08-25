@@ -198,15 +198,30 @@ pub struct CustomerUnblocked {
 }
 
 pub fn emit_customer_blocked(e: &Env, merchant: Address, customer: Address, reason: Symbol) {
-    CustomerBlocked { merchant, customer, reason_code: reason }.publish(e);
+    CustomerBlocked {
+        merchant,
+        customer,
+        reason_code: reason,
+    }
+    .publish(e);
 }
 
 pub fn emit_unblock_requested(e: &Env, request_id: u32, merchant: Address, customer: Address) {
-    UnblockRequested { request_id, merchant, customer }.publish(e);
+    UnblockRequested {
+        request_id,
+        merchant,
+        customer,
+    }
+    .publish(e);
 }
 
 pub fn emit_customer_unblocked(e: &Env, merchant: Address, customer: Address, by: Address) {
-    CustomerUnblocked { merchant, customer, unblocked_by: by }.publish(e);
+    CustomerUnblocked {
+        merchant,
+        customer,
+        unblocked_by: by,
+    }
+    .publish(e);
 }
 
 /// Event: Partial refund issued on a pending/disputed payment
@@ -1229,8 +1244,18 @@ pub struct MerchantReinstated {
     pub reinstated_at: u64,
 }
 
-pub fn emit_merchant_suspended(e: &Env, merchant: Address, reason_hash: BytesN<32>, suspension_expires_at: u64) {
-    MerchantSuspended { merchant, reason_hash, suspension_expires_at }.publish(e);
+pub fn emit_merchant_suspended(
+    e: &Env,
+    merchant: Address,
+    reason_hash: BytesN<32>,
+    suspension_expires_at: u64,
+) {
+    MerchantSuspended {
+        merchant,
+        reason_hash,
+        suspension_expires_at,
+    }
+    .publish(e);
 }
 
 pub fn emit_merchant_banned(e: &Env, merchant: Address, reason_hash: BytesN<32>) {
@@ -1250,11 +1275,19 @@ pub fn emit_appeal_submitted(e: &Env, merchant: Address, evidence_hash: BytesN<3
 }
 
 pub fn emit_appeal_approved(e: &Env, merchant: Address, cooling_off_until: u64) {
-    AppealApproved { merchant, cooling_off_until }.publish(e);
+    AppealApproved {
+        merchant,
+        cooling_off_until,
+    }
+    .publish(e);
 }
 
 pub fn emit_merchant_reinstated(e: &Env, merchant: Address, reinstated_at: u64) {
-    MerchantReinstated { merchant, reinstated_at }.publish(e);
+    MerchantReinstated {
+        merchant,
+        reinstated_at,
+    }
+    .publish(e);
 }
 
 pub fn emit_appeal_rejected(e: &Env, merchant: Address) {
@@ -1945,7 +1978,11 @@ pub fn emit_recurring_payment_executed(
     );
 }
 
-pub fn emit_recurring_payment_cancelled(e: &soroban_sdk::Env, schedule_id: u32, payer: soroban_sdk::Address) {
+pub fn emit_recurring_payment_cancelled(
+    e: &soroban_sdk::Env,
+    schedule_id: u32,
+    payer: soroban_sdk::Address,
+) {
     e.events().publish(
         (soroban_sdk::Symbol::new(e, "RecurringCancel"),),
         (schedule_id, payer),
@@ -1971,7 +2008,13 @@ pub fn emit_buyer_tier_updated(
     old_tier: u32,
     new_tier: u32,
 ) {
-    BuyerTierUpdated { merchant, buyer, old_tier, new_tier }.publish(e);
+    BuyerTierUpdated {
+        merchant,
+        buyer,
+        old_tier,
+        new_tier,
+    }
+    .publish(e);
 }
 
 // ── #367: Dynamic Settlement Fee Tiers ───────────────────────────────────────
@@ -1993,7 +2036,13 @@ pub fn emit_tier_fee_applied(
     fee_collected: i128,
     volume_30d: i128,
 ) {
-    TierFeeApplied { merchant, tier_fee_bps, fee_collected, volume_30d }.publish(e);
+    TierFeeApplied {
+        merchant,
+        tier_fee_bps,
+        fee_collected,
+        volume_30d,
+    }
+    .publish(e);
 }
 
 // ── Dispute Mediation DAO Events ──────────────────────────────────────────────
@@ -2048,7 +2097,12 @@ pub struct DaoEscalationCancelled {
 }
 
 pub fn emit_dao_configured(e: &Env, member_count: u32, vote_window_seconds: u64, min_votes: u32) {
-    DaoConfigured { member_count, vote_window_seconds, min_votes }.publish(e);
+    DaoConfigured {
+        member_count,
+        vote_window_seconds,
+        min_votes,
+    }
+    .publish(e);
 }
 
 pub fn emit_dispute_escalated_to_dao(
@@ -2058,7 +2112,13 @@ pub fn emit_dispute_escalated_to_dao(
     initiated_by: Address,
     vote_window_closes_at: u64,
 ) {
-    DisputeEscalatedToDao { payment_id, case_id, initiated_by, vote_window_closes_at }.publish(e);
+    DisputeEscalatedToDao {
+        payment_id,
+        case_id,
+        initiated_by,
+        vote_window_closes_at,
+    }
+    .publish(e);
 }
 
 pub fn emit_dao_vote_cast(
@@ -2069,7 +2129,14 @@ pub fn emit_dao_vote_cast(
     votes_for_merchant: u32,
     votes_for_customer: u32,
 ) {
-    DaoVoteCast { case_id, voter, for_merchant, votes_for_merchant, votes_for_customer }.publish(e);
+    DaoVoteCast {
+        case_id,
+        voter,
+        for_merchant,
+        votes_for_merchant,
+        votes_for_customer,
+    }
+    .publish(e);
 }
 
 pub fn emit_dao_verdict_executed(
@@ -2080,9 +2147,20 @@ pub fn emit_dao_verdict_executed(
     votes_for_merchant: u32,
     votes_for_customer: u32,
 ) {
-    DaoVerdictExecuted { case_id, payment_id, merchant_wins, votes_for_merchant, votes_for_customer }.publish(e);
+    DaoVerdictExecuted {
+        case_id,
+        payment_id,
+        merchant_wins,
+        votes_for_merchant,
+        votes_for_customer,
+    }
+    .publish(e);
 }
 
 pub fn emit_dao_escalation_cancelled(e: &Env, payment_id: u32, case_id: u32) {
-    DaoEscalationCancelled { payment_id, case_id }.publish(e);
+    DaoEscalationCancelled {
+        payment_id,
+        case_id,
+    }
+    .publish(e);
 }

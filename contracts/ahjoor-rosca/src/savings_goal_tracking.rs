@@ -243,11 +243,7 @@ pub trait SavingsGoalTrackingInterface {
     ) -> u32;
 
     /// Add milestones to a goal
-    fn add_milestones(
-        env: Env,
-        goal_id: u32,
-        milestones: Vec<Milestone>,
-    );
+    fn add_milestones(env: Env, goal_id: u32, milestones: Vec<Milestone>);
 
     /// Contribute to a goal
     fn contribute_to_goal(
@@ -265,10 +261,7 @@ pub trait SavingsGoalTrackingInterface {
     fn get_goal_progress(env: Env, goal_id: u32) -> GoalProgress;
 
     /// Check and celebrate milestones
-    fn check_and_celebrate_milestones(
-        env: Env,
-        goal_id: u32,
-    ) -> Vec<MilestoneCelebration>;
+    fn check_and_celebrate_milestones(env: Env, goal_id: u32) -> Vec<MilestoneCelebration>;
 
     /// Celebrate milestone manually
     fn celebrate_milestone(
@@ -279,11 +272,7 @@ pub trait SavingsGoalTrackingInterface {
     ) -> MilestoneCelebration;
 
     /// Issue reward for milestone
-    fn issue_milestone_reward(
-        env: Env,
-        celebration_id: u32,
-        reward_details: Map<String, String>,
-    );
+    fn issue_milestone_reward(env: Env, celebration_id: u32, reward_details: Map<String, String>);
 
     /// Complete a goal
     fn complete_goal(env: Env, goal_id: u32) -> MilestoneCelebration;
@@ -324,23 +313,11 @@ pub trait SavingsGoalTrackingInterface {
     fn get_celebration_leaderboard(env: Env, group_id: u32) -> Vec<(Address, u32)>;
 
     /// Update goal metadata
-    fn update_goal_metadata(
-        env: Env,
-        goal_id: u32,
-        metadata: Map<String, String>,
-    );
+    fn update_goal_metadata(env: Env, goal_id: u32, metadata: Map<String, String>);
 
     /// Get goals by category
-    fn get_goals_by_category(
-        env: Env,
-        group_id: u32,
-        category: String,
-    ) -> Vec<SavingsGoal>;
+    fn get_goals_by_category(env: Env, group_id: u32, category: String) -> Vec<SavingsGoal>;
 
     /// Get top goal contributors
-    fn get_top_goal_contributors(
-        env: Env,
-        group_id: u32,
-        limit: u32,
-    ) -> Vec<(Address, i128)>;
+    fn get_top_goal_contributors(env: Env, group_id: u32, limit: u32) -> Vec<(Address, i128)>;
 }

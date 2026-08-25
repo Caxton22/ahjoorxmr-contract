@@ -4,11 +4,22 @@ use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
 use soroban_sdk::{
     testutils::{Address as _, Events, Ledger},
-    Address, Env, vec,
+    vec, Address, Env,
 };
 
 /// Helper to create a test setup with members
-fn setup_with_members<'a>(n: usize, mint_amount: i128) -> (Env, AhjoorContractClient<'a>, Address, Address, TokenClient<'a>, TokenAdminClient<'a>, soroban_sdk::Vec<Address>) {
+fn setup_with_members<'a>(
+    n: usize,
+    mint_amount: i128,
+) -> (
+    Env,
+    AhjoorContractClient<'a>,
+    Address,
+    Address,
+    TokenClient<'a>,
+    TokenAdminClient<'a>,
+    soroban_sdk::Vec<Address>,
+) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -31,13 +42,20 @@ fn setup_with_members<'a>(n: usize, mint_amount: i128) -> (Env, AhjoorContractCl
         members.push_back(addr);
     }
 
-    (env, client, admin, token_admin, token_client, token_admin_client, members)
+    (
+        env,
+        client,
+        admin,
+        token_admin,
+        token_client,
+        token_admin_client,
+        members,
+    )
 }
 
 #[test]
 fn test_tiered_contributions() {
-    let (env, client, admin, token_admin, token_client, _, members) = 
-        setup_with_members(2, 2000);
+    let (env, client, admin, token_admin, token_client, _, members) = setup_with_members(2, 2000);
 
     let base_amount = 100;
     client.init(
@@ -63,13 +81,13 @@ fn test_tiered_contributions() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-        late_fee_bps: 0,
-        grace_period_seconds: 0,
-        auction_enabled: false,
-        auction_window_ledgers: 0,
-        randomize_payout_order: false,
-        reserve_enabled: false,
-        reserve_contribution_bps: 0,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -88,7 +106,7 @@ fn test_tiered_contributions() {
     // Try contributing only base_amount first
     client.contribute(&member2, &token_admin, &base_amount);
     assert_eq!(token_client.balance(&member2), 2000 - base_amount);
-    
+
     // Member2 should not be marked as paid yet
     let (_, paid, _, _, _) = client.get_state();
     assert_eq!(paid.len(), 1);
@@ -106,8 +124,7 @@ fn test_tiered_contributions() {
 
 #[test]
 fn test_invalid_tier_rejected() {
-    let (env, client, admin, token_admin, _, _, members) = 
-        setup_with_members(1, 1000);
+    let (env, client, admin, token_admin, _, _, members) = setup_with_members(1, 1000);
 
     client.init(
         &admin,
@@ -132,19 +149,19 @@ fn test_invalid_tier_rejected() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-        late_fee_bps: 0,
-        grace_period_seconds: 0,
-        auction_enabled: false,
-        auction_window_ledgers: 0,
-        randomize_payout_order: false,
-        reserve_enabled: false,
-        reserve_contribution_bps: 0,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
         },
         &None,
     );
 
     let member = members.get(0).unwrap();
-    
+
     // Tier 0 is invalid
     let result = client.try_set_member_tier(&admin, &member, &0);
     assert_eq!(result.unwrap_err().unwrap(), ExtError::InvalidTier.into());
@@ -152,8 +169,7 @@ fn test_invalid_tier_rejected() {
 
 #[test]
 fn test_mixed_tiers_pot_size() {
-    let (env, client, admin, token_admin, token_client, _, members) = 
-        setup_with_members(3, 3000);
+    let (env, client, admin, token_admin, token_client, _, members) = setup_with_members(3, 3000);
 
     let base_amount = 100;
     client.init(
@@ -179,13 +195,13 @@ fn test_mixed_tiers_pot_size() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-        late_fee_bps: 0,
-        grace_period_seconds: 0,
-        auction_enabled: false,
-        auction_window_ledgers: 0,
-        randomize_payout_order: false,
-        reserve_enabled: false,
-        reserve_contribution_bps: 0,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -208,5 +224,3 @@ fn test_mixed_tiers_pot_size() {
     // Recipient is member1
     assert_eq!(token_client.balance(&member1), (3000 - 100) + 550);
 }
-
-

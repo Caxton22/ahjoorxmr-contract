@@ -1,7 +1,13 @@
 #![cfg(test)]
 
-use crate::{AhjoorContract, AhjoorContractClient, ContributionEntry, CycleRecord, PayoutStrategy, RoscaConfig, VotingMode};
-use soroban_sdk::{testutils::{Address as _, Ledger as _, StellarAssetContract as _}, token, Address, Env, Vec};
+use crate::{
+    AhjoorContract, AhjoorContractClient, ContributionEntry, CycleRecord, PayoutStrategy,
+    RoscaConfig, VotingMode,
+};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger as _, StellarAssetContract as _},
+    token, Address, Env, Vec,
+};
 
 fn create_test_contract(env: &Env) -> (AhjoorContractClient, Address, Vec<Address>) {
     let contract_id = env.register_contract(None, AhjoorContract);
@@ -117,7 +123,7 @@ fn test_cycle_record_contains_all_contributions() {
 
     // Verify all contributions are recorded
     assert_eq!(cycle_record.contributions.len(), 3);
-    
+
     for contribution in cycle_record.contributions.iter() {
         assert_eq!(contribution.amount, 1000i128);
         assert!(members.contains(&contribution.member));
@@ -155,7 +161,10 @@ fn test_cycle_record_tracks_defaulters() {
 
     // Verify defaulter is recorded
     assert_eq!(cycle_record.defaulters.len(), 1);
-    assert_eq!(cycle_record.defaulters.get(0).unwrap(), members.get(2).unwrap());
+    assert_eq!(
+        cycle_record.defaulters.get(0).unwrap(),
+        members.get(2).unwrap()
+    );
 }
 
 #[test]
@@ -192,7 +201,10 @@ fn test_cycle_record_tracks_skippers() {
 
     // Verify skipper is recorded
     assert_eq!(cycle_record.skippers.len(), 1);
-    assert_eq!(cycle_record.skippers.get(0).unwrap(), members.get(2).unwrap());
+    assert_eq!(
+        cycle_record.skippers.get(0).unwrap(),
+        members.get(2).unwrap()
+    );
 }
 
 #[test]
@@ -222,7 +234,7 @@ fn test_member_contribution_history() {
 
     // Verify history contains 3 contributions
     assert_eq!(history.len(), 3);
-    
+
     for contribution in history.iter() {
         assert_eq!(contribution.member, member1);
         assert_eq!(contribution.amount, 1000i128);
@@ -564,9 +576,6 @@ fn test_cycle_record_total_pool_amount() {
     assert_eq!(cycle_record.total_pool_amount, 3000i128);
 }
 
-
-
-
 #[test]
 fn test_cycle_record_timestamp_nonzero_ledger_mode() {
     let env = Env::default();
@@ -599,12 +608,21 @@ fn test_cycle_record_timestamp_nonzero_ledger_mode() {
 
     // Verify cycle_end_timestamp is non-zero in ledger-mode
     // It should be the sequence number (10) cast as u64
-    assert!(cycle_record.cycle_end_timestamp > 0, "cycle_end_timestamp should be non-zero in ledger-mode");
-    assert_eq!(cycle_record.cycle_end_timestamp, 10u64, "cycle_end_timestamp should equal ledger sequence");
+    assert!(
+        cycle_record.cycle_end_timestamp > 0,
+        "cycle_end_timestamp should be non-zero in ledger-mode"
+    );
+    assert_eq!(
+        cycle_record.cycle_end_timestamp, 10u64,
+        "cycle_end_timestamp should equal ledger sequence"
+    );
 
     // Verify cycle_start_timestamp is also non-zero
-    assert!(cycle_record.cycle_start_timestamp > 0, "cycle_start_timestamp should be non-zero in ledger-mode");
-    
+    assert!(
+        cycle_record.cycle_start_timestamp > 0,
+        "cycle_start_timestamp should be non-zero in ledger-mode"
+    );
+
     // Verify other cycle record fields are populated
     assert_eq!(cycle_record.cycle_number, 0);
     assert_eq!(cycle_record.contributions.len(), 3);

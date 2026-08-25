@@ -139,13 +139,13 @@ fn default_init(setup: &TestSetup<'_>) {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-        late_fee_bps: 0,
-        grace_period_seconds: 0,
-        auction_enabled: false,
-        auction_window_ledgers: 0,
-        randomize_payout_order: false,
-        reserve_enabled: false,
-        reserve_contribution_bps: 0,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -180,13 +180,13 @@ fn test_delayed_start_blocks_then_allows_contribution() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-        late_fee_bps: 0,
-        grace_period_seconds: 0,
-        auction_enabled: false,
-        auction_window_ledgers: 0,
-        randomize_payout_order: false,
-        reserve_enabled: false,
-        reserve_contribution_bps: 0,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
         },
         &Some(start_at),
     );
@@ -237,13 +237,13 @@ fn test_cancel_pending_group_refunds_reward_deposit() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-        late_fee_bps: 0,
-        grace_period_seconds: 0,
-        auction_enabled: false,
-        auction_window_ledgers: 0,
-        randomize_payout_order: false,
-        reserve_enabled: false,
-        reserve_contribution_bps: 0,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
         },
         &Some(start_at),
     );
@@ -378,13 +378,21 @@ fn test_admin_assigned_strategy_execution() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -424,13 +432,21 @@ fn test_invalid_admin_order_validation() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
     assert_eq!(
@@ -487,13 +503,21 @@ fn test_admin_assigned_e2e_all_rounds() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -536,13 +560,21 @@ fn test_single_defaulter_penalty() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -593,13 +625,13 @@ fn test_penalty_deferred_within_grace_period() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-        late_fee_bps: 0,
-        grace_period_seconds: 0,
-        auction_enabled: false,
-        auction_window_ledgers: 0,
-        randomize_payout_order: false,
-        reserve_enabled: false,
-        reserve_contribution_bps: 0,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -641,13 +673,13 @@ fn test_penalty_applied_after_grace_boundary() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-        late_fee_bps: 0,
-        grace_period_seconds: 0,
-        auction_enabled: false,
-        auction_window_ledgers: 0,
-        randomize_payout_order: false,
-        reserve_enabled: false,
-        reserve_contribution_bps: 0,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -694,13 +726,13 @@ fn test_reputation_score_lifecycle_and_bounds() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-        late_fee_bps: 0,
-        grace_period_seconds: 0,
-        auction_enabled: false,
-        auction_window_ledgers: 0,
-        randomize_payout_order: false,
-        reserve_enabled: false,
-        reserve_contribution_bps: 0,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -770,13 +802,21 @@ fn test_multiple_defaulters_penalty() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -822,13 +862,21 @@ fn test_member_suspension_after_two_defaults() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -897,13 +945,21 @@ fn test_suspended_member_skipped_in_payout() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -975,13 +1031,21 @@ fn test_cannot_penalise_before_deadline() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1021,13 +1085,21 @@ fn test_penalty_disabled_when_amount_zero() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1076,13 +1148,21 @@ fn test_cannot_penalise_non_defaulter() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1135,13 +1215,21 @@ fn test_read_interface_lifecycle() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1218,13 +1306,21 @@ fn test_member_status_resets_after_round() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1285,13 +1381,21 @@ fn test_add_member_before_round() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1348,13 +1452,21 @@ fn test_add_member_mid_round_panics() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1409,13 +1521,21 @@ fn test_remove_member_between_rounds() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1474,13 +1594,21 @@ fn test_remove_member_mid_round_panics() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1537,13 +1665,21 @@ fn test_remove_member_who_already_received_payout() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1644,13 +1780,21 @@ fn test_init_with_approved_token() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 }
@@ -1693,13 +1837,21 @@ fn test_init_with_unapproved_token_panics() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
     assert_eq!(res.unwrap_err().unwrap(), Error::TokenNotApproved.into());
@@ -1735,13 +1887,21 @@ fn test_init_twice_panics() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1764,13 +1924,21 @@ fn test_init_twice_panics() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
     assert_eq!(res.unwrap_err().unwrap(), Error::AlreadyInitialized.into());
@@ -1802,13 +1970,21 @@ fn test_contribute_non_member_panics() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1846,13 +2022,21 @@ fn test_contribute_twice_panics() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1895,13 +2079,21 @@ fn test_payout_correct_member_n_group() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -1974,13 +2166,21 @@ fn test_contract_balance_zero_after_round() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -2023,13 +2223,21 @@ fn test_single_member_rosca() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -2076,13 +2284,21 @@ fn test_large_group_rosca() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -2134,13 +2350,21 @@ fn test_get_state_lifecycle_details() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -2195,13 +2419,21 @@ fn test_bump_storage() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -2249,13 +2481,21 @@ fn test_reward_distribution_scenarios() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -2338,13 +2578,21 @@ fn test_contribution_pot_separation() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -2421,13 +2669,21 @@ fn setup_exit_env(
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -2709,13 +2965,21 @@ fn test_exit_with_zero_penalty() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -2830,7 +3094,8 @@ fn test_exit_compacts_payout_order_on_early_exit() {
     client.contribute(&_u3, &_ta, &100);
     let u2_after = _tc.balance(&_u2);
     assert_eq!(
-        u2_after, u2_before - 100 + 200,
+        u2_after,
+        u2_before - 100 + 200,
         "u2 (promoted to slot 0) should receive round 0 pot after early exit"
     );
 }
@@ -2896,7 +3161,10 @@ fn test_exit_emits_payout_order_compacted_event() {
     // events by topic rather than relying on `last()`.
     let target_topic = Symbol::new(&env, "payout_order_compacted");
     let all_events = env.events().all();
-    let mut matched: Option<(soroban_sdk::Vec<soroban_sdk::Val>, soroban_sdk::Map<Symbol, soroban_sdk::Val>)> = None;
+    let mut matched: Option<(
+        soroban_sdk::Vec<soroban_sdk::Val>,
+        soroban_sdk::Map<Symbol, soroban_sdk::Val>,
+    )> = None;
     for (_, topics, data) in all_events.iter() {
         let topics_vec: soroban_sdk::Vec<soroban_sdk::Val> = topics.into_val(&env);
         if let Some(first) = topics_vec.first() {
@@ -3028,13 +3296,21 @@ fn test_pause_and_resume_flow() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3104,13 +3380,21 @@ fn test_paused_blocks_contribute() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3150,13 +3434,21 @@ fn test_cannot_pause_already_paused() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3197,13 +3489,21 @@ fn test_cannot_resume_not_paused() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3261,13 +3561,21 @@ fn test_get_member_contribution_status() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3335,13 +3643,21 @@ fn test_overpayment_rejected() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3379,13 +3695,21 @@ fn test_emit_deadline_reminder() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3457,13 +3781,21 @@ fn test_get_upcoming_deadlines() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3506,13 +3838,21 @@ fn test_create_proposal() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3566,13 +3906,21 @@ fn test_vote_on_proposal() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3624,13 +3972,21 @@ fn test_execute_proposal_with_quorum() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3690,13 +4046,21 @@ fn test_proposal_insufficient_quorum() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3753,13 +4117,21 @@ fn test_proposal_voted_down() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3817,13 +4189,21 @@ fn test_penalty_appeal_execution() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3891,13 +4271,21 @@ fn test_member_removal_execution() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -3956,13 +4344,21 @@ fn test_non_member_cannot_create_proposal() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -4008,13 +4404,21 @@ fn test_cannot_vote_after_deadline() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -4068,13 +4472,21 @@ fn test_cannot_vote_twice() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -4118,13 +4530,21 @@ fn test_get_member_status_non_member() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -4166,13 +4586,21 @@ fn test_get_member_status_active_member() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -4216,15 +4644,23 @@ fn test_get_member_status_suspended_member() {
             member_goals: None,
             fee_bps: 0,
             fee_recipient: None,
-            max_defaults: 2,  // Suspend after 2 defaults
-        
+            max_defaults: 2, // Suspend after 2 defaults
+
             grace_period_ledgers: 0,
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -4274,13 +4710,21 @@ fn test_get_member_status_exited_member() {
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -4375,19 +4819,34 @@ fn test_get_round_history_pagination_returns_correct_slice() {
     // First page: 2 records, matching the start of the full history.
     let page1 = setup.client.get_round_history(&0u32, &0u32, &2u32);
     assert_eq!(page1.len(), 2);
-    assert_eq!(page1.get(0).unwrap().recipient, full.get(0).unwrap().recipient);
-    assert_eq!(page1.get(1).unwrap().recipient, full.get(1).unwrap().recipient);
+    assert_eq!(
+        page1.get(0).unwrap().recipient,
+        full.get(0).unwrap().recipient
+    );
+    assert_eq!(
+        page1.get(1).unwrap().recipient,
+        full.get(1).unwrap().recipient
+    );
 
     // Second page: next 2 records.
     let page2 = setup.client.get_round_history(&0u32, &2u32, &2u32);
     assert_eq!(page2.len(), 2);
-    assert_eq!(page2.get(0).unwrap().recipient, full.get(2).unwrap().recipient);
-    assert_eq!(page2.get(1).unwrap().recipient, full.get(3).unwrap().recipient);
+    assert_eq!(
+        page2.get(0).unwrap().recipient,
+        full.get(2).unwrap().recipient
+    );
+    assert_eq!(
+        page2.get(1).unwrap().recipient,
+        full.get(3).unwrap().recipient
+    );
 
     // Final (partial) page: only 1 record remains.
     let page3 = setup.client.get_round_history(&0u32, &4u32, &2u32);
     assert_eq!(page3.len(), 1);
-    assert_eq!(page3.get(0).unwrap().recipient, full.get(4).unwrap().recipient);
+    assert_eq!(
+        page3.get(0).unwrap().recipient,
+        full.get(4).unwrap().recipient
+    );
 }
 
 /// An out-of-range offset returns an empty vec rather than panicking.
@@ -4721,13 +5180,21 @@ fn setup_finalize_env(
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -4903,13 +5370,21 @@ fn setup_exit_penalty_env(
             max_defaults: 3,
 
             grace_period_ledgers: 0,
-        
+
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
+            voting_mode: VotingMode::Equal,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
+        },
         &None,
     );
 
@@ -4991,7 +5466,10 @@ fn test_exit_zero_refund_when_payout_exceeds_contributions() {
     client.approve_exit(&u1);
 
     let balance_after = token_client.balance(&u1);
-    assert_eq!(balance_after, balance_before, "zero refund when payout exceeds contributions");
+    assert_eq!(
+        balance_after, balance_before,
+        "zero refund when payout exceeds contributions"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -5087,10 +5565,13 @@ fn test_grace_period_ledger_vs_timestamp() {
 
     // After the grace window expires, the same member should face the penalty
     env.ledger().with_mut(|l| l.timestamp = 4300); // past grace (>4200)
-    // The pending penalty triggers on next interaction; verify state is consistent.
+                                                   // The pending penalty triggers on next interaction; verify state is consistent.
     let info = client.get_group_info();
     // Round has advanced: verify we are in round 1
-    assert!(info.current_round >= 1, "should have progressed past round 0");
+    assert!(
+        info.current_round >= 1,
+        "should have progressed past round 0"
+    );
 }
 
 // ===========================================================================
@@ -5145,7 +5626,8 @@ fn test_get_pending_penalties_mix_of_processed_and_pending() {
     client.contribute(&member0, &token_addr, &100);
     client.contribute(&member2, &token_addr, &100);
 
-    env.ledger().with_mut(|l| l.timestamp = round1_deadline + 100);
+    env.ledger()
+        .with_mut(|l| l.timestamp = round1_deadline + 100);
     client.finalize_round();
     let member1_balance_before_request = token_client.balance(&member1);
 
@@ -5205,11 +5687,6 @@ fn test_cannot_change_timestamp_schedule_mid_round() {
         "changing use_timestamp_schedule after round 1 must return CannotChangeMidRound"
     );
 }
-
-
-
-
-
 
 #[test]
 fn test_overflow_guard_on_large_contribution() {
@@ -5340,16 +5817,10 @@ fn test_reinstatement_requires_approved_proposal() {
     assert!(client.get_member_status(&u2).is_suspended);
 
     // u2 requests reinstatement — creates proposal_id=1 in Pending status
-    let proposal_id = client.request_reinstatement(
-        &u2,
-        &BytesN::from_array(&env, &[0xABu8; 32]),
-    );
+    let proposal_id = client.request_reinstatement(&u2, &BytesN::from_array(&env, &[0xABu8; 32]));
 
     // Immediately attempt reinstatement while proposal is still Pending → must fail
-    let err = client
-        .try_reinstate_member(&u2)
-        .unwrap_err()
-        .unwrap();
+    let err = client.try_reinstate_member(&u2).unwrap_err().unwrap();
     assert_eq!(err, Error::ProposalNotPending.into());
 
     // Vote on the proposal before the deadline (u1 + u2 → quorum met with 3 members / 51%)
@@ -5371,10 +5842,6 @@ fn test_reinstatement_requires_approved_proposal() {
     assert!(!client.get_member_status(&u2).is_suspended);
 
     // Second call must fail — ActiveReinstatementProposal mapping is cleared
-    let err2 = client
-        .try_reinstate_member(&u2)
-        .unwrap_err()
-        .unwrap();
+    let err2 = client.try_reinstate_member(&u2).unwrap_err().unwrap();
     assert_eq!(err2, Error::ProposalNotFound.into());
 }
-

@@ -25,7 +25,11 @@ use soroban_sdk::{
 };
 
 fn create_token_contract<'a>(e: &Env, admin: &Address) -> token::StellarAssetClient<'a> {
-    token::StellarAssetClient::new(e, &e.register_stellar_asset_contract_v2(admin.clone()).address())
+    token::StellarAssetClient::new(
+        e,
+        &e.register_stellar_asset_contract_v2(admin.clone())
+            .address(),
+    )
 }
 
 fn advance_ledger(e: &Env, delta_secs: u64) {
@@ -80,7 +84,10 @@ fn test_list_bounty_submissions_is_paginated() {
 
     let page2 = client.list_bounty_submissions(&escrow_id, &1, &1);
     assert_eq!(page2.len(), 1);
-    assert_eq!(page2.get(0).unwrap().submission_hash, BytesN::from_array(&env, &[3u8; 32]));
+    assert_eq!(
+        page2.get(0).unwrap().submission_hash,
+        BytesN::from_array(&env, &[3u8; 32])
+    );
 }
 
 #[test]
@@ -155,7 +162,10 @@ fn test_create_bounty_zero_amount() {
         &(current_time + 86400),
         &(current_time + 172800),
     );
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt3::BountyAmountMustBePositive.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt3::BountyAmountMustBePositive.into()
+    );
 }
 
 #[test]
@@ -186,7 +196,10 @@ fn test_create_bounty_past_claim_deadline() {
         &(current_time - 100),
         &(current_time + 172800),
     );
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt3::ClaimDeadlineMustBeFuture.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt3::ClaimDeadlineMustBeFuture.into()
+    );
 }
 
 #[test]
@@ -216,7 +229,10 @@ fn test_create_bounty_invalid_deadlines() {
         &(current_time + 172800),
         &(current_time + 86400),
     );
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt3::SubmissionDeadlineMustBeAfterClaimDeadline.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt3::SubmissionDeadlineMustBeAfterClaimDeadline.into()
+    );
 }
 
 #[test]
@@ -292,7 +308,10 @@ fn test_claim_bounty_duplicate() {
 
     client.claim_bounty(&solver1, &escrow_id);
     let __typed_err_result = client.try_claim_bounty(&solver2, &escrow_id);
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt3::BountyIsNotAvailableClaiming.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt3::BountyIsNotAvailableClaiming.into()
+    );
 }
 
 #[test]
@@ -328,7 +347,10 @@ fn test_claim_bounty_after_deadline() {
     advance_ledger(&env, 86401); // Past claim deadline
 
     let __typed_err_result = client.try_claim_bounty(&solver, &escrow_id);
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt3::ClaimDeadlineHasPassed.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt3::ClaimDeadlineHasPassed.into()
+    );
 }
 
 #[test]
@@ -404,8 +426,12 @@ fn test_submit_bounty_work_wrong_solver() {
     client.claim_bounty(&solver, &escrow_id);
 
     let submission_hash = BytesN::from_array(&env, &[2u8; 32]);
-    let __typed_err_result = client.try_submit_bounty_work(&wrong_solver, &escrow_id, &submission_hash);
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt3::OnlyAssignedSolverCanSubmitWork.into());
+    let __typed_err_result =
+        client.try_submit_bounty_work(&wrong_solver, &escrow_id, &submission_hash);
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt3::OnlyAssignedSolverCanSubmitWork.into()
+    );
 }
 
 #[test]
@@ -444,7 +470,10 @@ fn test_submit_bounty_work_after_deadline() {
 
     let submission_hash = BytesN::from_array(&env, &[2u8; 32]);
     let __typed_err_result = client.try_submit_bounty_work(&solver, &escrow_id, &submission_hash);
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt3::SubmissionDeadlineHasPassed.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt3::SubmissionDeadlineHasPassed.into()
+    );
 }
 
 #[test]
@@ -524,7 +553,10 @@ fn test_approve_bounty_without_submission() {
 
     client.claim_bounty(&solver, &escrow_id);
     let __typed_err_result = client.try_approve_bounty_submission(&buyer, &escrow_id);
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt3::NoSubmissionHasBeenMade.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt3::NoSubmissionHasBeenMade.into()
+    );
 }
 
 #[test]
@@ -624,7 +656,10 @@ fn test_reject_bounty_max_rejections() {
     let submission_hash = BytesN::from_array(&env, &[2u8; 32]);
     client.submit_bounty_work(&solver, &escrow_id, &submission_hash);
     let __typed_err_result = client.try_reject_bounty_submission(&buyer, &escrow_id);
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt3::MaximumRejectionRoundsReached.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt3::MaximumRejectionRoundsReached.into()
+    );
 }
 
 #[test]
@@ -771,7 +806,10 @@ fn test_cancel_bounty_claimed() {
 
     client.claim_bounty(&solver, &escrow_id);
     let __typed_err_result = client.try_cancel_bounty(&buyer, &escrow_id);
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt3::CannotCancelBountyCurrentState.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt3::CannotCancelBountyCurrentState.into()
+    );
 }
 
 #[test]

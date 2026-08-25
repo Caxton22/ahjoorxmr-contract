@@ -74,12 +74,32 @@ pub struct TokenOracleUpdated {
     pub new_oracle: Option<Address>,
 }
 
-pub fn emit_token_metadata_set(e: &Env, token: Address, symbol: soroban_sdk::String, decimals: u32) {
-    TokenMetadataSet { token, symbol, decimals }.publish(e);
+pub fn emit_token_metadata_set(
+    e: &Env,
+    token: Address,
+    symbol: soroban_sdk::String,
+    decimals: u32,
+) {
+    TokenMetadataSet {
+        token,
+        symbol,
+        decimals,
+    }
+    .publish(e);
 }
 
-pub fn emit_token_oracle_updated(e: &Env, token: Address, old_oracle: Option<Address>, new_oracle: Option<Address>) {
-    TokenOracleUpdated { token, old_oracle, new_oracle }.publish(e);
+pub fn emit_token_oracle_updated(
+    e: &Env,
+    token: Address,
+    old_oracle: Option<Address>,
+    new_oracle: Option<Address>,
+) {
+    TokenOracleUpdated {
+        token,
+        old_oracle,
+        new_oracle,
+    }
+    .publish(e);
 }
 
 #[contractevent]
@@ -103,8 +123,18 @@ pub struct TokenLimitOverrideSet {
     pub token: Address,
 }
 
-pub fn emit_risk_tier_defined(e: &Env, tier_id: u32, name: soroban_sdk::String, max_single_tx_amount: i128) {
-    RiskTierDefined { tier_id, name, max_single_tx_amount }.publish(e);
+pub fn emit_risk_tier_defined(
+    e: &Env,
+    tier_id: u32,
+    name: soroban_sdk::String,
+    max_single_tx_amount: i128,
+) {
+    RiskTierDefined {
+        tier_id,
+        name,
+        max_single_tx_amount,
+    }
+    .publish(e);
 }
 
 pub fn emit_token_tier_assigned(e: &Env, token: Address, tier_id: u32) {
@@ -120,26 +150,42 @@ pub fn emit_token_delisted(e: &Env, token: Address, admin: Address) {
 }
 
 pub fn emit_admin_transfer_proposed(e: &Env, current_admin: Address, proposed_admin: Address) {
-    AdminTransferProposed { current_admin, proposed_admin }.publish(e);
+    AdminTransferProposed {
+        current_admin,
+        proposed_admin,
+    }
+    .publish(e);
 }
 
 pub fn emit_admin_transferred(e: &Env, old_admin: Address, new_admin: Address) {
-    AdminTransferred { old_admin, new_admin }.publish(e);
+    AdminTransferred {
+        old_admin,
+        new_admin,
+    }
+    .publish(e);
 }
 
 pub fn emit_token_suspended(e: &Env, token: Address, expiry_ledger: u32, reason_hash: BytesN<32>) {
-    TokenSuspended { token, expiry_ledger, reason_hash }.publish(e);
+    TokenSuspended {
+        token,
+        expiry_ledger,
+        reason_hash,
+    }
+    .publish(e);
 }
 
 pub fn emit_token_suspension_lifted(e: &Env, token: Address, lifted_by: Address, ledger: u32) {
-    TokenSuspensionLifted { token, lifted_by, ledger }.publish(e);
+    TokenSuspensionLifted {
+        token,
+        lifted_by,
+        ledger,
+    }
+    .publish(e);
 }
 
 pub fn emit_token_auto_reinstated(e: &Env, token: Address, ledger: u32) {
-    e.events().publish(
-        (Symbol::new(e, "TokenAutoReinstated"),),
-        (token, ledger),
-    );
+    e.events()
+        .publish((Symbol::new(e, "TokenAutoReinstated"),), (token, ledger));
 }
 
 #[contractevent]
@@ -150,8 +196,18 @@ pub struct TokenQuotaSet {
     pub period_ledgers: u32,
 }
 
-pub fn emit_token_quota_set(e: &Env, token: Address, max_volume_per_period: i128, period_ledgers: u32) {
-    TokenQuotaSet { token, max_volume_per_period, period_ledgers }.publish(e);
+pub fn emit_token_quota_set(
+    e: &Env,
+    token: Address,
+    max_volume_per_period: i128,
+    period_ledgers: u32,
+) {
+    TokenQuotaSet {
+        token,
+        max_volume_per_period,
+        period_ledgers,
+    }
+    .publish(e);
 }
 
 #[contractevent]
@@ -162,8 +218,18 @@ pub struct TokenQuotaExceeded {
     pub period_volume: i128,
 }
 
-pub fn emit_token_quota_exceeded(e: &Env, token: Address, attempted_amount: i128, period_volume: i128) {
-    TokenQuotaExceeded { token, attempted_amount, period_volume }.publish(e);
+pub fn emit_token_quota_exceeded(
+    e: &Env,
+    token: Address,
+    attempted_amount: i128,
+    period_volume: i128,
+) {
+    TokenQuotaExceeded {
+        token,
+        attempted_amount,
+        period_volume,
+    }
+    .publish(e);
 }
 
 #[contractevent]
@@ -182,7 +248,13 @@ pub fn emit_contract_token_allowlist_updated(
     action: bool,
     expiry: Option<u32>,
 ) {
-    ContractTokenAllowlistUpdated { contract_id, token, action, expiry }.publish(e);
+    ContractTokenAllowlistUpdated {
+        contract_id,
+        token,
+        action,
+        expiry,
+    }
+    .publish(e);
 }
 
 #[contractevent]
@@ -217,11 +289,28 @@ pub struct ListingVetoed {
 }
 
 pub fn emit_listing_proposed(e: &Env, proposal_id: u32, token: Address, proposer: Address) {
-    ListingProposed { proposal_id, token, proposer }.publish(e);
+    ListingProposed {
+        proposal_id,
+        token,
+        proposer,
+    }
+    .publish(e);
 }
 
-pub fn emit_listing_vote_cast(e: &Env, proposal_id: u32, voter: Address, approve: bool, weight: i128) {
-    ListingVoteCast { proposal_id, voter, approve, weight }.publish(e);
+pub fn emit_listing_vote_cast(
+    e: &Env,
+    proposal_id: u32,
+    voter: Address,
+    approve: bool,
+    weight: i128,
+) {
+    ListingVoteCast {
+        proposal_id,
+        voter,
+        approve,
+        weight,
+    }
+    .publish(e);
 }
 
 pub fn emit_listing_enacted(e: &Env, proposal_id: u32, token: Address) {
@@ -229,7 +318,11 @@ pub fn emit_listing_enacted(e: &Env, proposal_id: u32, token: Address) {
 }
 
 pub fn emit_listing_vetoed(e: &Env, proposal_id: u32, reason_hash: BytesN<32>) {
-    ListingVetoed { proposal_id, reason_hash }.publish(e);
+    ListingVetoed {
+        proposal_id,
+        reason_hash,
+    }
+    .publish(e);
 }
 
 #[allow(dead_code)]

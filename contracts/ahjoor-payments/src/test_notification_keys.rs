@@ -138,20 +138,13 @@ fn test_payment_events_include_notification_key() {
     let (env, admin, customer, merchant, token, client) = setup_test_env();
 
     let notification_key = Bytes::from_array(&env, &[0xDE, 0xAD, 0xBE, 0xEF]);
-    
+
     // Register notification key
     client.register_notification_key(&merchant, &notification_key);
 
     // Create payment
-    let payment_id = client.create_payment(
-        &customer,
-        &merchant,
-        &1000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
+    let payment_id =
+        client.create_payment(&customer, &merchant, &1000, &token, &None, &None, &None);
 
     // Complete payment
     client.complete_payment(&payment_id);
@@ -168,15 +161,8 @@ fn test_events_with_empty_notification_key() {
     // Don't register any notification key - should use empty bytes
 
     // Create payment
-    let _payment_id = client.create_payment(
-        &customer,
-        &merchant,
-        &1000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
+    let _payment_id =
+        client.create_payment(&customer, &merchant, &1000, &token, &None, &None, &None);
 
     // Just verify the payment was created successfully
     // Events can be tested separately
@@ -199,24 +185,10 @@ fn test_multiple_merchants_different_keys() {
     assert_eq!(client.get_notification_key(&merchant2), Some(key2));
 
     // Create payments for both merchants
-    let _payment_id1 = client.create_payment(
-        &customer,
-        &merchant1,
-        &1000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
-    let _payment_id2 = client.create_payment(
-        &customer,
-        &merchant2,
-        &1000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
+    let _payment_id1 =
+        client.create_payment(&customer, &merchant1, &1000, &token, &None, &None, &None);
+    let _payment_id2 =
+        client.create_payment(&customer, &merchant2, &1000, &token, &None, &None, &None);
 
     // Just verify the payments were created successfully
 }
@@ -226,35 +198,24 @@ fn test_notification_key_persists_across_operations() {
     let (env, _admin, customer, merchant, token, client) = setup_test_env();
 
     let notification_key = Bytes::from_array(&env, &[0xFF, 0xEE, 0xDD, 0xCC]);
-    
+
     // Register notification key
     client.register_notification_key(&merchant, &notification_key);
 
     // Perform multiple operations
-    let payment_id1 = client.create_payment(
-        &customer,
-        &merchant,
-        &1000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
+    let payment_id1 =
+        client.create_payment(&customer, &merchant, &1000, &token, &None, &None, &None);
 
     client.complete_payment(&payment_id1);
 
-    let payment_id2 = client.create_payment(
-        &customer,
-        &merchant,
-        &2000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
+    let payment_id2 =
+        client.create_payment(&customer, &merchant, &2000, &token, &None, &None, &None);
 
     // Key should still be registered
-    assert_eq!(client.get_notification_key(&merchant), Some(notification_key));
+    assert_eq!(
+        client.get_notification_key(&merchant),
+        Some(notification_key)
+    );
 
     // Verify payments were created successfully
     let payment1 = client.get_payment(&payment_id1);
@@ -268,34 +229,20 @@ fn test_key_removal_affects_subsequent_events() {
     let (env, _admin, customer, merchant, token, client) = setup_test_env();
 
     let notification_key = Bytes::from_array(&env, &[0xAA, 0xBB, 0xCC, 0xDD]);
-    
+
     // Register notification key
     client.register_notification_key(&merchant, &notification_key);
 
     // Create payment with key
-    let _payment_id1 = client.create_payment(
-        &customer,
-        &merchant,
-        &1000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
+    let _payment_id1 =
+        client.create_payment(&customer, &merchant, &1000, &token, &None, &None, &None);
 
     // Remove key
     client.remove_notification_key(&merchant);
 
     // Create payment without key
-    let _payment_id2 = client.create_payment(
-        &customer,
-        &merchant,
-        &2000,
-        &token,
-        &None,
-        &None,
-        &None,
-    );
+    let _payment_id2 =
+        client.create_payment(&customer, &merchant, &2000, &token, &None, &None, &None);
 
     // Verify key is removed
     assert_eq!(client.get_notification_key(&merchant), None);

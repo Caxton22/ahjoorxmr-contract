@@ -1,6 +1,8 @@
 #![cfg(test)]
 
-use crate::{AhjoorEscrowContract, AhjoorEscrowContractClient, DisputeDefaultWinner, EscrowErrorExt};
+use crate::{
+    AhjoorEscrowContract, AhjoorEscrowContractClient, DisputeDefaultWinner, EscrowErrorExt,
+};
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
     token::Client as TokenClient,
@@ -190,7 +192,10 @@ fn test_enforce_timeout_before_deadline() {
         li.timestamp += 3 * 24 * 60 * 60; // 3 days
     });
     let __typed_err_result = client.try_enforce_dispute_timeout(&escrow_id);
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::DisputeTimeoutDeadlineHasNotPassedYet.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt::DisputeTimeoutDeadlineHasNotPassedYet.into()
+    );
 }
 
 #[test]
@@ -213,7 +218,10 @@ fn test_enforce_timeout_on_non_disputed_escrow() {
 
     // Try to enforce timeout without dispute
     let __typed_err_result = client.try_enforce_dispute_timeout(&escrow_id);
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::EscrowIsNotDisputed.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt::EscrowIsNotDisputed.into()
+    );
 }
 
 #[test]
@@ -245,7 +253,10 @@ fn test_enforce_timeout_on_resolved_dispute() {
 
     // Try to enforce timeout on already resolved dispute
     let __typed_err_result = client.try_enforce_dispute_timeout(&escrow_id);
-    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::DisputeAlreadyResolved.into());
+    assert_eq!(
+        __typed_err_result.unwrap_err().unwrap(),
+        EscrowErrorExt::DisputeAlreadyResolved.into()
+    );
 }
 
 #[test]

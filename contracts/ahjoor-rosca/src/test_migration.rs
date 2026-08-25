@@ -1,7 +1,13 @@
 #![cfg(test)]
 
-use crate::{AhjoorContract, AhjoorContractClient, PayoutStrategy, RoscaConfig, VotingMode, MIGRATION_TIMEOUT_SECONDS};
-use soroban_sdk::{testutils::{Address as _, Ledger as _}, Address, Env, Vec};
+use crate::{
+    AhjoorContract, AhjoorContractClient, PayoutStrategy, RoscaConfig, VotingMode,
+    MIGRATION_TIMEOUT_SECONDS,
+};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger as _},
+    Address, Env, Vec,
+};
 
 fn default_config(fee_recipient: &Address) -> RoscaConfig {
     RoscaConfig {
@@ -31,7 +37,12 @@ fn default_config(fee_recipient: &Address) -> RoscaConfig {
     }
 }
 
-fn setup_group<'a>(env: &'a Env, admin: &Address, member: &Address, token: &Address) -> AhjoorContractClient<'a> {
+fn setup_group<'a>(
+    env: &'a Env,
+    admin: &Address,
+    member: &Address,
+    token: &Address,
+) -> AhjoorContractClient<'a> {
     let contract_id = env.register_contract(None, AhjoorContract);
     let client = AhjoorContractClient::new(env, &contract_id);
     let mut members = Vec::new(env);
@@ -71,7 +82,8 @@ fn test_migration_timeout_blocks_approval() {
     assert_eq!(req.created_at, start_time);
 
     // Fast-forward past the timeout boundary
-    env.ledger().with_mut(|l| l.timestamp = start_time + MIGRATION_TIMEOUT_SECONDS + 1);
+    env.ledger()
+        .with_mut(|l| l.timestamp = start_time + MIGRATION_TIMEOUT_SECONDS + 1);
 
     // Source admin tries to approve — must fail with MigrationNotApproved (108)
     let res = src_client.try_approve_migration_exit(&member);
@@ -102,7 +114,8 @@ fn test_migration_within_window_can_be_approved() {
     src_client.request_group_migration(&member, &dest_client.address, &1u32);
 
     // Move to just before timeout (still within window)
-    env.ledger().with_mut(|l| l.timestamp = start_time + MIGRATION_TIMEOUT_SECONDS);
+    env.ledger()
+        .with_mut(|l| l.timestamp = start_time + MIGRATION_TIMEOUT_SECONDS);
 
     // Approval at exactly the boundary should succeed (> check, not >=)
     src_client.approve_migration_exit(&member);
@@ -143,7 +156,8 @@ fn test_migration_timeout_cancellation() {
     dest_client.approve_migration_entry(&member, &src_client.address, &1u32);
 
     // Advance past the 7-day window
-    env.ledger().with_mut(|l| l.timestamp = start_time + MIGRATION_TIMEOUT_SECONDS + 1);
+    env.ledger()
+        .with_mut(|l| l.timestamp = start_time + MIGRATION_TIMEOUT_SECONDS + 1);
 
     // Approve on source is now rejected
     let approve_res = src_client.try_approve_migration_exit(&member);
@@ -151,12 +165,18 @@ fn test_migration_timeout_cancellation() {
 
     // Execute on dest must also fail (source not BothApproved)
     let exec_res = dest_client.try_execute_migration(&member, &src_client.address);
-    assert!(exec_res.is_err(), "Execute must fail when source not approved");
+    assert!(
+        exec_res.is_err(),
+        "Execute must fail when source not approved"
+    );
 
     // Member cancels on source: removes MigrationRequests[member]
     src_client.cancel_migration(&member, &member);
     let req_after = src_client.get_migration_request(&member);
-    assert!(req_after.is_none(), "MigrationRequests entry must be removed after cancel");
+    assert!(
+        req_after.is_none(),
+        "MigrationRequests entry must be removed after cancel"
+    );
 
     // Member cancels on dest: removes IncomingMigrations[member]
     dest_client.cancel_migration(&member, &member);
@@ -219,5 +239,8 @@ fn test_admin_cancel_migration_clears_destination_incoming() {
 
     // Incoming state should be gone; execute now fails because migration is no longer present.
     let exec_res = dest_client.try_execute_migration(&member, &src_client.address);
-    assert!(exec_res.is_err(), "execute should fail after admin force-cancel");
+    assert!(
+        exec_res.is_err(),
+        "execute should fail after admin force-cancel"
+    );
 }

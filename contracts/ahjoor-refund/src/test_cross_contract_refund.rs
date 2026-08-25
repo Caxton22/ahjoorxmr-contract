@@ -1,11 +1,8 @@
 #![cfg(test)]
 use super::*;
-use soroban_sdk::{
-    testutils::Address as _,
-    Address, Env, String,
-};
-use soroban_sdk::token::{Client as TokenClient, StellarAssetClient as TokenAdminClient};
 use ahjoor_payments::{AhjoorPaymentsContract, AhjoorPaymentsContractClient};
+use soroban_sdk::token::{Client as TokenClient, StellarAssetClient as TokenAdminClient};
+use soroban_sdk::{testutils::Address as _, Address, Env, String};
 
 fn setup_cc<'a>() -> (
     Env,
@@ -25,13 +22,22 @@ fn setup_cc<'a>() -> (
     let refund_client = AhjoorRefundContractClient::new(&env, &refund_id);
 
     let admin = Address::generate(&env);
-    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_addr = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     let token_admin = TokenAdminClient::new(&env, &token_addr);
 
     payment_client.initialize(&admin, &admin, &0u32);
     refund_client.initialize(&admin, &payment_id, &86_400u64, &None);
 
-    (env, refund_client, payment_client, admin, token_addr, token_admin)
+    (
+        env,
+        refund_client,
+        payment_client,
+        admin,
+        token_addr,
+        token_admin,
+    )
 }
 
 #[test]
@@ -58,7 +64,10 @@ fn test_register_cross_contract_refund_success() {
     assert_eq!(refund.status, RefundStatus::CrossContractRefunded);
     assert_eq!(refund.origin_contract, Some(origin_contract));
     assert_eq!(refund.escrow_id, Some(1u32));
-    assert_eq!(refund.auto_approved_source, Some(String::from_str(&env, "cross_contract")));
+    assert_eq!(
+        refund.auto_approved_source,
+        Some(String::from_str(&env, "cross_contract"))
+    );
 }
 
 #[test]
@@ -92,7 +101,13 @@ fn test_cross_contract_refund_appears_in_queue() {
     let merchant = Address::generate(&env);
 
     let rid = refund_client.register_cross_contract_refund(
-        &origin, &10u32, &customer, &merchant, &token_addr, &200i128, &0u32,
+        &origin,
+        &10u32,
+        &customer,
+        &merchant,
+        &token_addr,
+        &200i128,
+        &0u32,
     );
 
     let (items, total, _) = refund_client.get_cross_contract_refund_queue(&0u32, &50u32);
@@ -111,7 +126,13 @@ fn test_cross_contract_refund_counted_in_merchant_metrics() {
     let merchant = Address::generate(&env);
 
     refund_client.register_cross_contract_refund(
-        &origin, &5u32, &customer, &merchant, &token_addr, &300i128, &0u32,
+        &origin,
+        &5u32,
+        &customer,
+        &merchant,
+        &token_addr,
+        &300i128,
+        &0u32,
     );
 
     let stats = refund_client.get_merchant_refund_stats(&merchant);

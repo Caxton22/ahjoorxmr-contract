@@ -1,5 +1,8 @@
 #![cfg(test)]
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, BytesN, Env};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, BytesN, Env,
+};
 
 use crate::{TokenWhitelistContract, TokenWhitelistContractClient};
 

@@ -1,11 +1,11 @@
 #![cfg(test)]
 use super::*;
+use ahjoor_payments::{AhjoorPaymentsContract, AhjoorPaymentsContractClient};
+use soroban_sdk::token::{Client as TokenClient, StellarAssetClient as TokenAdminClient};
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
     Address, BytesN, Env, String,
 };
-use soroban_sdk::token::{Client as TokenClient, StellarAssetClient as TokenAdminClient};
-use ahjoor_payments::{AhjoorPaymentsContract, AhjoorPaymentsContractClient};
 
 fn setup_escalation<'a>() -> (
     Env,
@@ -28,7 +28,9 @@ fn setup_escalation<'a>() -> (
 
     let admin = Address::generate(&env);
     let senior_arbiter = Address::generate(&env);
-    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_addr = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     let token_client = TokenClient::new(&env, &token_addr);
     let token_admin = TokenAdminClient::new(&env, &token_addr);
 
@@ -41,7 +43,16 @@ fn setup_escalation<'a>() -> (
     refund_client.set_senior_arbiter(&admin, &senior_arbiter);
     refund_client.set_auto_approve_on_senior_miss(&admin, &true);
 
-    (env, refund_client, payment_client, admin, senior_arbiter, token_addr, token_client, token_admin)
+    (
+        env,
+        refund_client,
+        payment_client,
+        admin,
+        senior_arbiter,
+        token_addr,
+        token_client,
+        token_admin,
+    )
 }
 
 fn make_completed_payment<'a>(
@@ -54,7 +65,8 @@ fn make_completed_payment<'a>(
     amount: i128,
 ) -> u32 {
     token_admin.mint(customer, &(amount * 2));
-    let pid = payment_client.create_payment(customer, merchant, &amount, token, &None, &None, &None);
+    let pid =
+        payment_client.create_payment(customer, merchant, &amount, token, &None, &None, &None);
     payment_client.complete_payment(&pid);
     pid
 }
@@ -66,10 +78,22 @@ fn test_primary_resolution_before_deadline() {
     let customer = Address::generate(&env);
     let merchant = Address::generate(&env);
 
-    let pid = make_completed_payment(&env, &payment_client, &token_admin, &customer, &merchant, &token_addr, 1000);
+    let pid = make_completed_payment(
+        &env,
+        &payment_client,
+        &token_admin,
+        &customer,
+        &merchant,
+        &token_addr,
+        1000,
+    );
     token_admin.mint(&customer, &500);
     let rid = refund_client.request_refund(
-        &customer, &pid, &500, &String::from_str(&env, "defective"), &0,
+        &customer,
+        &pid,
+        &500,
+        &String::from_str(&env, "defective"),
+        &0,
     );
 
     // Admin resolves before primary deadline — normal approve
@@ -87,10 +111,22 @@ fn test_escalation_blocked_before_primary_deadline() {
     let merchant = Address::generate(&env);
     let caller = Address::generate(&env);
 
-    let pid = make_completed_payment(&env, &payment_client, &token_admin, &customer, &merchant, &token_addr, 1000);
+    let pid = make_completed_payment(
+        &env,
+        &payment_client,
+        &token_admin,
+        &customer,
+        &merchant,
+        &token_addr,
+        1000,
+    );
     token_admin.mint(&customer, &500);
     let rid = refund_client.request_refund(
-        &customer, &pid, &500, &String::from_str(&env, "defective"), &0,
+        &customer,
+        &pid,
+        &500,
+        &String::from_str(&env, "defective"),
+        &0,
     );
 
     // Primary deadline not passed yet → should panic
@@ -105,14 +141,27 @@ fn test_escalation_after_primary_deadline() {
     let merchant = Address::generate(&env);
     let caller = Address::generate(&env);
 
-    let pid = make_completed_payment(&env, &payment_client, &token_admin, &customer, &merchant, &token_addr, 1000);
+    let pid = make_completed_payment(
+        &env,
+        &payment_client,
+        &token_admin,
+        &customer,
+        &merchant,
+        &token_addr,
+        1000,
+    );
     token_admin.mint(&customer, &500);
     let rid = refund_client.request_refund(
-        &customer, &pid, &500, &String::from_str(&env, "defective"), &0,
+        &customer,
+        &pid,
+        &500,
+        &String::from_str(&env, "defective"),
+        &0,
     );
 
     // Advance ledger past primary deadline (500 ledgers)
-    env.ledger().set_sequence_number(env.ledger().sequence() + 501);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 501);
 
     refund_client.escalate_to_senior(&caller, &rid);
 
@@ -129,13 +178,26 @@ fn test_senior_resolution_approved() {
     let merchant = Address::generate(&env);
     let caller = Address::generate(&env);
 
-    let pid = make_completed_payment(&env, &payment_client, &token_admin, &customer, &merchant, &token_addr, 1000);
+    let pid = make_completed_payment(
+        &env,
+        &payment_client,
+        &token_admin,
+        &customer,
+        &merchant,
+        &token_addr,
+        1000,
+    );
     token_admin.mint(&customer, &500);
     let rid = refund_client.request_refund(
-        &customer, &pid, &500, &String::from_str(&env, "not_delivered"), &1,
+        &customer,
+        &pid,
+        &500,
+        &String::from_str(&env, "not_delivered"),
+        &1,
     );
 
-    env.ledger().set_sequence_number(env.ledger().sequence() + 501);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 501);
     refund_client.escalate_to_senior(&caller, &rid);
 
     let resolution_hash = BytesN::from_array(&env, &[1u8; 32]);
@@ -157,13 +219,26 @@ fn test_senior_resolution_rejected() {
     let merchant = Address::generate(&env);
     let caller = Address::generate(&env);
 
-    let pid = make_completed_payment(&env, &payment_client, &token_admin, &customer, &merchant, &token_addr, 1000);
+    let pid = make_completed_payment(
+        &env,
+        &payment_client,
+        &token_admin,
+        &customer,
+        &merchant,
+        &token_addr,
+        1000,
+    );
     token_admin.mint(&customer, &500);
     let rid = refund_client.request_refund(
-        &customer, &pid, &500, &String::from_str(&env, "not_delivered"), &1,
+        &customer,
+        &pid,
+        &500,
+        &String::from_str(&env, "not_delivered"),
+        &1,
     );
 
-    env.ledger().set_sequence_number(env.ledger().sequence() + 501);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 501);
     refund_client.escalate_to_senior(&caller, &rid);
 
     let balance_before = token_client.balance(&customer);
@@ -179,31 +254,56 @@ fn test_senior_resolution_rejected() {
 
 #[test]
 fn test_auto_approve_on_senior_miss() {
-    let (env, refund_client, payment_client, _admin, _senior, token_addr, token_client, token_admin) =
-        setup_escalation();
+    let (
+        env,
+        refund_client,
+        payment_client,
+        _admin,
+        _senior,
+        token_addr,
+        token_client,
+        token_admin,
+    ) = setup_escalation();
     let customer = Address::generate(&env);
     let merchant = Address::generate(&env);
     let caller = Address::generate(&env);
 
-    let pid = make_completed_payment(&env, &payment_client, &token_admin, &customer, &merchant, &token_addr, 1000);
+    let pid = make_completed_payment(
+        &env,
+        &payment_client,
+        &token_admin,
+        &customer,
+        &merchant,
+        &token_addr,
+        1000,
+    );
     token_admin.mint(&customer, &500);
     let rid = refund_client.request_refund(
-        &customer, &pid, &500, &String::from_str(&env, "defective"), &0,
+        &customer,
+        &pid,
+        &500,
+        &String::from_str(&env, "defective"),
+        &0,
     );
 
     // Advance past primary deadline and escalate
-    env.ledger().set_sequence_number(env.ledger().sequence() + 501);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 501);
     refund_client.escalate_to_senior(&caller, &rid);
 
     // Advance past senior deadline (300 ledgers from escalation)
-    env.ledger().set_sequence_number(env.ledger().sequence() + 302);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 302);
 
     let balance_before = token_client.balance(&customer);
     refund_client.trigger_senior_auto_approve(&rid);
 
     let refund = refund_client.get_refund(&rid);
     assert_eq!(refund.status, RefundStatus::Processed);
-    assert_eq!(refund.auto_approved_source, Some(String::from_str(&env, "senior_miss")));
+    assert_eq!(
+        refund.auto_approved_source,
+        Some(String::from_str(&env, "senior_miss"))
+    );
     assert!(token_client.balance(&customer) > balance_before);
 }
 
@@ -216,13 +316,26 @@ fn test_auto_approve_before_senior_deadline() {
     let merchant = Address::generate(&env);
     let caller = Address::generate(&env);
 
-    let pid = make_completed_payment(&env, &payment_client, &token_admin, &customer, &merchant, &token_addr, 1000);
+    let pid = make_completed_payment(
+        &env,
+        &payment_client,
+        &token_admin,
+        &customer,
+        &merchant,
+        &token_addr,
+        1000,
+    );
     token_admin.mint(&customer, &500);
     let rid = refund_client.request_refund(
-        &customer, &pid, &500, &String::from_str(&env, "defective"), &0,
+        &customer,
+        &pid,
+        &500,
+        &String::from_str(&env, "defective"),
+        &0,
     );
 
-    env.ledger().set_sequence_number(env.ledger().sequence() + 501);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 501);
     refund_client.escalate_to_senior(&caller, &rid);
 
     // Senior deadline NOT yet passed
@@ -239,13 +352,26 @@ fn test_non_senior_cannot_resolve_escalated() {
     let caller = Address::generate(&env);
     let impostor = Address::generate(&env);
 
-    let pid = make_completed_payment(&env, &payment_client, &token_admin, &customer, &merchant, &token_addr, 1000);
+    let pid = make_completed_payment(
+        &env,
+        &payment_client,
+        &token_admin,
+        &customer,
+        &merchant,
+        &token_addr,
+        1000,
+    );
     token_admin.mint(&customer, &500);
     let rid = refund_client.request_refund(
-        &customer, &pid, &500, &String::from_str(&env, "defective"), &0,
+        &customer,
+        &pid,
+        &500,
+        &String::from_str(&env, "defective"),
+        &0,
     );
 
-    env.ledger().set_sequence_number(env.ledger().sequence() + 501);
+    env.ledger()
+        .set_sequence_number(env.ledger().sequence() + 501);
     refund_client.escalate_to_senior(&caller, &rid);
 
     let hash = BytesN::from_array(&env, &[0u8; 32]);
@@ -265,12 +391,25 @@ fn test_list_pending_senior_escalations_mix_of_pending_and_resolved() {
     // Three refunds escalated to senior review.
     let mut rids = soroban_sdk::Vec::new(&env);
     for _ in 0..3 {
-        let pid = make_completed_payment(&env, &payment_client, &token_admin, &customer, &merchant, &token_addr, 1000);
+        let pid = make_completed_payment(
+            &env,
+            &payment_client,
+            &token_admin,
+            &customer,
+            &merchant,
+            &token_addr,
+            1000,
+        );
         token_admin.mint(&customer, &500);
         let rid = refund_client.request_refund(
-            &customer, &pid, &500, &String::from_str(&env, "defective"), &0,
+            &customer,
+            &pid,
+            &500,
+            &String::from_str(&env, "defective"),
+            &0,
         );
-        env.ledger().set_sequence_number(env.ledger().sequence() + 501);
+        env.ledger()
+            .set_sequence_number(env.ledger().sequence() + 501);
         refund_client.escalate_to_senior(&caller, &rid);
         rids.push_back(rid);
     }
@@ -295,12 +434,25 @@ fn test_list_pending_senior_escalations_paginated() {
 
     let mut rids = soroban_sdk::Vec::new(&env);
     for _ in 0..4 {
-        let pid = make_completed_payment(&env, &payment_client, &token_admin, &customer, &merchant, &token_addr, 1000);
+        let pid = make_completed_payment(
+            &env,
+            &payment_client,
+            &token_admin,
+            &customer,
+            &merchant,
+            &token_addr,
+            1000,
+        );
         token_admin.mint(&customer, &500);
         let rid = refund_client.request_refund(
-            &customer, &pid, &500, &String::from_str(&env, "defective"), &0,
+            &customer,
+            &pid,
+            &500,
+            &String::from_str(&env, "defective"),
+            &0,
         );
-        env.ledger().set_sequence_number(env.ledger().sequence() + 501);
+        env.ledger()
+            .set_sequence_number(env.ledger().sequence() + 501);
         refund_client.escalate_to_senior(&caller, &rid);
         rids.push_back(rid);
     }

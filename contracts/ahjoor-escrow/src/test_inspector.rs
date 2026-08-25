@@ -98,14 +98,31 @@ fn test_inspector_rejection_blocks_release() {
 
 // ── #357: Inspector Reputation Scoring Tests ─────────────────────────────────
 
-fn make_request(env: &soroban_sdk::Env, seller: &Address, arbiter: &Address, token: &Address, amount: i128) -> crate::EscrowCreateRequest {
+fn make_request(
+    env: &soroban_sdk::Env,
+    seller: &Address,
+    arbiter: &Address,
+    token: &Address,
+    amount: i128,
+) -> crate::EscrowCreateRequest {
     crate::EscrowCreateRequest {
-        seller: seller.clone(), arbiter: arbiter.clone(), amount,
-        token: token.clone(), deadline: env.ledger().timestamp() + 86400,
-        metadata_hash: None, sellers: soroban_sdk::Vec::new(env), auto_renew: false,
-        renewal_count: 0, buyer_inactivity_secs: 0, min_lock_until: None,
-        release_base: None, release_quote: None, release_comparison: None,
-        release_threshold_price: None, arbiter_fee_bps: None, dispute_default_winner: None,
+        seller: seller.clone(),
+        arbiter: arbiter.clone(),
+        amount,
+        token: token.clone(),
+        deadline: env.ledger().timestamp() + 86400,
+        metadata_hash: None,
+        sellers: soroban_sdk::Vec::new(env),
+        auto_renew: false,
+        renewal_count: 0,
+        buyer_inactivity_secs: 0,
+        min_lock_until: None,
+        release_base: None,
+        release_quote: None,
+        release_comparison: None,
+        release_threshold_price: None,
+        arbiter_fee_bps: None,
+        dispute_default_winner: None,
         auto_renew_max_renewals: None,
 
         auto_renew_interval_ledgers: None,
@@ -215,14 +232,20 @@ fn test_replaced_inspector_score_penalized() {
     soroban_sdk::token::StellarAssetClient::new(&env, &token).mint(&buyer, &5_000);
 
     let req = make_request(&env, &seller, &arbiter, &token, 1000);
-    let first_escrow = client.create_escrow_with_inspector(&buyer, &req, &Some(old_inspector.clone()));
+    let first_escrow =
+        client.create_escrow_with_inspector(&buyer, &req, &Some(old_inspector.clone()));
     client.dispute_escrow(&buyer, &first_escrow, &String::from_str(&env, "d"), &1000);
     client.resolve_dispute(&arbiter, &first_escrow, &0);
 
-    let (total_before, correct_before, accuracy_before) = client.get_inspector_score(&old_inspector);
-    assert_eq!((total_before, correct_before, accuracy_before), (1, 1, 10_000));
+    let (total_before, correct_before, accuracy_before) =
+        client.get_inspector_score(&old_inspector);
+    assert_eq!(
+        (total_before, correct_before, accuracy_before),
+        (1, 1, 10_000)
+    );
 
-    let replacement_escrow = client.create_escrow_with_inspector(&buyer, &req, &Some(old_inspector.clone()));
+    let replacement_escrow =
+        client.create_escrow_with_inspector(&buyer, &req, &Some(old_inspector.clone()));
     client.replace_inspector(&buyer, &replacement_escrow, &new_inspector);
     client.replace_inspector(&seller, &replacement_escrow, &new_inspector);
 
@@ -247,7 +270,7 @@ fn test_inspector_cannot_approve_without_seller_marking_complete() {
     // Try to submit inspection without seller marking complete
     let report_hash = BytesN::<32>::from_array(&env, &[1u8; 32]);
     let result = client.try_submit_inspection_result(&inspector, &escrow_id, &true, &report_hash);
-    
+
     assert!(result.is_err());
 }
 
@@ -264,7 +287,7 @@ fn test_non_inspector_cannot_submit_inspection_result() {
 
     let report_hash = BytesN::<32>::from_array(&env, &[1u8; 32]);
     let result = client.try_submit_inspection_result(&impostor, &escrow_id, &true, &report_hash);
-    
+
     assert!(result.is_err());
 }
 
@@ -286,7 +309,7 @@ fn test_inspector_can_reject_and_seller_can_resubmit() {
 
     // Seller resubmits after fixing issues
     client.seller_mark_complete(&seller, &escrow_id);
-    
+
     let escrow = client.get_escrow(&escrow_id);
     assert_eq!(escrow.status, EscrowStatus::AwaitingInspection);
 
@@ -326,7 +349,7 @@ fn test_multiple_inspectors_independent_scores() {
     // Verify independent scores
     let (total1, correct1, _) = client.get_inspector_score(&inspector1);
     let (total2, correct2, _) = client.get_inspector_score(&inspector2);
-    
+
     assert_eq!((total1, correct1), (1, 1));
     assert_eq!((total2, correct2), (2, 2));
 }
@@ -344,7 +367,7 @@ fn test_inspector_score_accuracy_calculation() {
         let eid = client.create_escrow_with_inspector(&buyer, &req, &Some(inspector.clone()));
         client.dispute_escrow(&buyer, &eid, &String::from_str(&env, "dispute"), &1000);
         client.resolve_dispute(&arbiter, &eid, &0);
-        
+
         // Appeal the last one
         if i == 2 {
             client.appeal_inspector_ruling(&admin, &eid);
@@ -369,7 +392,7 @@ fn test_inspector_replacement_requires_both_parties() {
 
     // Only buyer approves - not enough
     client.replace_inspector(&buyer, &escrow_id, &new_inspector);
-    
+
     let escrow = client.get_escrow(&escrow_id);
     assert_eq!(escrow.extensions.inspector, Some(old_inspector.clone()));
 
@@ -393,10 +416,10 @@ fn test_escrow_without_inspector_skips_inspection() {
     let escrow = client.get_escrow(&escrow_id);
     // Should not be in AwaitingInspection status
     assert_ne!(escrow.status, EscrowStatus::AwaitingInspection);
-    
+
     // Buyer should be able to release directly
     client.release_escrow(&buyer, &escrow_id);
-    
+
     let escrow = client.get_escrow(&escrow_id);
     assert_eq!(escrow.status, EscrowStatus::Released);
 }
@@ -482,13 +505,13 @@ fn test_inspection_report_hash_stored() {
 #[test]
 fn test_inspector_cannot_inspect_own_escrow_as_buyer() {
     let (env, _admin, buyer, seller, arbiter, token, client) = setup_test_env();
-    
+
     // Inspector is also the buyer - conflict of interest
     let inspector = buyer.clone();
 
     let req = make_request(&env, &seller, &arbiter, &token, 1000);
     let result = client.try_create_escrow_with_inspector(&buyer, &req, &Some(inspector));
-    
+
     // Should fail due to conflict of interest
     assert!(result.is_err());
 }
@@ -496,13 +519,13 @@ fn test_inspector_cannot_inspect_own_escrow_as_buyer() {
 #[test]
 fn test_inspector_cannot_inspect_own_escrow_as_seller() {
     let (env, _admin, buyer, seller, arbiter, token, client) = setup_test_env();
-    
+
     // Inspector is also the seller - conflict of interest
     let inspector = seller.clone();
 
     let req = make_request(&env, &seller, &arbiter, &token, 1000);
     let result = client.try_create_escrow_with_inspector(&buyer, &req, &Some(inspector));
-    
+
     // Should fail due to conflict of interest
     assert!(result.is_err());
 }
@@ -553,7 +576,8 @@ fn test_inspector_score_threshold_below_amount_allows_escrow() {
 
     // Low-value escrow (below threshold amount) should succeed even with low score
     let low_value_req = make_request(&env, &seller, &arbiter, &token, 5_000);
-    let result = client.try_create_escrow_with_inspector(&buyer, &low_value_req, &Some(inspector.clone()));
+    let result =
+        client.try_create_escrow_with_inspector(&buyer, &low_value_req, &Some(inspector.clone()));
     assert!(result.is_ok());
 }
 

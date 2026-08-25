@@ -2,9 +2,20 @@
 use super::*;
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env, Map, Vec};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, Env, Map, Vec,
+};
 
-fn setup_waitlist<'a>() -> (Env, AhjoorContractClient<'a>, Address, Address, Vec<Address>, TokenClient<'a>, TokenAdminClient<'a>) {
+fn setup_waitlist<'a>() -> (
+    Env,
+    AhjoorContractClient<'a>,
+    Address,
+    Address,
+    Vec<Address>,
+    TokenClient<'a>,
+    TokenAdminClient<'a>,
+) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -12,7 +23,9 @@ fn setup_waitlist<'a>() -> (Env, AhjoorContractClient<'a>, Address, Address, Vec
     let client = AhjoorContractClient::new(&env, &contract_id);
 
     let admin = Address::generate(&env);
-    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_addr = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     let token_client = TokenClient::new(&env, &token_addr);
     let token_admin_client = TokenAdminClient::new(&env, &token_addr);
 
@@ -57,7 +70,15 @@ fn setup_waitlist<'a>() -> (Env, AhjoorContractClient<'a>, Address, Address, Vec
         &None,
     );
 
-    (env, client, admin, token_addr, members, token_client, token_admin_client)
+    (
+        env,
+        client,
+        admin,
+        token_addr,
+        members,
+        token_client,
+        token_admin_client,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +86,8 @@ fn setup_waitlist<'a>() -> (Env, AhjoorContractClient<'a>, Address, Address, Vec
 // ---------------------------------------------------------------------------
 #[test]
 fn test_vacancy_filled_from_waitlist_on_exit() {
-    let (env, client, _admin, token_addr, members, _token_client, token_admin_client) = setup_waitlist();
+    let (env, client, _admin, token_addr, members, _token_client, token_admin_client) =
+        setup_waitlist();
 
     let waitlisted = Address::generate(&env);
     token_admin_client.mint(&waitlisted, &1000);
@@ -94,7 +116,8 @@ fn test_vacancy_filled_from_waitlist_on_exit() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_empty_waitlist_graceful() {
-    let (env, client, _admin, token_addr, members, _token_client, _token_admin_client) = setup_waitlist();
+    let (env, client, _admin, token_addr, members, _token_client, _token_admin_client) =
+        setup_waitlist();
 
     // No one on waitlist — suspension should still work fine
     let member0 = members.get(0).unwrap();
@@ -120,7 +143,8 @@ fn test_empty_waitlist_graceful() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_catch_up_contribution_amount() {
-    let (env, client, admin, token_addr, members, token_client, token_admin_client) = setup_waitlist();
+    let (env, client, admin, token_addr, members, token_client, token_admin_client) =
+        setup_waitlist();
 
     let waitlisted = Address::generate(&env);
     token_admin_client.mint(&waitlisted, &5000);
@@ -150,7 +174,8 @@ fn test_catch_up_contribution_amount() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_leave_waitlist() {
-    let (env, client, _admin, _token_addr, _members, _token_client, _token_admin_client) = setup_waitlist();
+    let (env, client, _admin, _token_addr, _members, _token_client, _token_admin_client) =
+        setup_waitlist();
 
     let waitlisted = Address::generate(&env);
     client.join_waitlist(&waitlisted);
@@ -165,7 +190,8 @@ fn test_leave_waitlist() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_admin_remove_from_waitlist() {
-    let (env, client, admin, _token_addr, _members, _token_client, _token_admin_client) = setup_waitlist();
+    let (env, client, admin, _token_addr, _members, _token_client, _token_admin_client) =
+        setup_waitlist();
 
     let w1 = Address::generate(&env);
     let w2 = Address::generate(&env);
@@ -196,7 +222,11 @@ fn test_waitlist_cap_enforced() {
         client.join_waitlist(&addr);
         waitlisted.push_back(addr);
     }
-    assert_eq!(client.get_waitlist().len(), 10, "waitlist should hold exactly max_members entries");
+    assert_eq!(
+        client.get_waitlist().len(),
+        10,
+        "waitlist should hold exactly max_members entries"
+    );
 
     // One more join must be rejected with GroupFull
     let overflow = Address::generate(&env);
@@ -208,7 +238,11 @@ fn test_waitlist_cap_enforced() {
     );
 
     // Verify the waitlist length hasn't changed
-    assert_eq!(client.get_waitlist().len(), 10, "waitlist must not grow beyond max_members");
+    assert_eq!(
+        client.get_waitlist().len(),
+        10,
+        "waitlist must not grow beyond max_members"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -217,19 +251,23 @@ fn test_waitlist_cap_enforced() {
 
 #[test]
 fn test_waitlist_reputation_weighted_enrollment() {
-    let (env, client, admin, _token_addr, members, _token_client, token_admin_client) = setup_waitlist();
+    let (env, client, admin, _token_addr, members, _token_client, token_admin_client) =
+        setup_waitlist();
 
     // Default mode is FIFO
     assert_eq!(client.get_waitlist_priority_mode(), WaitlistMode::Fifo);
 
     // Switch to reputation-weighted mode
     client.set_waitlist_priority_mode(&admin, &WaitlistMode::ReputationWeighted);
-    assert_eq!(client.get_waitlist_priority_mode(), WaitlistMode::ReputationWeighted);
+    assert_eq!(
+        client.get_waitlist_priority_mode(),
+        WaitlistMode::ReputationWeighted
+    );
 
     // Create two waitlist candidates
-    let low_rep  = Address::generate(&env);
+    let low_rep = Address::generate(&env);
     let high_rep = Address::generate(&env);
-    token_admin_client.mint(&low_rep,  &10_000);
+    token_admin_client.mint(&low_rep, &10_000);
     token_admin_client.mint(&high_rep, &10_000);
 
     // Join waitlist: low_rep joins first (would win under FIFO)
@@ -277,4 +315,3 @@ fn test_waitlist_reputation_weighted_enrollment() {
     let (remaining_addr, _) = remaining_waitlist.get(0).unwrap();
     assert_eq!(remaining_addr, low_rep);
 }
-

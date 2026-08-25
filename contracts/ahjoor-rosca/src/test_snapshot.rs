@@ -1,7 +1,10 @@
 #![cfg(test)]
 use super::*;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env};
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, Env,
+};
 
 fn setup_snapshot<'a>() -> (Env, AhjoorContractClient<'a>, Address, Address, Address) {
     let env = Env::default();
@@ -11,7 +14,9 @@ fn setup_snapshot<'a>() -> (Env, AhjoorContractClient<'a>, Address, Address, Add
     let client = AhjoorContractClient::new(&env, &contract_id);
 
     let admin = Address::generate(&env);
-    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_addr = env
+        .register_stellar_asset_contract_v2(admin.clone())
+        .address();
     let tac = TokenAdminClient::new(&env, &token_addr);
 
     let member1 = Address::generate(&env);
@@ -46,13 +51,13 @@ fn setup_snapshot<'a>() -> (Env, AhjoorContractClient<'a>, Address, Address, Add
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-        late_fee_bps: 0,
-        grace_period_seconds: 0,
-        auction_enabled: false,
-        auction_window_ledgers: 0,
-        randomize_payout_order: false,
-        reserve_enabled: false,
-        reserve_contribution_bps: 0,
+            late_fee_bps: 0,
+            grace_period_seconds: 0,
+            auction_enabled: false,
+            auction_window_ledgers: 0,
+            randomize_payout_order: false,
+            reserve_enabled: false,
+            reserve_contribution_bps: 0,
         },
         &None,
     );
