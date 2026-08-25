@@ -7517,6 +7517,19 @@ impl AhjoorContract {
         events::emit_slot_swap_executed(env, swap_id, swap.round_a, swap.round_b);
     }
 
+    /// #748: Look up a slot swap's current status/initiator/counterparty by id.
+    pub fn get_slot_swap(env: Env, swap_id: u32) -> SlotSwap {
+        let swaps: Map<u32, SlotSwap> = env
+            .storage()
+            .instance()
+            .get(&DataKey2::SlotSwaps)
+            .unwrap_or(Map::new(&env));
+        match swaps.get(swap_id) {
+            Some(swap) => swap,
+            None => panic_with_error!(&env, ExtError2::SwapNotFound),
+        }
+    }
+
     // ─── #214: Insurance Coverage Mode ───────────────────────────────────────
 
     pub fn set_insurance_coverage_mode(env: Env, admin: Address, mode: InsuranceCoverageMode) {
