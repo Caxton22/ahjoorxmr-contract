@@ -32,6 +32,7 @@ Welcome to the Ahjoor contract documentation directory. Below is a structured in
 
 - [**Payments Authorization and Capture Flow**](payments-flow.md) — Two-step payment authorization and capture lifecycle, buyer trust tiers, and merchant collateral rules.
 - [**Merchant KYB Verification**](merchant-kyb.md) — KYB verification flow, payment creation gating, on-chain status checks, renewal and revocation.
+- [**Merchant Referral Program**](payments-referral.md) — Referral registration, commission calculation on platform fees, accrual windows, and claiming.
 - [**DAO Mediation for Disputed Payments**](dao-mediation.md) — On-chain DAO voting and resolution process for disputed merchant payments.
 - [**Multi-Token Invoice**](multi-token-invoice.md) — Guide to multi-token invoicing, oracle-based price feeds, slippage tolerance, and cross-token settlement.
 
