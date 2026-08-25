@@ -368,6 +368,18 @@ impl TokenWhitelistContract {
         env.storage().instance().get(&DataKey::RiskTier(tier_id))
     }
 
+    /// Get the raw tier id assigned to `token` via `assign_token_tier`.
+    /// Returns `None` if no tier was ever assigned.
+    pub fn get_token_tier(env: Env, token: Address) -> Option<u32> {
+        env.storage().persistent().get(&DataKey::TokenTier(token))
+    }
+
+    /// Get the raw per-token limit override set via `set_token_limit_override`.
+    /// Returns `None` if no override is in effect for `token`.
+    pub fn get_token_limit_override(env: Env, token: Address) -> Option<TierLimits> {
+        env.storage().persistent().get(&DataKey::TokenLimitOverride(token))
+    }
+
     pub fn set_token_metadata(env: Env, admin: Address, token: Address, decimals: u32, symbol: soroban_sdk::String, logo_hash: BytesN<32>, canonical_oracle: Option<Address>) {
         admin.require_auth();
         Self::require_admin(&env, &admin);
@@ -790,22 +802,9 @@ impl TokenWhitelistContract {
         };
         let current_ledger = env.ledger().sequence();
 
-        // #540: sum the rolling window from a fixed number of aggregate
-        // buckets instead of iterating every ledger in the period, so cost
-        // stays constant regardless of how large `period_ledgers` is.
         let bucket_span = (quota.period_ledgers / VOLUME_AGG_BUCKET_COUNT).max(1);
         let current_bucket_id = current_ledger / bucket_span;
-        let mut current_period_volume: i128 = 0;
-        for slot in 0..VOLUME_AGG_BUCKET_COUNT {
-            if let Some(bucket) = env
-                .storage().persistent()
-                .get::<_, VolumeAggBucket>(&DataKey::TokenVolumeAggBucket(token.clone(), slot))
-            {
-                if current_bucket_id.saturating_sub(bucket.bucket_id) < VOLUME_AGG_BUCKET_COUNT {
-                    current_period_volume += bucket.volume;
-                }
-            }
-        }
+        let current_period_volume = Self::sum_live_volume_buckets(&env, &token, current_bucket_id);
         if current_period_volume + amount > quota.max_volume_per_period {
             events::emit_token_quota_exceeded(&env, token, amount, current_period_volume);
             return Err(Error::QuotaExceeded);
@@ -849,6 +848,37 @@ impl TokenWhitelistContract {
             volume += bucket_volume;
         }
         volume
+    }
+
+    /// #540: sum the rolling window from a fixed number of aggregate
+    /// buckets instead of iterating every ledger in the period, so cost
+    /// stays constant regardless of how large `period_ledgers` is.
+    fn sum_live_volume_buckets(env: &Env, token: &Address, current_bucket_id: u32) -> i128 {
+        let mut volume: i128 = 0;
+        for slot in 0..VOLUME_AGG_BUCKET_COUNT {
+            if let Some(bucket) = env
+                .storage().persistent()
+                .get::<_, VolumeAggBucket>(&DataKey::TokenVolumeAggBucket(token.clone(), slot))
+            {
+                if current_bucket_id.saturating_sub(bucket.bucket_id) < VOLUME_AGG_BUCKET_COUNT {
+                    volume += bucket.volume;
+                }
+            }
+        }
+        volume
+    }
+
+    /// Current rolling-period volume for `token`, computed from the same
+    /// live aggregate buckets `record_token_volume` checks against the
+    /// quota. Returns 0 if the token has no quota configured.
+    pub fn get_current_period_volume(env: Env, token: Address) -> i128 {
+        let Some(quota) = env.storage().persistent().get::<_, TokenQuota>(&DataKey::TokenQuota(token.clone())) else {
+            return 0;
+        };
+        let current_ledger = env.ledger().sequence();
+        let bucket_span = (quota.period_ledgers / VOLUME_AGG_BUCKET_COUNT).max(1);
+        let current_bucket_id = current_ledger / bucket_span;
+        Self::sum_live_volume_buckets(&env, &token, current_bucket_id)
     }
 
     fn require_admin(env: &Env, caller: &Address) {
@@ -1117,5 +1147,13 @@ impl TokenWhitelistContract {
     /// rejected, or `None` if they have not voted on this proposal.
     pub fn get_vote_record(env: Env, proposal_id: u32, voter: Address) -> Option<bool> {
         env.storage().persistent().get::<DataKey, (bool, i128)>(&DataKey::VoteRecord(proposal_id, voter)).map(|(approve, _)| approve)
+    }
+
+    /// Returns the governance-token balance snapshotted the first time
+    /// `voter` voted on `proposal_id`, or `None` if they have not voted yet.
+    /// This balance stays fixed for the life of the proposal even if the
+    /// voter's live token balance later changes.
+    pub fn get_vote_weight_snapshot(env: Env, proposal_id: u32, voter: Address) -> Option<i128> {
+        env.storage().persistent().get(&DataKey::VoteWeightSnapshot(proposal_id, voter))
     }
 }

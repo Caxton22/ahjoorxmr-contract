@@ -389,3 +389,49 @@ fn test_get_vote_record() {
     assert_eq!(client.get_vote_record(&proposal_id, &rejecter), Some(false));
     assert_eq!(client.get_vote_record(&proposal_id, &nonvoter), None);
 }
+
+// ── #712: get_vote_weight_snapshot ──────────────────────────────────────────
+
+#[test]
+fn test_get_vote_weight_snapshot_stays_fixed_after_balance_changes() {
+    let (env, admin, client, gov_token) = setup_governance();
+
+    let proposer = Address::generate(&env);
+    let voter = Address::generate(&env);
+    let nonvoter = Address::generate(&env);
+    let new_token = Address::generate(&env);
+
+    mint_gov_tokens(&env, &gov_token, &admin, &proposer, 200);
+    mint_gov_tokens(&env, &gov_token, &admin, &voter, 600);
+
+    let rationale = BytesN::from_array(&env, &[0xCDu8; 32]);
+    let proposal_id = client.propose_token_listing(&proposer, &new_token, &rationale);
+
+    // No snapshot exists before the voter's first vote.
+    assert_eq!(client.get_vote_weight_snapshot(&proposal_id, &voter), None);
+
+    client.vote_listing(&voter, &proposal_id, &true, &400i128);
+
+    // Snapshot captures the live balance at first-vote time, not the weight cast.
+    assert_eq!(
+        client.get_vote_weight_snapshot(&proposal_id, &voter),
+        Some(600i128)
+    );
+
+    // Balance changes after voting must not move the snapshot.
+    mint_gov_tokens(&env, &gov_token, &admin, &voter, 1_000);
+    assert_eq!(
+        client.get_vote_weight_snapshot(&proposal_id, &voter),
+        Some(600i128)
+    );
+
+    // Re-voting with a higher weight (now allowed by the enlarged live
+    // balance) still leaves the original snapshot ceiling unchanged.
+    client.vote_listing(&voter, &proposal_id, &true, &600i128);
+    assert_eq!(
+        client.get_vote_weight_snapshot(&proposal_id, &voter),
+        Some(600i128)
+    );
+
+    assert_eq!(client.get_vote_weight_snapshot(&proposal_id, &nonvoter), None);
+}
