@@ -24,6 +24,7 @@ Welcome to the Ahjoor contract documentation directory. Below is a structured in
 
 - [**Escrow Dispute Flow**](escrow-dispute-flow.md) — Multi-step escrow dispute lifecycle, arbiter assignment, timeout enforcement, default winner rules, and resolution cooling-off periods.
 - [**Inspector Role and Scoring System**](inspector-role.md) — How an inspector is assigned to an escrow, their responsibilities and powers over the inspection gate, and how their accuracy score is calculated, updated on rulings and appeals, and enforced as a threshold for high-value escrows.
+- [**Escrow Bounty Board**](bounty-board.md) — Escrow bounty milestone payouts and related milestone-based release behavior.
 
 ---
 
@@ -39,3 +40,4 @@ Welcome to the Ahjoor contract documentation directory. Below is a structured in
 ## 5. Refund Contract (`ahjoor-refund`)
 
 - [**Refund Contract Guide**](refund.md) — Refund request, approval, and claim workflows, senior arbiter escalation, and customer abuse score tracking.
+- [**Merchant Reserve Fund**](reserve-fund.md) — Refund contract merchant reserve balances and how they are tracked and used.
