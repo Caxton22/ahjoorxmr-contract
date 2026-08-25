@@ -5,15 +5,7 @@ use soroban_sdk::{
     Address, Env,
 };
 
-fn setup_with_members<'a>(
-    n: usize,
-) -> (
-    Env,
-    AhjoorContractClient<'a>,
-    Address,
-    Address,
-    soroban_sdk::Vec<Address>,
-) {
+fn setup_with_members<'a>(n: usize) -> (Env, AhjoorContractClient<'a>, Address, Address, soroban_sdk::Vec<Address>) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -60,13 +52,13 @@ fn test_per_type_quorum_enforced() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -76,7 +68,7 @@ fn test_per_type_quorum_enforced() {
 
     // 1. PenaltyAppeal at 10% (1000 bps)
     client.set_quorum_per_type(&admin, &ProposalType::PenaltyAppeal, &1000);
-
+    
     // 2. MemberRemoval at 67% (6700 bps)
     client.set_quorum_per_type(&admin, &ProposalType::MemberRemoval, &6700);
 
@@ -91,13 +83,13 @@ fn test_per_type_quorum_enforced() {
         &86400,
         &None,
     );
-
+    
     let prop_id_appeal = 0;
     client.vote_on_proposal(&creator, &prop_id_appeal, &true); // 1 vote = 10% of 10 members
-
+    
     env.ledger().set_timestamp(90000); // Past deadline
     client.execute_proposal(&prop_id_appeal);
-
+    
     let prop_appeal = client.get_proposal(&prop_id_appeal).unwrap();
     assert_eq!(prop_appeal.status, ProposalStatus::Executed); // 10% was enough
 
@@ -148,22 +140,9 @@ fn test_per_type_quorum_enforced() {
 fn test_proposal_respects_quorum_at_creation() {
     let (env, client, admin, token_admin, members) = setup_with_members(10);
 
-    client.init(
-        &admin,
-        &members,
-        &100,
-        &token_admin,
-        &3600,
-        &RoscaConfig {
-            strategy: PayoutStrategy::RoundRobin,
-            custom_order: None,
-            penalty_amount: 0,
-            exit_penalty_bps: 0,
-            collective_goal: None,
-            member_goals: None,
-            fee_bps: 0,
-            fee_recipient: None,
-            max_defaults: 3,
+    client.init(&admin, &members, &100, &token_admin, &3600, &RoscaConfig {
+        strategy: PayoutStrategy::RoundRobin,
+        custom_order: None, penalty_amount: 0, exit_penalty_bps: 0, collective_goal: None, member_goals: None, fee_bps: 0, fee_recipient: None, max_defaults: 3,
             grace_period_ledgers: 0,
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
@@ -171,28 +150,19 @@ fn test_proposal_respects_quorum_at_creation() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
-        &None,
-    );
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
+        }, &None);
 
     let creator = members.get(0).unwrap();
 
     // 1. Create proposal with default 51% quorum
-    client.create_proposal(
-        &creator,
-        &ProposalType::RuleChange,
-        &soroban_sdk::String::from_str(&env, "rule"),
-        &creator,
-        &86400,
-        &None,
-    );
+    client.create_proposal(&creator, &ProposalType::RuleChange, &soroban_sdk::String::from_str(&env, "rule"), &creator, &86400, &None);
     let prop_id = 0;
 
     // 2. Update quorum to 80%
@@ -214,39 +184,16 @@ fn test_proposal_respects_quorum_at_creation() {
 fn test_treasury_round_requires_quorum() {
     let (env, client, admin, token_admin, members) = setup_with_members(10);
 
-    client.init(
-        &admin,
-        &members,
-        &100,
-        &token_admin,
-        &3600,
-        &RoscaConfig {
-            strategy: PayoutStrategy::RoundRobin,
-            custom_order: None,
-            penalty_amount: 0,
-            exit_penalty_bps: 0,
-            collective_goal: None,
-            member_goals: None,
-            fee_bps: 0,
-            fee_recipient: None,
-            max_defaults: 3,
-            grace_period_ledgers: 0,
-            grace_period_seconds: 0,
-            use_timestamp_schedule: false,
-            round_duration_seconds: 0,
-            max_members: None,
-            skip_fee: 0,
-            max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
-        &None,
-    );
+    client.init(&admin, &members, &100, &token_admin, &3600, &RoscaConfig {
+        strategy: PayoutStrategy::RoundRobin,
+        custom_order: None, penalty_amount: 0, exit_penalty_bps: 0,
+        collective_goal: None, member_goals: None, fee_bps: 0, fee_recipient: None,
+        max_defaults: 3, grace_period_ledgers: 0, grace_period_seconds: 0,
+        use_timestamp_schedule: false, round_duration_seconds: 0, max_members: None,
+        skip_fee: 0, max_skips_per_cycle: 0, voting_mode: VotingMode::Equal,
+        late_fee_bps: 0, auction_enabled: false, auction_window_ledgers: 0,
+        randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,
+    }, &None);
 
     let proposer = members.get(0).unwrap();
     let purpose = soroban_sdk::BytesN::from_array(&env, &[0u8; 32]);
@@ -278,39 +225,16 @@ fn test_treasury_round_requires_quorum() {
 fn test_treasury_round_vote_non_member_rejected() {
     let (env, client, admin, token_admin, members) = setup_with_members(3);
 
-    client.init(
-        &admin,
-        &members,
-        &100,
-        &token_admin,
-        &3600,
-        &RoscaConfig {
-            strategy: PayoutStrategy::RoundRobin,
-            custom_order: None,
-            penalty_amount: 0,
-            exit_penalty_bps: 0,
-            collective_goal: None,
-            member_goals: None,
-            fee_bps: 0,
-            fee_recipient: None,
-            max_defaults: 3,
-            grace_period_ledgers: 0,
-            grace_period_seconds: 0,
-            use_timestamp_schedule: false,
-            round_duration_seconds: 0,
-            max_members: None,
-            skip_fee: 0,
-            max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
-        &None,
-    );
+    client.init(&admin, &members, &100, &token_admin, &3600, &RoscaConfig {
+        strategy: PayoutStrategy::RoundRobin,
+        custom_order: None, penalty_amount: 0, exit_penalty_bps: 0,
+        collective_goal: None, member_goals: None, fee_bps: 0, fee_recipient: None,
+        max_defaults: 3, grace_period_ledgers: 0, grace_period_seconds: 0,
+        use_timestamp_schedule: false, round_duration_seconds: 0, max_members: None,
+        skip_fee: 0, max_skips_per_cycle: 0, voting_mode: VotingMode::Equal,
+        late_fee_bps: 0, auction_enabled: false, auction_window_ledgers: 0,
+        randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,
+    }, &None);
 
     let proposer = members.get(0).unwrap();
     let outsider = Address::generate(&env);
@@ -318,9 +242,6 @@ fn test_treasury_round_vote_non_member_rejected() {
 
     client.propose_treasury_round(&proposer, &0, &purpose);
 
-    let err = client
-        .try_vote_treasury_round(&outsider, &0, &true)
-        .unwrap_err()
-        .unwrap();
+    let err = client.try_vote_treasury_round(&outsider, &0, &true).unwrap_err().unwrap();
     assert_eq!(err, Error::NotAMember.into());
 }

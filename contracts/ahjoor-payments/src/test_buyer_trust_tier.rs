@@ -21,9 +21,7 @@ fn setup<'a>() -> (
     let admin = Address::generate(&env);
     let merchant = Address::generate(&env);
     let buyer = Address::generate(&env);
-    let token_addr = env
-        .register_stellar_asset_contract_v2(admin.clone())
-        .address();
+    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
     let tac = TokenAdminClient::new(&env, &token_addr);
 
     client.initialize(&admin, &admin, &0u32);
@@ -39,24 +37,15 @@ fn test_set_and_get_buyer_tier() {
     let (env, client, _admin, merchant, buyer, _token, _tac) = setup();
 
     // Default tier is New
-    assert_eq!(
-        client.get_buyer_tier(&merchant, &buyer),
-        BuyerTrustTierLevel::New
-    );
+    assert_eq!(client.get_buyer_tier(&merchant, &buyer), BuyerTrustTierLevel::New);
 
     // Set to Trusted
     client.set_buyer_tier(&merchant, &buyer, &BuyerTrustTierLevel::Trusted);
-    assert_eq!(
-        client.get_buyer_tier(&merchant, &buyer),
-        BuyerTrustTierLevel::Trusted
-    );
+    assert_eq!(client.get_buyer_tier(&merchant, &buyer), BuyerTrustTierLevel::Trusted);
 
     // Upgrade to VIP
     client.set_buyer_tier(&merchant, &buyer, &BuyerTrustTierLevel::VIP);
-    assert_eq!(
-        client.get_buyer_tier(&merchant, &buyer),
-        BuyerTrustTierLevel::VIP
-    );
+    assert_eq!(client.get_buyer_tier(&merchant, &buyer), BuyerTrustTierLevel::VIP);
 }
 
 #[test]
@@ -123,12 +112,7 @@ fn test_each_tier_has_independent_limit() {
 
     // Set different limits per tier
     client.set_tier_spending_limit(&merchant, &BuyerTrustTierLevel::New, &100i128, &3600u64);
-    client.set_tier_spending_limit(
-        &merchant,
-        &BuyerTrustTierLevel::Trusted,
-        &10_000i128,
-        &3600u64,
-    );
+    client.set_tier_spending_limit(&merchant, &BuyerTrustTierLevel::Trusted, &10_000i128, &3600u64);
 
     // buyer → New tier, buyer2 → Trusted tier
     client.set_buyer_tier(&merchant, &buyer, &BuyerTrustTierLevel::New);

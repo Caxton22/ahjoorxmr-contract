@@ -8,18 +8,7 @@ use soroban_sdk::{
 };
 
 /// Helper to create a test setup with members
-fn setup_with_members<'a>(
-    n: usize,
-    mint_amount: i128,
-) -> (
-    Env,
-    AhjoorContractClient<'a>,
-    Address,
-    Address,
-    TokenClient<'a>,
-    TokenAdminClient<'a>,
-    soroban_sdk::Vec<Address>,
-) {
+fn setup_with_members<'a>(n: usize, mint_amount: i128) -> (Env, AhjoorContractClient<'a>, Address, Address, TokenClient<'a>, TokenAdminClient<'a>, soroban_sdk::Vec<Address>) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -42,15 +31,7 @@ fn setup_with_members<'a>(
         members.push_back(addr);
     }
 
-    (
-        env,
-        client,
-        admin,
-        token_admin,
-        token_client,
-        token_admin_client,
-        members,
-    )
+    (env, client, admin, token_admin, token_client, token_admin_client, members)
 }
 
 // ============================================================================
@@ -59,7 +40,7 @@ fn setup_with_members<'a>(
 
 #[test]
 fn test_protocol_fee_deducted_from_payout() {
-    let (env, client, admin, token_admin, token_client, token_admin_client, members) =
+    let (env, client, admin, token_admin, token_client, token_admin_client, members) = 
         setup_with_members(3, 1000);
 
     let fee_recipient = Address::generate(&env);
@@ -89,13 +70,13 @@ fn test_protocol_fee_deducted_from_payout() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -118,7 +99,8 @@ fn test_protocol_fee_deducted_from_payout() {
 
 #[test]
 fn test_protocol_fee_max_cap_enforced() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(2, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(2, 1000);
 
     let fee_recipient = Address::generate(&env);
 
@@ -146,26 +128,24 @@ fn test_protocol_fee_max_cap_enforced() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
 
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        Error::FeeExceedsMaximum.into()
-    );
+    assert_eq!(result.unwrap_err().unwrap(), Error::FeeExceedsMaximum.into());
 }
 
 #[test]
 fn test_update_fee_function() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(2, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(2, 1000);
 
     let fee_recipient = Address::generate(&env);
 
@@ -192,13 +172,13 @@ fn test_update_fee_function() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -211,15 +191,13 @@ fn test_update_fee_function() {
 
     // Try to update beyond cap - should fail
     let result = client.try_update_fee(&600);
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        Error::FeeExceedsMaximum.into()
-    );
+    assert_eq!(result.unwrap_err().unwrap(), Error::FeeExceedsMaximum.into());
 }
 
 #[test]
 fn test_no_fee_when_fee_bps_zero() {
-    let (env, client, admin, token_admin, token_client, _, members) = setup_with_members(2, 1000);
+    let (env, client, admin, token_admin, token_client, _, members) = 
+        setup_with_members(2, 1000);
 
     client.init(
         &admin,
@@ -244,13 +222,13 @@ fn test_no_fee_when_fee_bps_zero() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -271,7 +249,8 @@ fn test_no_fee_when_fee_bps_zero() {
 
 #[test]
 fn test_partial_contribution_installments() {
-    let (env, client, admin, token_admin, token_client, _, members) = setup_with_members(2, 1000);
+    let (env, client, admin, token_admin, token_client, _, members) = 
+        setup_with_members(2, 1000);
 
     client.init(
         &admin,
@@ -296,13 +275,13 @@ fn test_partial_contribution_installments() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -315,21 +294,21 @@ fn test_partial_contribution_installments() {
     // Member1 pays in installments: 30, 40, 30
     client.contribute(&member1, &token_admin, &30);
     assert_eq!(token_client.balance(&member1), 970);
-
+    
     let (paid, remaining) = client.get_member_contribution_status(&member1);
     assert_eq!(paid, 30);
     assert_eq!(remaining, 70);
 
     client.contribute(&member1, &token_admin, &40);
     assert_eq!(token_client.balance(&member1), 930);
-
+    
     let (paid, remaining) = client.get_member_contribution_status(&member1);
     assert_eq!(paid, 70);
     assert_eq!(remaining, 30);
 
     client.contribute(&member1, &token_admin, &30);
     assert_eq!(token_client.balance(&member1), 900);
-
+    
     let (paid, remaining) = client.get_member_contribution_status(&member1);
     assert_eq!(paid, 100);
     assert_eq!(remaining, 0);
@@ -343,7 +322,8 @@ fn test_partial_contribution_installments() {
 
 #[test]
 fn test_partial_contribution_events_emitted() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(1, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(1, 1000);
 
     client.init(
         &admin,
@@ -368,13 +348,13 @@ fn test_partial_contribution_events_emitted() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -388,7 +368,8 @@ fn test_partial_contribution_events_emitted() {
 
 #[test]
 fn test_cannot_exceed_remaining_contribution() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(1, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(1, 1000);
 
     client.init(
         &admin,
@@ -413,13 +394,13 @@ fn test_cannot_exceed_remaining_contribution() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -432,15 +413,13 @@ fn test_cannot_exceed_remaining_contribution() {
 
     // Try to pay 50 more (total would be 110, exceeds 100)
     let result = client.try_contribute(&member, &token_admin, &50);
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        Error::ExceedsRemainingContribution.into()
-    );
+    assert_eq!(result.unwrap_err().unwrap(), Error::ExceedsRemainingContribution.into());
 }
 
 #[test]
 fn test_get_member_contribution_status() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(1, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(1, 1000);
 
     client.init(
         &admin,
@@ -465,13 +444,13 @@ fn test_get_member_contribution_status() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -497,10 +476,11 @@ fn test_get_member_contribution_status() {
 
 #[test]
 fn test_timestamp_based_scheduling() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(2, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(2, 1000);
 
     let round_duration_seconds = 86400 * 30; // 30 days
-
+    
     env.ledger().set_timestamp(1000000);
 
     client.init(
@@ -525,15 +505,7 @@ fn test_timestamp_based_scheduling() {
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
+            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
         &None,
     );
 
@@ -544,28 +516,22 @@ fn test_timestamp_based_scheduling() {
     // Upcoming deadlines should reflect timestamp-based scheduling
     let upcoming = client.get_upcoming_deadlines(&3);
     assert_eq!(upcoming.get(0).unwrap(), expected_deadline);
-    assert_eq!(
-        upcoming.get(1).unwrap(),
-        expected_deadline + round_duration_seconds
-    );
-    assert_eq!(
-        upcoming.get(2).unwrap(),
-        expected_deadline + 2 * round_duration_seconds
-    );
+    assert_eq!(upcoming.get(1).unwrap(), expected_deadline + round_duration_seconds);
+    assert_eq!(upcoming.get(2).unwrap(), expected_deadline + 2 * round_duration_seconds);
 
     // Contribute within deadline
     env.ledger().set_timestamp(1000000 + 86400); // 1 day later
     client.contribute(&members.get(0).unwrap(), &token_admin, &100);
 
     // Contribute outside old deadline (3600) but inside new one
-    env.ledger().set_timestamp(1000000 + 7200);
+    env.ledger().set_timestamp(1000000 + 7200); 
     client.contribute(&members.get(1).unwrap(), &token_admin, &100);
 
     // After round completes (due to 2/2 members contributing), next deadline should be updated correctly
     let current_timestamp = env.ledger().timestamp();
     let next_expected_deadline = current_timestamp + round_duration_seconds;
     assert_eq!(client.get_next_deadline_timestamp(), next_expected_deadline);
-
+    
     let (_, _, deadline, _, _) = client.get_state();
     assert_eq!(deadline, next_expected_deadline);
 }
@@ -576,7 +542,8 @@ fn test_timestamp_based_scheduling() {
 
 #[test]
 fn test_max_members_enforcement() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(2, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(2, 1000);
 
     // Init with max_members = 2
     client.init(
@@ -599,18 +566,10 @@ fn test_max_members_enforcement() {
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: Some(2),
-
+        
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
+            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
         &None,
     );
 
@@ -624,7 +583,8 @@ fn test_max_members_enforcement() {
 
 #[test]
 fn test_update_max_members() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(2, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(2, 1000);
 
     // Init with default max_members (50)
     client.init(
@@ -647,18 +607,10 @@ fn test_update_max_members() {
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
-
+        
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
+            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
         &None,
     );
 
@@ -679,7 +631,8 @@ fn test_update_max_members() {
 
 #[test]
 fn test_max_members_boundary() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(2, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(2, 1000);
 
     // Init with max_members = 3
     client.init(
@@ -702,18 +655,10 @@ fn test_max_members_boundary() {
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: Some(3),
-
+        
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
+            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
         &None,
     );
 
@@ -730,7 +675,8 @@ fn test_max_members_boundary() {
 
 #[test]
 fn test_max_members_proposal() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(2, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(2, 1000);
 
     client.init(
         &admin,
@@ -752,18 +698,10 @@ fn test_max_members_proposal() {
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: Some(5),
-
+        
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
+            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
         &None,
     );
 
@@ -785,8 +723,7 @@ fn test_max_members_proposal() {
     client.vote_on_proposal(&user2, &proposal_id, &true);
 
     // Advance time to end voting
-    env.ledger()
-        .set_timestamp(env.ledger().timestamp() + 86400 * 8); // > 7 days default
+    env.ledger().set_timestamp(env.ledger().timestamp() + 86400 * 8); // > 7 days default
 
     client.execute_proposal(&proposal_id);
 
@@ -795,7 +732,8 @@ fn test_max_members_proposal() {
 
 #[test]
 fn test_max_members_proposal_rejects_negative() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(2, 1000);
+    let (env, client, admin, token_admin, _, _, members) =
+        setup_with_members(2, 1000);
 
     client.init(
         &admin,
@@ -848,8 +786,7 @@ fn test_max_members_proposal_rejects_negative() {
     client.vote_on_proposal(&user1, &proposal_id, &true);
     client.vote_on_proposal(&user2, &proposal_id, &true);
 
-    env.ledger()
-        .set_timestamp(env.ledger().timestamp() + 86400 * 8);
+    env.ledger().set_timestamp(env.ledger().timestamp() + 86400 * 8);
 
     let result = client.try_execute_proposal(&proposal_id);
     assert!(result.is_err());
@@ -863,7 +800,8 @@ fn test_max_members_proposal_rejects_negative() {
 
 #[test]
 fn test_configurable_max_defaults() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(2, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(2, 1000);
 
     // Set max_defaults to 2 instead of default 3
     client.init(
@@ -882,22 +820,14 @@ fn test_configurable_max_defaults() {
             fee_bps: 0,
             fee_recipient: None,
             max_defaults: 2, // Custom threshold
-
+        
             grace_period_ledgers: 0,
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
+            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
         &None,
     );
 
@@ -926,7 +856,8 @@ fn test_configurable_max_defaults() {
 
 #[test]
 fn test_suspension_threshold_set_event() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(1, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(1, 1000);
 
     client.init(
         &admin,
@@ -951,13 +882,13 @@ fn test_suspension_threshold_set_event() {
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -965,7 +896,8 @@ fn test_suspension_threshold_set_event() {
 
 #[test]
 fn test_max_defaults_must_be_at_least_one() {
-    let (env, client, admin, token_admin, _, _, members) = setup_with_members(1, 1000);
+    let (env, client, admin, token_admin, _, _, members) = 
+        setup_with_members(1, 1000);
 
     // Try to initialize with max_defaults = 0 - should fail
     let result = client.try_init(
@@ -984,34 +916,23 @@ fn test_max_defaults_must_be_at_least_one() {
             fee_bps: 0,
             fee_recipient: None,
             max_defaults: 0, // Invalid
-
+        
             grace_period_ledgers: 0,
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
+            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
         &None,
     );
 
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        Error::InvalidMaxDefaults.into()
-    );
+    assert_eq!(result.unwrap_err().unwrap(), Error::InvalidMaxDefaults.into());
 }
 
 #[test]
 fn test_penalise_defaulter_uses_max_defaults() {
-    let (env, client, admin, token_admin, _, token_admin_client, members) =
+    let (env, client, admin, token_admin, _, token_admin_client, members) = 
         setup_with_members(2, 1000);
 
     client.init(
@@ -1032,21 +953,13 @@ fn test_penalise_defaulter_uses_max_defaults() {
             max_defaults: 2,
 
             grace_period_ledgers: 0,
-
+        
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
+            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
         &None,
     );
 
@@ -1085,7 +998,8 @@ fn test_penalise_defaulter_uses_max_defaults() {
 
 #[test]
 fn test_all_features_integrated() {
-    let (env, client, admin, token_admin, token_client, _, members) = setup_with_members(3, 1000);
+    let (env, client, admin, token_admin, token_client, _, members) = 
+        setup_with_members(3, 1000);
 
     let fee_recipient = Address::generate(&env);
 
@@ -1106,22 +1020,14 @@ fn test_all_features_integrated() {
             fee_bps: 250, // 2.5% fee
             fee_recipient: Some(fee_recipient.clone()),
             max_defaults: 2, // Suspend after 2 defaults
-
+        
             grace_period_ledgers: 0,
             use_timestamp_schedule: false,
             round_duration_seconds: 0,
             max_members: None,
             skip_fee: 0,
             max_skips_per_cycle: 0,
-            voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
-        },
+            voting_mode: VotingMode::Equal, late_fee_bps: 0, grace_period_seconds: 0, auction_enabled: false, auction_window_ledgers: 0, randomize_payout_order: false, reserve_enabled: false, reserve_contribution_bps: 0,},
         &None,
     );
 
@@ -1160,7 +1066,8 @@ fn test_all_features_integrated() {
 
 #[test]
 fn test_round_reset_clears_contributions() {
-    let (env, client, _admin, token_admin, _tc, tac, members) = setup_with_members(3, 1000);
+    let (env, client, _admin, token_admin, _tc, tac, members) =
+        setup_with_members(3, 1000);
 
     client.init(
         &_admin,
@@ -1214,14 +1121,11 @@ fn test_round_reset_clears_contributions() {
 
     // Verify contributions, paid members, and defaulters are cleared
     let contribs_r1 = client.get_round_contributions();
-    assert!(
-        contribs_r1.is_empty(),
-        "MemberContributions must be empty after round reset"
-    );
+    assert!(contribs_r1.is_empty(), "MemberContributions must be empty after round reset");
 
     // All members should be able to contribute in round 1 without AlreadyContributed
     env.ledger().set_timestamp(4100);
-    client.contribute(&m1, &token_admin, &100); // would panic with AlreadyContributed if not fixed
+    client.contribute(&m1, &token_admin, &100);  // would panic with AlreadyContributed if not fixed
     client.contribute(&m2, &token_admin, &100);
 }
 
@@ -1290,10 +1194,7 @@ fn test_credit_score_oracle_readable_cross_contract() {
     let (oracle_score, oracle_ledger) = client.get_credit_score_oracle(&m1);
     assert_eq!(oracle_score, 10);
     // last_updated_ledger must be non-zero
-    assert!(
-        oracle_ledger > 0,
-        "last_updated_ledger must be set after a score change"
-    );
+    assert!(oracle_ledger > 0, "last_updated_ledger must be set after a score change");
 
     // 3. A second round: advance ledger then contribute again
     let ledger_after_first = oracle_ledger;
@@ -1324,3 +1225,7 @@ fn test_credit_score_oracle_readable_cross_contract() {
 
     let _ = token_admin_client;
 }
+
+
+
+

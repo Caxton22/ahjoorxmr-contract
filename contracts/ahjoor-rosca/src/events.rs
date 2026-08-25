@@ -478,11 +478,7 @@ pub fn emit_round_closed_without_payout(e: &Env, round: u32) {
 }
 
 pub fn emit_payout_order_finalized(e: &Env, round: u32, payout_order: Vec<Address>) {
-    PayoutOrderFinalized {
-        round,
-        payout_order,
-    }
-    .publish(e);
+    PayoutOrderFinalized { round, payout_order }.publish(e);
 }
 
 pub fn emit_payout_order_compacted(
@@ -754,13 +750,7 @@ pub fn emit_fee_collected(e: &Env, round: u32, fee_amount: i128, fee_recipient: 
     .publish(e);
 }
 
-pub fn emit_partial_contribution(
-    e: &Env,
-    member: Address,
-    round: u32,
-    amount: i128,
-    remaining: i128,
-) {
+pub fn emit_partial_contribution(e: &Env, member: Address, round: u32, amount: i128, remaining: i128) {
     PartialContributionReceived {
         member,
         round,
@@ -817,11 +807,7 @@ pub struct DelegationRevoked {
 }
 
 pub fn emit_vote_delegated(e: &Env, delegator: Address, delegate: Address) {
-    VoteDelegated {
-        delegator,
-        delegate,
-    }
-    .publish(e);
+    VoteDelegated { delegator, delegate }.publish(e);
 }
 
 pub fn emit_delegation_revoked(e: &Env, delegator: Address) {
@@ -839,11 +825,7 @@ pub struct RoundAutoClosedEarly {
 }
 
 pub fn emit_round_auto_closed_early(e: &Env, round: u32, closed_at_ledger: u64) {
-    RoundAutoClosedEarly {
-        round,
-        closed_at_ledger,
-    }
-    .publish(e);
+    RoundAutoClosedEarly { round, closed_at_ledger }.publish(e);
 }
 
 // --- Invitation-Based Member Joining Events ---
@@ -864,11 +846,7 @@ pub struct InviteRedeemed {
 }
 
 pub fn emit_invite_generated(e: &Env, invitee: Address, expires_at: u64) {
-    InviteGenerated {
-        invitee,
-        expires_at,
-    }
-    .publish(e);
+    InviteGenerated { invitee, expires_at }.publish(e);
 }
 
 pub fn emit_invite_redeemed(e: &Env, invitee: Address) {
@@ -903,40 +881,16 @@ pub struct AdminActionExecuted {
     pub action_type: Symbol,
 }
 
-pub fn emit_admin_action_proposed(
-    e: &Env,
-    action_id: u32,
-    action_type: Symbol,
-    proposed_by: Address,
-) {
-    AdminActionProposed {
-        action_id,
-        action_type,
-        proposed_by,
-    }
-    .publish(e);
+pub fn emit_admin_action_proposed(e: &Env, action_id: u32, action_type: Symbol, proposed_by: Address) {
+    AdminActionProposed { action_id, action_type, proposed_by }.publish(e);
 }
 
-pub fn emit_admin_action_approved(
-    e: &Env,
-    action_id: u32,
-    approved_by: Address,
-    approval_count: u32,
-) {
-    AdminActionApproved {
-        action_id,
-        approved_by,
-        approval_count,
-    }
-    .publish(e);
+pub fn emit_admin_action_approved(e: &Env, action_id: u32, approved_by: Address, approval_count: u32) {
+    AdminActionApproved { action_id, approved_by, approval_count }.publish(e);
 }
 
 pub fn emit_admin_action_executed(e: &Env, action_id: u32, action_type: Symbol) {
-    AdminActionExecuted {
-        action_id,
-        action_type,
-    }
-    .publish(e);
+    AdminActionExecuted { action_id, action_type }.publish(e);
 }
 
 // --- Insurance Pool Events ---
@@ -968,20 +922,11 @@ pub struct InsurancePoolLow {
 }
 
 pub fn emit_insurance_top_up(e: &Env, contributor: Address, amount: i128) {
-    InsurancePoolTopUp {
-        contributor,
-        amount,
-    }
-    .publish(e);
+    InsurancePoolTopUp { contributor, amount }.publish(e);
 }
 
 pub fn emit_insurance_paid_out(e: &Env, round: u32, shortfall: i128, remaining_pool: i128) {
-    InsurancePaidOut {
-        round,
-        shortfall,
-        remaining_pool,
-    }
-    .publish(e);
+    InsurancePaidOut { round, shortfall, remaining_pool }.publish(e);
 }
 
 pub fn emit_insurance_pool_low(e: &Env, round: u32, threshold: i128, remaining_pool: i128) {
@@ -994,12 +939,7 @@ pub fn emit_insurance_pool_low(e: &Env, round: u32, threshold: i128, remaining_p
 }
 
 pub fn emit_round_skip_requested(e: &Env, member: Address, round: u32, fee_paid: i128) {
-    RoundSkipRequested {
-        member,
-        round,
-        fee_paid,
-    }
-    .publish(e);
+    RoundSkipRequested { member, round, fee_paid }.publish(e);
 }
 
 // --- Audit Trail Events ---
@@ -1028,18 +968,8 @@ pub struct RetentionWindowUpdated {
     pub new_window: u32,
 }
 
-pub fn emit_cycle_record_created(
-    e: &Env,
-    cycle_number: u32,
-    total_pool_amount: i128,
-    payout_recipient: Address,
-) {
-    CycleRecordCreated {
-        cycle_number,
-        total_pool_amount,
-        payout_recipient,
-    }
-    .publish(e);
+pub fn emit_cycle_record_created(e: &Env, cycle_number: u32, total_pool_amount: i128, payout_recipient: Address) {
+    CycleRecordCreated { cycle_number, total_pool_amount, payout_recipient }.publish(e);
 }
 
 pub fn emit_cycle_record_archived(e: &Env, cycle_number: u32) {
@@ -1047,11 +977,7 @@ pub fn emit_cycle_record_archived(e: &Env, cycle_number: u32) {
 }
 
 pub fn emit_retention_window_updated(e: &Env, old_window: u32, new_window: u32) {
-    RetentionWindowUpdated {
-        old_window,
-        new_window,
-    }
-    .publish(e);
+    RetentionWindowUpdated { old_window, new_window }.publish(e);
 }
 
 pub fn emit_waitlist_updated(e: &Env, member: Address, joined: bool, size: u32) {
@@ -1066,10 +992,11 @@ pub fn emit_member_enrolled_from_waitlist(
     round: u32,
     catch_up_amount: i128,
 ) {
-    e.events().publish(
-        (Symbol::new(e, "WaitEnroll"),),
-        (member, vacated_by, round, catch_up_amount),
-    );
+    e.events()
+        .publish(
+            (Symbol::new(e, "WaitEnroll"),),
+            (member, vacated_by, round, catch_up_amount),
+        );
 }
 
 // --- Emergency Payout Events ---
@@ -1190,211 +1117,77 @@ pub struct DissolutionConfigUpdated {
 
 // --- Helper Emission Functions ---
 
-pub fn emit_emergency_payout_requested(
-    e: &Env,
-    requester: Address,
-    round: u32,
-    reason_hash: BytesN<32>,
-    deadline: u64,
-) {
-    EmergencyPayoutRequested {
-        requester,
-        round,
-        reason_hash,
-        deadline,
-    }
-    .publish(e);
+pub fn emit_emergency_payout_requested(e: &Env, requester: Address, round: u32, reason_hash: BytesN<32>, deadline: u64) {
+    EmergencyPayoutRequested { requester, round, reason_hash, deadline }.publish(e);
 }
 
-pub fn emit_emergency_payout_vote_cast(
-    e: &Env,
-    requester: Address,
-    round: u32,
-    voter: Address,
-    approve: bool,
-    votes_for: i128,
-    votes_against: i128,
-) {
-    EmergencyPayoutVoteCast {
-        requester,
-        round,
-        voter,
-        approve,
-        votes_for,
-        votes_against,
-    }
-    .publish(e);
+pub fn emit_emergency_payout_vote_cast(e: &Env, requester: Address, round: u32, voter: Address, approve: bool, votes_for: i128, votes_against: i128) {
+    EmergencyPayoutVoteCast { requester, round, voter, approve, votes_for, votes_against }.publish(e);
 }
 
-pub fn emit_emergency_payout_approved(
-    e: &Env,
-    requester: Address,
-    round: u32,
-    payout_amount: i128,
-) {
-    EmergencyPayoutApproved {
-        requester,
-        round,
-        payout_amount,
-    }
-    .publish(e);
+pub fn emit_emergency_payout_approved(e: &Env, requester: Address, round: u32, payout_amount: i128) {
+    EmergencyPayoutApproved { requester, round, payout_amount }.publish(e);
 }
 
 pub fn emit_emergency_payout_rejected(e: &Env, requester: Address, round: u32, reason: Symbol) {
-    EmergencyPayoutRejected {
-        requester,
-        round,
-        reason,
-    }
-    .publish(e);
+    EmergencyPayoutRejected { requester, round, reason }.publish(e);
 }
 
-pub fn emit_emergency_payout_executed(
-    e: &Env,
-    requester: Address,
-    round: u32,
-    payout_amount: i128,
-) {
-    EmergencyPayoutExecuted {
-        requester,
-        round,
-        payout_amount,
-    }
-    .publish(e);
+pub fn emit_emergency_payout_executed(e: &Env, requester: Address, round: u32, payout_amount: i128) {
+    EmergencyPayoutExecuted { requester, round, payout_amount }.publish(e);
 }
 
-pub fn emit_emergency_payout_config_updated(
-    e: &Env,
-    emergency_quorum_bps: u32,
-    vote_window_seconds: u64,
-    max_emergency_per_cycle: u32,
-) {
-    EmergencyPayoutConfigUpdated {
-        emergency_quorum_bps,
-        vote_window_seconds,
-        max_emergency_per_cycle,
-    }
-    .publish(e);
+pub fn emit_emergency_payout_config_updated(e: &Env, emergency_quorum_bps: u32, vote_window_seconds: u64, max_emergency_per_cycle: u32) {
+    EmergencyPayoutConfigUpdated { emergency_quorum_bps, vote_window_seconds, max_emergency_per_cycle }.publish(e);
 }
 
 pub fn emit_dissolution_vote_started(e: &Env, round: u32, deadline: u64) {
     DissolutionVoteStarted { round, deadline }.publish(e);
 }
 
-pub fn emit_dissolution_vote_cast(
-    e: &Env,
-    round: u32,
-    voter: Address,
-    approve: bool,
-    votes_for: i128,
-) {
-    DissolutionVoteCast {
-        round,
-        voter,
-        approve,
-        votes_for,
-    }
-    .publish(e);
+pub fn emit_dissolution_vote_cast(e: &Env, round: u32, voter: Address, approve: bool, votes_for: i128) {
+    DissolutionVoteCast { round, voter, approve, votes_for }.publish(e);
 }
 
 pub fn emit_dissolution_quorum_reached(e: &Env, round: u32, votes_for: i128) {
     DissolutionQuorumReached { round, votes_for }.publish(e);
 }
 
-pub fn emit_group_dissolved(
-    e: &Env,
-    round: u32,
-    reason_hash: BytesN<32>,
-    total_pool: i128,
-    member_count: u32,
-) {
-    GroupDissolved {
-        round,
-        reason_hash,
-        total_pool,
-        member_count,
-    }
-    .publish(e);
+pub fn emit_group_dissolved(e: &Env, round: u32, reason_hash: BytesN<32>, total_pool: i128, member_count: u32) {
+    GroupDissolved { round, reason_hash, total_pool, member_count }.publish(e);
 }
 
-pub fn emit_member_refunded(
-    e: &Env,
-    member: Address,
-    amount: i128,
-    contribution: i128,
-    total_pool: i128,
-) {
-    MemberRefunded {
-        member,
-        amount,
-        contribution,
-        total_pool,
-    }
-    .publish(e);
+pub fn emit_member_refunded(e: &Env, member: Address, amount: i128, contribution: i128, total_pool: i128) {
+    MemberRefunded { member, amount, contribution, total_pool }.publish(e);
 }
 
-pub fn emit_dissolution_config_updated(
-    e: &Env,
-    dissolution_quorum_bps: u32,
-    vote_window_seconds: u64,
-) {
-    DissolutionConfigUpdated {
-        dissolution_quorum_bps,
-        vote_window_seconds,
-    }
-    .publish(e);
+pub fn emit_dissolution_config_updated(e: &Env, dissolution_quorum_bps: u32, vote_window_seconds: u64) {
+    DissolutionConfigUpdated { dissolution_quorum_bps, vote_window_seconds }.publish(e);
 }
 
 // #213: Slot Swap Events
-pub fn emit_slot_swap_requested(
-    e: &Env,
-    swap_id: u32,
-    initiator: Address,
-    counterparty: Address,
-    round_a: u32,
-    round_b: u32,
-) {
-    e.events().publish(
-        (Symbol::new(e, "SlotSwapReq"),),
-        (swap_id, initiator, counterparty, round_a, round_b),
-    );
+pub fn emit_slot_swap_requested(e: &Env, swap_id: u32, initiator: Address, counterparty: Address, round_a: u32, round_b: u32) {
+    e.events().publish((Symbol::new(e, "SlotSwapReq"),), (swap_id, initiator, counterparty, round_a, round_b));
 }
 pub fn emit_slot_swap_accepted(e: &Env, swap_id: u32, counterparty: Address) {
-    e.events()
-        .publish((Symbol::new(e, "SlotSwapAcc"),), (swap_id, counterparty));
+    e.events().publish((Symbol::new(e, "SlotSwapAcc"),), (swap_id, counterparty));
 }
 pub fn emit_slot_swap_rejected(e: &Env, swap_id: u32, counterparty: Address) {
-    e.events()
-        .publish((Symbol::new(e, "SlotSwapRej"),), (swap_id, counterparty));
+    e.events().publish((Symbol::new(e, "SlotSwapRej"),), (swap_id, counterparty));
 }
 pub fn emit_slot_swap_executed(e: &Env, swap_id: u32, round_a: u32, round_b: u32) {
-    e.events().publish(
-        (Symbol::new(e, "SlotSwapExec"),),
-        (swap_id, round_a, round_b),
-    );
+    e.events().publish((Symbol::new(e, "SlotSwapExec"),), (swap_id, round_a, round_b));
 }
 pub fn emit_slot_swap_expired(e: &Env, swap_id: u32) {
-    e.events()
-        .publish((Symbol::new(e, "SlotSwapExp"),), (swap_id,));
+    e.events().publish((Symbol::new(e, "SlotSwapExp"),), (swap_id,));
 }
 
 // #214: Insurance Coverage Events
-pub fn emit_insurance_claim_executed(
-    e: &Env,
-    round: u32,
-    defaulter: Address,
-    amount_covered: i128,
-) {
-    e.events().publish(
-        (Symbol::new(e, "InsClaim"),),
-        (round, defaulter, amount_covered),
-    );
+pub fn emit_insurance_claim_executed(e: &Env, round: u32, defaulter: Address, amount_covered: i128) {
+    e.events().publish((Symbol::new(e, "InsClaim"),), (round, defaulter, amount_covered));
 }
 pub fn emit_insurance_pool_exhausted(e: &Env, round: u32, shortfall_remaining: i128) {
-    e.events().publish(
-        (Symbol::new(e, "InsExhausted"),),
-        (round, shortfall_remaining),
-    );
+    e.events().publish((Symbol::new(e, "InsExhausted"),), (round, shortfall_remaining));
 }
 pub fn emit_insurance_coverage_mode_set(e: &Env, mode: u32) {
     e.events().publish((Symbol::new(e, "InsModeSet"),), (mode,));
@@ -1402,38 +1195,28 @@ pub fn emit_insurance_coverage_mode_set(e: &Env, mode: u32) {
 
 // #218: Reinstatement Events
 pub fn emit_reinstatement_requested(e: &Env, member: Address, proposal_id: u32) {
-    e.events()
-        .publish((Symbol::new(e, "ReinReq"),), (member, proposal_id));
+    e.events().publish((Symbol::new(e, "ReinReq"),), (member, proposal_id));
 }
 pub fn emit_reinstatement_approved(e: &Env, member: Address) {
-    e.events()
-        .publish((Symbol::new(e, "ReinApproved"),), (member,));
+    e.events().publish((Symbol::new(e, "ReinApproved"),), (member,));
 }
 pub fn emit_reinstatement_fee_collected(e: &Env, member: Address, amount: i128) {
-    e.events()
-        .publish((Symbol::new(e, "ReinFee"),), (member, amount));
+    e.events().publish((Symbol::new(e, "ReinFee"),), (member, amount));
 }
+
 
 // #230: Group Merge Events
 pub fn emit_merge_proposed(e: &Env, proposal_id: u32, group_a_admin: Address, group_b_id: u32) {
-    e.events().publish(
-        (Symbol::new(e, "MergeProposed"),),
-        (proposal_id, group_a_admin, group_b_id),
-    );
+    e.events().publish((Symbol::new(e, "MergeProposed"),), (proposal_id, group_a_admin, group_b_id));
 }
 pub fn emit_merge_accepted(e: &Env, proposal_id: u32) {
-    e.events()
-        .publish((Symbol::new(e, "MergeAccepted"),), (proposal_id,));
+    e.events().publish((Symbol::new(e, "MergeAccepted"),), (proposal_id,));
 }
 pub fn emit_merge_completed(e: &Env, proposal_id: u32, members_added: u32) {
-    e.events().publish(
-        (Symbol::new(e, "MergeCompleted"),),
-        (proposal_id, members_added),
-    );
+    e.events().publish((Symbol::new(e, "MergeCompleted"),), (proposal_id, members_added));
 }
 pub fn emit_group_marked_merged(e: &Env, group_b_id: u32) {
-    e.events()
-        .publish((Symbol::new(e, "GroupMerged"),), (group_b_id,));
+    e.events().publish((Symbol::new(e, "GroupMerged"),), (group_b_id,));
 }
 // #224: Cycle Completion Bonus Events
 
@@ -1466,12 +1249,7 @@ pub fn emit_cycle_bonus_configured(e: &Env, amount: i128) {
 }
 
 pub fn emit_cycle_bonus_paid(e: &Env, member: Address, amount: i128, cycle: u32) {
-    CycleBonusPaid {
-        member,
-        amount,
-        cycle,
-    }
-    .publish(e);
+    CycleBonusPaid { member, amount, cycle }.publish(e);
 }
 
 pub fn emit_cycle_bonus_prorated(e: &Env, cycle: u32, shortfall: i128) {
@@ -1497,18 +1275,8 @@ pub struct RoundDurationApplied {
     pub duration: u64,
 }
 
-pub fn emit_round_duration_update_scheduled(
-    e: &Env,
-    old_duration: u64,
-    new_duration: u64,
-    effective_from_round: u32,
-) {
-    RoundDurationUpdateScheduled {
-        old_duration,
-        new_duration,
-        effective_from_round,
-    }
-    .publish(e);
+pub fn emit_round_duration_update_scheduled(e: &Env, old_duration: u64, new_duration: u64, effective_from_round: u32) {
+    RoundDurationUpdateScheduled { old_duration, new_duration, effective_from_round }.publish(e);
 }
 
 pub fn emit_round_duration_applied(e: &Env, round: u32, duration: u64) {
@@ -1518,37 +1286,19 @@ pub fn emit_round_duration_applied(e: &Env, round: u32, duration: u64) {
 // #240: Co-Signer Guarantee Events
 
 pub fn emit_co_signer_set(e: &Env, group_id: u32, member: Address, co_signer: Address) {
-    e.events().publish(
-        (soroban_sdk::Symbol::new(e, "CoSignerSet"),),
-        (group_id, member, co_signer),
-    );
+    e.events().publish((soroban_sdk::Symbol::new(e, "CoSignerSet"),), (group_id, member, co_signer));
 }
 
 pub fn emit_co_signer_accepted(e: &Env, group_id: u32, member: Address, co_signer: Address) {
-    e.events().publish(
-        (soroban_sdk::Symbol::new(e, "CoSignerAccepted"),),
-        (group_id, member, co_signer),
-    );
+    e.events().publish((soroban_sdk::Symbol::new(e, "CoSignerAccepted"),), (group_id, member, co_signer));
 }
 
-pub fn emit_co_signer_contributed(
-    e: &Env,
-    group_id: u32,
-    member: Address,
-    co_signer: Address,
-    amount: i128,
-) {
-    e.events().publish(
-        (soroban_sdk::Symbol::new(e, "CoSignerContributed"),),
-        (group_id, member, co_signer, amount),
-    );
+pub fn emit_co_signer_contributed(e: &Env, group_id: u32, member: Address, co_signer: Address, amount: i128) {
+    e.events().publish((soroban_sdk::Symbol::new(e, "CoSignerContributed"),), (group_id, member, co_signer, amount));
 }
 
 pub fn emit_co_signer_window_expired(e: &Env, group_id: u32, member: Address) {
-    e.events().publish(
-        (soroban_sdk::Symbol::new(e, "CoSignerWinExpired"),),
-        (group_id, member),
-    );
+    e.events().publish((soroban_sdk::Symbol::new(e, "CoSignerWinExpired"),), (group_id, member));
 }
 
 #[contractevent]
@@ -1638,21 +1388,11 @@ pub struct GroupUnfrozen {
 }
 
 pub fn emit_group_frozen(e: &Env, group_id: u32, reason_hash: BytesN<32>, frozen_at: u32) {
-    GroupFrozen {
-        group_id,
-        reason_hash,
-        frozen_at,
-    }
-    .publish(e);
+    GroupFrozen { group_id, reason_hash, frozen_at }.publish(e);
 }
 
 pub fn emit_group_unfrozen(e: &Env, group_id: u32, resolution_hash: BytesN<32>, unfrozen_at: u32) {
-    GroupUnfrozen {
-        group_id,
-        resolution_hash,
-        unfrozen_at,
-    }
-    .publish(e);
+    GroupUnfrozen { group_id, resolution_hash, unfrozen_at }.publish(e);
 }
 // #243: Group State Snapshot Events
 
@@ -1666,12 +1406,7 @@ pub struct SnapshotTaken {
 }
 
 pub fn emit_snapshot_taken(e: &Env, snapshot_id: u32, taken_by: Address, state_hash: BytesN<32>) {
-    SnapshotTaken {
-        snapshot_id,
-        taken_by,
-        state_hash,
-    }
-    .publish(e);
+    SnapshotTaken { snapshot_id, taken_by, state_hash }.publish(e);
 }
 
 // #267: Tiered Contribution Level Events
@@ -1704,40 +1439,16 @@ pub struct MemberTierChanged {
     pub effective_cycle: u32,
 }
 
-pub fn emit_tier_defined(
-    e: &Env,
-    tier_id: u32,
-    name: soroban_sdk::Symbol,
-    contribution_amount: i128,
-    payout_weight: u32,
-) {
-    TierDefined {
-        tier_id,
-        name,
-        contribution_amount,
-        payout_weight,
-    }
-    .publish(e);
+pub fn emit_tier_defined(e: &Env, tier_id: u32, name: soroban_sdk::Symbol, contribution_amount: i128, payout_weight: u32) {
+    TierDefined { tier_id, name, contribution_amount, payout_weight }.publish(e);
 }
 
 pub fn emit_member_joined_with_tier(e: &Env, member: Address, tier_id: u32) {
     MemberJoinedWithTier { member, tier_id }.publish(e);
 }
 
-pub fn emit_member_tier_changed(
-    e: &Env,
-    member: Address,
-    old_tier: u32,
-    new_tier: u32,
-    effective_cycle: u32,
-) {
-    MemberTierChanged {
-        member,
-        old_tier,
-        new_tier,
-        effective_cycle,
-    }
-    .publish(e);
+pub fn emit_member_tier_changed(e: &Env, member: Address, old_tier: u32, new_tier: u32, effective_cycle: u32) {
+    MemberTierChanged { member, old_tier, new_tier, effective_cycle }.publish(e);
 }
 
 // #269: On-Chain Member Credit Score Events
@@ -1752,20 +1463,8 @@ pub struct CreditScoreUpdated {
     pub reason: soroban_sdk::Symbol,
 }
 
-pub fn emit_credit_score_updated(
-    e: &Env,
-    member: Address,
-    old_score: i128,
-    new_score: i128,
-    reason: soroban_sdk::Symbol,
-) {
-    CreditScoreUpdated {
-        member,
-        old_score,
-        new_score,
-        reason,
-    }
-    .publish(e);
+pub fn emit_credit_score_updated(e: &Env, member: Address, old_score: i128, new_score: i128, reason: soroban_sdk::Symbol) {
+    CreditScoreUpdated { member, old_score, new_score, reason }.publish(e);
 }
 
 // ── Reputation-Gated Fee Discount Event ──────────────────────────────────────
@@ -1817,34 +1516,12 @@ pub struct ContribDelegationRevoked {
     pub proxy: Address,
 }
 
-pub fn emit_delegation_granted(
-    e: &Env,
-    group_id: u32,
-    member: Address,
-    proxy: Address,
-    expiry_ledger: u64,
-) {
-    DelegationGranted {
-        group_id,
-        member,
-        proxy,
-        expiry_ledger,
-    }
-    .publish(e);
+pub fn emit_delegation_granted(e: &Env, group_id: u32, member: Address, proxy: Address, expiry_ledger: u64) {
+    DelegationGranted { group_id, member, proxy, expiry_ledger }.publish(e);
 }
 
-pub fn emit_contribution_delegation_revoked(
-    e: &Env,
-    group_id: u32,
-    member: Address,
-    proxy: Address,
-) {
-    ContribDelegationRevoked {
-        group_id,
-        member,
-        proxy,
-    }
-    .publish(e);
+pub fn emit_contribution_delegation_revoked(e: &Env, group_id: u32, member: Address, proxy: Address) {
+    ContribDelegationRevoked { group_id, member, proxy }.publish(e);
 }
 
 // ── #331: Group Split Events ──────────────────────────────────────────────────
@@ -1867,21 +1544,13 @@ pub struct GroupSplitExecuted {
 }
 
 pub fn emit_group_split_proposed(e: &Env, source_group_id: u32, proposal_id: u32) {
-    GroupSplitProposed {
-        source_group_id,
-        proposal_id,
-    }
-    .publish(e);
+    GroupSplitProposed { source_group_id, proposal_id }.publish(e);
 }
 
 pub fn emit_group_split_executed(e: &Env, source_group_id: u32, group_a_id: u32, group_b_id: u32) {
-    GroupSplitExecuted {
-        source_group_id,
-        group_a_id,
-        group_b_id,
-    }
-    .publish(e);
+    GroupSplitExecuted { source_group_id, group_a_id, group_b_id }.publish(e);
 }
+
 
 /// Event: Group treasury enabled (#314)
 #[contractevent]
@@ -1916,37 +1585,21 @@ pub struct TreasuryPaymentExecuted {
     pub amount: i128,
 }
 
+
 pub fn emit_treasury_enabled(env: &Env, treasury_admin: Address) {
-    TreasuryEnabled {
-        group_id: 0,
-        treasury_admin,
-    }
-    .publish(env);
+    TreasuryEnabled { group_id: 0, treasury_admin }.publish(env);
 }
 
 pub fn emit_treasury_round_proposed(env: &Env, round_index: u32) {
-    TreasuryRoundProposed {
-        group_id: 0,
-        round_index,
-    }
-    .publish(env);
+    TreasuryRoundProposed { group_id: 0, round_index }.publish(env);
 }
 
 pub fn emit_treasury_round_confirmed(env: &Env, round_index: u32) {
-    TreasuryRoundConfirmed {
-        group_id: 0,
-        round_index,
-    }
-    .publish(env);
+    TreasuryRoundConfirmed { group_id: 0, round_index }.publish(env);
 }
 
 pub fn emit_treasury_payment_executed(env: &Env, recipient: Address, amount: i128) {
-    TreasuryPaymentExecuted {
-        group_id: 0,
-        recipient,
-        amount,
-    }
-    .publish(env);
+    TreasuryPaymentExecuted { group_id: 0, recipient, amount }.publish(env);
 }
 
 // --- Emergency Liquidity Reserve Events (#313) ---
@@ -1999,13 +1652,7 @@ pub fn emit_emergency_loan_granted(
     .publish(e);
 }
 
-pub fn emit_emergency_loan_repaid(
-    e: &Env,
-    group_id: u32,
-    loan_id: u32,
-    amount: i128,
-    remaining: i128,
-) {
+pub fn emit_emergency_loan_repaid(e: &Env, group_id: u32, loan_id: u32, amount: i128, remaining: i128) {
     EmergencyLoanRepaid {
         group_id,
         loan_id,
@@ -2015,12 +1662,7 @@ pub fn emit_emergency_loan_repaid(
     .publish(e);
 }
 
-pub fn emit_loan_default_deducted(
-    e: &Env,
-    group_id: u32,
-    loan_id: u32,
-    deducted_from_payout: i128,
-) {
+pub fn emit_loan_default_deducted(e: &Env, group_id: u32, loan_id: u32, deducted_from_payout: i128) {
     LoanDefaultDeducted {
         group_id,
         loan_id,
@@ -2098,12 +1740,7 @@ pub struct SnapshotCreated {
 }
 
 pub fn emit_snapshot_created(e: &Env, group_id: u32, cycle_number: u32, snapshot_hash: BytesN<32>) {
-    SnapshotCreated {
-        group_id,
-        cycle_number,
-        snapshot_hash,
-    }
-    .publish(e);
+    SnapshotCreated { group_id, cycle_number, snapshot_hash }.publish(e);
 }
 
 // ── #359: Savings Goal Milestone Rewards ─────────────────────────────────────
@@ -2125,13 +1762,7 @@ pub fn emit_milestone_reached(
     milestone_pct: u32,
     reward_amount: i128,
 ) {
-    MilestoneReached {
-        group_id,
-        member,
-        milestone_pct,
-        reward_amount,
-    }
-    .publish(e);
+    MilestoneReached { group_id, member, milestone_pct, reward_amount }.publish(e);
 }
 
 // ── #375: Sealed-Bid (Commit-Reveal) Slot Auction Events ──────────────────────
@@ -2184,22 +1815,11 @@ pub fn emit_sealed_auction_opened(
     commit_until: u64,
     reveal_until: u64,
 ) {
-    SealedAuctionOpened {
-        group_id,
-        round,
-        commit_until,
-        reveal_until,
-    }
-    .publish(e);
+    SealedAuctionOpened { group_id, round, commit_until, reveal_until }.publish(e);
 }
 
 pub fn emit_slot_bid_committed(e: &Env, group_id: u32, round: u32, bidder: Address) {
-    SlotBidCommitted {
-        group_id,
-        round,
-        bidder,
-    }
-    .publish(e);
+    SlotBidCommitted { group_id, round, bidder }.publish(e);
 }
 
 pub fn emit_slot_bid_revealed(
@@ -2210,14 +1830,7 @@ pub fn emit_slot_bid_revealed(
     desired_slot: u32,
     bid_amount: i128,
 ) {
-    SlotBidRevealed {
-        group_id,
-        round,
-        bidder,
-        desired_slot,
-        bid_amount,
-    }
-    .publish(e);
+    SlotBidRevealed { group_id, round, bidder, desired_slot, bid_amount }.publish(e);
 }
 
 pub fn emit_sealed_auction_settled(
@@ -2227,14 +1840,9 @@ pub fn emit_sealed_auction_settled(
     winner: Address,
     winning_bid: i128,
 ) {
-    SealedAuctionSettled {
-        group_id,
-        round,
-        winner,
-        winning_bid,
-    }
-    .publish(e);
+    SealedAuctionSettled { group_id, round, winner, winning_bid }.publish(e);
 }
+
 
 // --- Slot Auction Events (open auction variant) ---
 
@@ -2248,20 +1856,8 @@ pub struct SlotBidPlaced {
     pub bid_amount: i128,
 }
 
-pub fn emit_slot_bid_placed(
-    e: &Env,
-    group_id: u32,
-    bidder: Address,
-    desired_slot: u32,
-    bid_amount: i128,
-) {
-    SlotBidPlaced {
-        group_id,
-        bidder,
-        desired_slot,
-        bid_amount,
-    }
-    .publish(e);
+pub fn emit_slot_bid_placed(e: &Env, group_id: u32, bidder: Address, desired_slot: u32, bid_amount: i128) {
+    SlotBidPlaced { group_id, bidder, desired_slot, bid_amount }.publish(e);
 }
 
 /// Event: An open slot auction was resolved
@@ -2275,22 +1871,8 @@ pub struct SlotAuctionResolved {
     pub bonus_per_member: i128,
 }
 
-pub fn emit_slot_auction_resolved(
-    e: &Env,
-    group_id: u32,
-    winner: Address,
-    slot: u32,
-    winning_bid: i128,
-    bonus_per_member: i128,
-) {
-    SlotAuctionResolved {
-        group_id,
-        winner,
-        slot,
-        winning_bid,
-        bonus_per_member,
-    }
-    .publish(e);
+pub fn emit_slot_auction_resolved(e: &Env, group_id: u32, winner: Address, slot: u32, winning_bid: i128, bonus_per_member: i128) {
+    SlotAuctionResolved { group_id, winner, slot, winning_bid, bonus_per_member }.publish(e);
 }
 
 // --- Cross-Group Migration Events ---
@@ -2304,18 +1886,8 @@ pub struct MigrationRequested {
     pub to_group: Address,
 }
 
-pub fn emit_migration_requested(
-    e: &Env,
-    member: Address,
-    src_contract: Address,
-    to_group: Address,
-) {
-    MigrationRequested {
-        member,
-        src_contract,
-        to_group,
-    }
-    .publish(e);
+pub fn emit_migration_requested(e: &Env, member: Address, src_contract: Address, to_group: Address) {
+    MigrationRequested { member, src_contract, to_group }.publish(e);
 }
 
 /// Event: A member migration was executed into this group
@@ -2328,20 +1900,8 @@ pub struct MigrationExecuted {
     pub target_slot: u32,
 }
 
-pub fn emit_migration_executed(
-    e: &Env,
-    member: Address,
-    from_group: Address,
-    dest_contract: Address,
-    target_slot: u32,
-) {
-    MigrationExecuted {
-        member,
-        from_group,
-        dest_contract,
-        target_slot,
-    }
-    .publish(e);
+pub fn emit_migration_executed(e: &Env, member: Address, from_group: Address, dest_contract: Address, target_slot: u32) {
+    MigrationExecuted { member, from_group, dest_contract, target_slot }.publish(e);
 }
 
 // --- Proxy Authorization Events ---
@@ -2356,20 +1916,8 @@ pub struct ProxyExpired {
     pub expiry_ledger: u64,
 }
 
-pub fn emit_proxy_expired(
-    e: &Env,
-    group_id: u32,
-    member: Address,
-    proxy: Address,
-    expiry_ledger: u64,
-) {
-    ProxyExpired {
-        group_id,
-        member,
-        proxy,
-        expiry_ledger,
-    }
-    .publish(e);
+pub fn emit_proxy_expired(e: &Env, group_id: u32, member: Address, proxy: Address, expiry_ledger: u64) {
+    ProxyExpired { group_id, member, proxy, expiry_ledger }.publish(e);
 }
 
 // ── Co-payer Contribution Splitting Events ────────────────────────────────────
@@ -2400,34 +1948,12 @@ pub struct CoPayerSplitRevoked {
     pub member: Address,
 }
 
-pub fn emit_co_payer_split_registered(
-    e: &Env,
-    member: Address,
-    co_payer_count: u32,
-    total_split_amount: i128,
-) {
-    CoPayerSplitRegistered {
-        member,
-        co_payer_count,
-        total_split_amount,
-    }
-    .publish(e);
+pub fn emit_co_payer_split_registered(e: &Env, member: Address, co_payer_count: u32, total_split_amount: i128) {
+    CoPayerSplitRegistered { member, co_payer_count, total_split_amount }.publish(e);
 }
 
-pub fn emit_co_payer_contributed(
-    e: &Env,
-    member: Address,
-    co_payer: Address,
-    amount: i128,
-    round: u32,
-) {
-    CoPayerContributed {
-        member,
-        co_payer,
-        amount,
-        round,
-    }
-    .publish(e);
+pub fn emit_co_payer_contributed(e: &Env, member: Address, co_payer: Address, amount: i128, round: u32) {
+    CoPayerContributed { member, co_payer, amount, round }.publish(e);
 }
 
 pub fn emit_co_payer_split_revoked(e: &Env, member: Address) {

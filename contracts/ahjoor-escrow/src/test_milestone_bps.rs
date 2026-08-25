@@ -1,11 +1,11 @@
 #![cfg(test)]
+use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String, Vec};
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{testutils::Address as _, Address, BytesN, Env, String, Vec};
 
 use crate::{
-    AhjoorEscrowContract, AhjoorEscrowContractClient, EscrowStatus, MilestoneInput,
-    MilestoneStateStatus,
+    AhjoorEscrowContract, AhjoorEscrowContractClient,
+    MilestoneInput, MilestoneStateStatus, EscrowStatus,
 };
 
 fn setup_env() -> (Env, AhjoorEscrowContractClient<'static>, Address) {
@@ -18,14 +18,8 @@ fn setup_env() -> (Env, AhjoorEscrowContractClient<'static>, Address) {
     (env, client, admin)
 }
 
-fn dummy_token<'a>(
-    env: &'a Env,
-    client: &AhjoorEscrowContractClient<'a>,
-    admin: &Address,
-) -> (Address, TokenAdminClient<'a>, Address) {
-    let token_id = env
-        .register_stellar_asset_contract_v2(admin.clone())
-        .address();
+fn dummy_token<'a>(env: &'a Env, client: &AhjoorEscrowContractClient<'a>, admin: &Address) -> (Address, TokenAdminClient<'a>, Address) {
+    let token_id = env.register_stellar_asset_contract_v2(admin.clone()).address();
     let token_admin = TokenAdminClient::new(env, &token_id);
     client.add_allowed_token(admin, &token_id);
     (token_id, token_admin, admin.clone())
@@ -79,13 +73,7 @@ fn test_create_escrow_validates_bps_sum() {
     let deadline = env.ledger().timestamp() + 10_000;
 
     let escrow_id = client.create_bps_milestone_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &10_000i128,
-        &token,
-        &deadline,
-        &milestones,
+        &buyer, &seller, &arbiter, &10_000i128, &token, &deadline, &milestones,
     );
 
     let states = client.get_bps_milestones(&escrow_id);
@@ -121,13 +109,7 @@ fn test_bps_sum_mismatch_panics() {
     });
     let deadline = env.ledger().timestamp() + 10_000;
     client.create_bps_milestone_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &10_000i128,
-        &token,
-        &deadline,
-        &milestones,
+        &buyer, &seller, &arbiter, &10_000i128, &token, &deadline, &milestones,
     );
 }
 
@@ -150,13 +132,7 @@ fn test_submit_milestone_stores_delivery_hash() {
     let milestones = three_milestones(&env);
     let deadline = env.ledger().timestamp() + 10_000;
     let eid = client.create_bps_milestone_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &10_000i128,
-        &token,
-        &deadline,
-        &milestones,
+        &buyer, &seller, &arbiter, &10_000i128, &token, &deadline, &milestones,
     );
 
     let delivery_hash = hash(&env, 0xDE);
@@ -178,23 +154,12 @@ fn test_approve_milestone_releases_proportional_amount() {
 
     ta.mint(&buyer, &10_000);
     let tc = TokenClient::new(&env, &token);
-    tc.approve(
-        &buyer,
-        &client.address,
-        &10_000,
-        &(env.ledger().sequence() + 10_000),
-    );
+    tc.approve(&buyer, &client.address, &10_000, &(env.ledger().sequence() + 10_000));
 
     let milestones = three_milestones(&env);
     let deadline = env.ledger().timestamp() + 10_000;
     let eid = client.create_bps_milestone_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &10_000i128,
-        &token,
-        &deadline,
-        &milestones,
+        &buyer, &seller, &arbiter, &10_000i128, &token, &deadline, &milestones,
     );
 
     client.submit_milestone(&seller, &eid, &0u32, &hash(&env, 0xAA));
@@ -206,10 +171,7 @@ fn test_approve_milestone_releases_proportional_amount() {
     assert_eq!(seller_bal_after - seller_bal_before, 3_000);
 
     let states = client.get_bps_milestones(&eid);
-    assert_eq!(
-        states.get(0).unwrap().status,
-        MilestoneStateStatus::Approved
-    );
+    assert_eq!(states.get(0).unwrap().status, MilestoneStateStatus::Approved);
 }
 
 #[test]
@@ -231,27 +193,15 @@ fn test_reject_milestone_returns_to_pending() {
     let milestones = three_milestones(&env);
     let deadline = env.ledger().timestamp() + 10_000;
     let eid = client.create_bps_milestone_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &10_000i128,
-        &token,
-        &deadline,
-        &milestones,
+        &buyer, &seller, &arbiter, &10_000i128, &token, &deadline, &milestones,
     );
 
     client.submit_milestone(&seller, &eid, &0u32, &hash(&env, 0xBB));
     client.reject_milestone(&buyer, &eid, &0u32, &hash(&env, 0xCC));
 
     let states = client.get_bps_milestones(&eid);
-    assert_eq!(
-        states.get(0).unwrap().status,
-        MilestoneStateStatus::Rejected
-    );
-    assert_eq!(
-        states.get(0).unwrap().rejection_hash,
-        Some(hash(&env, 0xCC))
-    );
+    assert_eq!(states.get(0).unwrap().status, MilestoneStateStatus::Rejected);
+    assert_eq!(states.get(0).unwrap().rejection_hash, Some(hash(&env, 0xCC)));
 }
 
 #[test]
@@ -273,13 +223,7 @@ fn test_resubmission_after_rejection() {
     let milestones = three_milestones(&env);
     let deadline = env.ledger().timestamp() + 10_000;
     let eid = client.create_bps_milestone_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &10_000i128,
-        &token,
-        &deadline,
-        &milestones,
+        &buyer, &seller, &arbiter, &10_000i128, &token, &deadline, &milestones,
     );
 
     client.submit_milestone(&seller, &eid, &0u32, &hash(&env, 0x01));
@@ -288,10 +232,7 @@ fn test_resubmission_after_rejection() {
     // Seller re-submits after fixing
     client.submit_milestone(&seller, &eid, &0u32, &hash(&env, 0x03));
     let states = client.get_bps_milestones(&eid);
-    assert_eq!(
-        states.get(0).unwrap().status,
-        MilestoneStateStatus::Submitted
-    );
+    assert_eq!(states.get(0).unwrap().status, MilestoneStateStatus::Submitted);
 }
 
 #[test]
@@ -305,23 +246,12 @@ fn test_final_milestone_releases_rounding_remainder() {
     // Amount = 10_001 to force a rounding remainder
     ta.mint(&buyer, &10_001);
     let tc = TokenClient::new(&env, &token);
-    tc.approve(
-        &buyer,
-        &client.address,
-        &10_001,
-        &(env.ledger().sequence() + 10_000),
-    );
+    tc.approve(&buyer, &client.address, &10_001, &(env.ledger().sequence() + 10_000));
 
     let milestones = three_milestones(&env); // 3000 + 5000 + 2000
     let deadline = env.ledger().timestamp() + 10_000;
     let eid = client.create_bps_milestone_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &10_001i128,
-        &token,
-        &deadline,
-        &milestones,
+        &buyer, &seller, &arbiter, &10_001i128, &token, &deadline, &milestones,
     );
 
     // Approve milestones 0 and 1
@@ -366,13 +296,7 @@ fn test_rejected_milestone_does_not_block_other_milestones() {
     let milestones = three_milestones(&env);
     let deadline = env.ledger().timestamp() + 10_000;
     let eid = client.create_bps_milestone_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &10_000i128,
-        &token,
-        &deadline,
-        &milestones,
+        &buyer, &seller, &arbiter, &10_000i128, &token, &deadline, &milestones,
     );
 
     // Reject milestone 0; approve milestone 1 independently
@@ -383,13 +307,7 @@ fn test_rejected_milestone_does_not_block_other_milestones() {
     client.approve_proportional_milestone(&buyer, &eid, &1u32); // should work fine
 
     let states = client.get_bps_milestones(&eid);
-    assert_eq!(
-        states.get(0).unwrap().status,
-        MilestoneStateStatus::Rejected
-    );
-    assert_eq!(
-        states.get(1).unwrap().status,
-        MilestoneStateStatus::Approved
-    );
+    assert_eq!(states.get(0).unwrap().status, MilestoneStateStatus::Rejected);
+    assert_eq!(states.get(1).unwrap().status, MilestoneStateStatus::Approved);
     assert_eq!(states.get(2).unwrap().status, MilestoneStateStatus::Pending);
 }

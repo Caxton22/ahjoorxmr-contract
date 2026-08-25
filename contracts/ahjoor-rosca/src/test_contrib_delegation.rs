@@ -1,12 +1,9 @@
 #![cfg(test)]
-use soroban_sdk::token::Client as TokenClient;
+use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env, Vec};
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{
-    testutils::{Address as _, Ledger},
-    Address, Env, Vec,
-};
+use soroban_sdk::token::Client as TokenClient;
 
-use crate::{AhjoorContract, AhjoorContractClient, PayoutStrategy, RoscaConfig, VotingMode};
+use crate::{AhjoorContract, AhjoorContractClient, RoscaConfig, PayoutStrategy, VotingMode};
 
 fn make_config(env: &Env) -> RoscaConfig {
     RoscaConfig {
@@ -58,24 +55,11 @@ fn setup_rosca<'a>(
     // Mint tokens to each member
     for m in members.iter() {
         token_admin.mint(m, &100_000);
-        token_client.approve(
-            m,
-            &contract_id,
-            &100_000,
-            &(env.ledger().sequence() + 10_000),
-        );
+        token_client.approve(m, &contract_id, &100_000, &(env.ledger().sequence() + 10_000));
     }
 
     let config = make_config(env);
-    client.init(
-        &admin,
-        &members_vec,
-        &1_000i128,
-        &token_addr,
-        &1000u64,
-        &config,
-        &None,
-    );
+    client.init(&admin, &members_vec, &1_000i128, &token_addr, &1000u64, &config, &None);
 
     (client, admin, token_addr, contract_id)
 }
@@ -139,12 +123,7 @@ fn test_proxy_can_contribute_on_behalf() {
 
     // Give proxy tokens and approve contract
     token_admin.mint(&proxy, &5_000);
-    token_client.approve(
-        &proxy,
-        &contract_id,
-        &5_000,
-        &(env.ledger().sequence() + 10_000),
-    );
+    token_client.approve(&proxy, &contract_id, &5_000, &(env.ledger().sequence() + 10_000));
 
     // Also need member to approve proxy as a spender (for transfer_from proxy → member → contract)
     // In our implementation proxy pays from member's account via transfer_from(proxy, member, ...)

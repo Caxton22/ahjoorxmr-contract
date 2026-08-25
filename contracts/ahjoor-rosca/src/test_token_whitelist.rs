@@ -35,20 +35,20 @@ fn create_basic_config() -> RoscaConfig {
         fee_bps: 0u32,
         fee_recipient: None,
         max_defaults: 3u32,
-        grace_period_ledgers: 0,
-        use_timestamp_schedule: false,
+            grace_period_ledgers: 0,
+            use_timestamp_schedule: false,
         round_duration_seconds: 86400u64,
         max_members: Some(10u32),
         skip_fee: 0i128,
         max_skips_per_cycle: 1u32,
         voting_mode: VotingMode::Equal,
-        late_fee_bps: 0,
-        grace_period_seconds: 0,
-        auction_enabled: false,
-        auction_window_ledgers: 0,
-        randomize_payout_order: false,
-        reserve_enabled: false,
-        reserve_contribution_bps: 0,
+    late_fee_bps: 0,
+    grace_period_seconds: 0,
+    auction_enabled: false,
+    auction_window_ledgers: 0,
+    randomize_payout_order: false,
+    reserve_enabled: false,
+    reserve_contribution_bps: 0,
     }
 }
 
@@ -70,9 +70,7 @@ fn test_set_token_whitelist_contract() {
     let config = create_basic_config();
 
     // Initialize rosca contract
-    client.init(
-        &admin, &members, &1000i128, &token, &86400u64, &config, &None,
-    );
+    client.init(&admin, &members, &1000i128, &token, &86400u64, &config, &None);
 
     // Set whitelist contract
     client.set_token_whitelist_contract(&admin, &whitelist_contract);
@@ -95,8 +93,7 @@ fn test_token_validation_in_rosca_init() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let rosca_client = AhjoorContractClient::new(&e, &rosca_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     let members = Vec::from_array(&e, [member1.clone(), member2.clone()]);
     let config = create_basic_config();
@@ -106,15 +103,7 @@ fn test_token_validation_in_rosca_init() {
 
     // Set whitelist contract in rosca (need to init first with a dummy token)
     let dummy_token = create_token_contract(&e);
-    rosca_client.init(
-        &admin,
-        &members,
-        &1000i128,
-        &dummy_token,
-        &86400u64,
-        &config,
-        &None,
-    );
+    rosca_client.init(&admin, &members, &1000i128, &dummy_token, &86400u64, &config, &None);
     rosca_client.set_token_whitelist_contract(&admin, &whitelist_contract);
 
     // Current behavior allows adding approved tokens before whitelist checks are wired.
@@ -141,16 +130,13 @@ fn test_token_validation_in_contribution() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let rosca_client = AhjoorContractClient::new(&e, &rosca_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     let members = Vec::from_array(&e, [member1.clone(), member2.clone()]);
     let config = create_basic_config();
 
     // Initialize contracts
-    rosca_client.init(
-        &admin, &members, &1000i128, &token, &86400u64, &config, &None,
-    );
+    rosca_client.init(&admin, &members, &1000i128, &token, &86400u64, &config, &None);
     whitelist_client.initialize(&admin);
 
     // Set whitelist contract in rosca
@@ -182,16 +168,13 @@ fn test_token_validation_in_insurance_contribution() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let rosca_client = AhjoorContractClient::new(&e, &rosca_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     let members = Vec::from_array(&e, [member1.clone(), member2.clone()]);
     let config = create_basic_config();
 
     // Initialize contracts
-    rosca_client.init(
-        &admin, &members, &1000i128, &token, &86400u64, &config, &None,
-    );
+    rosca_client.init(&admin, &members, &1000i128, &token, &86400u64, &config, &None);
     whitelist_client.initialize(&admin);
     mint_to(&e, &token, &member1, 2000);
 
@@ -222,16 +205,13 @@ fn test_is_token_allowed_function() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let rosca_client = AhjoorContractClient::new(&e, &rosca_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     let members = Vec::from_array(&e, [member1.clone(), member2.clone()]);
     let config = create_basic_config();
 
     // Initialize contracts
-    rosca_client.init(
-        &admin, &members, &1000i128, &token, &86400u64, &config, &None,
-    );
+    rosca_client.init(&admin, &members, &1000i128, &token, &86400u64, &config, &None);
     whitelist_client.initialize(&admin);
 
     // Without whitelist contract set, all tokens should be allowed
@@ -273,9 +253,7 @@ fn test_backward_compatibility_without_whitelist() {
     let config = create_basic_config();
 
     // Initialize rosca contract without setting whitelist
-    rosca_client.init(
-        &admin, &members, &1000i128, &token, &86400u64, &config, &None,
-    );
+    rosca_client.init(&admin, &members, &1000i128, &token, &86400u64, &config, &None);
     mint_to(&e, &token, &member1, 2000);
 
     // Should be able to contribute with any token (backward compatibility)
@@ -304,9 +282,7 @@ fn test_only_admin_can_set_whitelist_contract() {
     let config = create_basic_config();
 
     // Initialize rosca contract
-    client.init(
-        &admin, &members, &1000i128, &token, &86400u64, &config, &None,
-    );
+    client.init(&admin, &members, &1000i128, &token, &86400u64, &config, &None);
 
     // Non-admin should not be able to set whitelist contract
     let result = client.try_set_token_whitelist_contract(&non_admin, &whitelist_contract);
@@ -335,9 +311,7 @@ fn test_get_token_whitelist_contract_when_not_set() {
     let config = create_basic_config();
 
     // Initialize rosca contract
-    client.init(
-        &admin, &members, &1000i128, &token, &86400u64, &config, &None,
-    );
+    client.init(&admin, &members, &1000i128, &token, &86400u64, &config, &None);
 
     // Should return None when no whitelist contract is set
     let stored_contract = client.get_token_whitelist_contract();
@@ -358,16 +332,13 @@ fn test_token_validation_with_multiple_tokens() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let rosca_client = AhjoorContractClient::new(&e, &rosca_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     let members = Vec::from_array(&e, [member1.clone(), member2.clone()]);
     let config = create_basic_config();
 
     // Initialize contracts
-    rosca_client.init(
-        &admin, &members, &1000i128, &token1, &86400u64, &config, &None,
-    );
+    rosca_client.init(&admin, &members, &1000i128, &token1, &86400u64, &config, &None);
     whitelist_client.initialize(&admin);
     rosca_client.set_token_whitelist_contract(&admin, &whitelist_contract);
     mint_to(&e, &token1, &member1, 2000);
@@ -410,16 +381,13 @@ fn test_token_delisting_prevents_new_contributions() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let rosca_client = AhjoorContractClient::new(&e, &rosca_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     let members = Vec::from_array(&e, [member1.clone(), member2.clone()]);
     let config = create_basic_config();
 
     // Initialize contracts
-    rosca_client.init(
-        &admin, &members, &1000i128, &token, &86400u64, &config, &None,
-    );
+    rosca_client.init(&admin, &members, &1000i128, &token, &86400u64, &config, &None);
     whitelist_client.initialize(&admin);
     rosca_client.set_token_whitelist_contract(&admin, &whitelist_contract);
     mint_to(&e, &token, &member1, 2000);
@@ -452,22 +420,13 @@ fn test_whitelist_validation_in_add_approved_token() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let rosca_client = AhjoorContractClient::new(&e, &rosca_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     let members = Vec::from_array(&e, [member1.clone(), member2.clone()]);
     let config = create_basic_config();
 
     // Initialize contracts
-    rosca_client.init(
-        &admin,
-        &members,
-        &1000i128,
-        &base_token,
-        &86400u64,
-        &config,
-        &None,
-    );
+    rosca_client.init(&admin, &members, &1000i128, &base_token, &86400u64, &config, &None);
     whitelist_client.initialize(&admin);
     rosca_client.set_token_whitelist_contract(&admin, &whitelist_contract);
 
@@ -484,3 +443,4 @@ fn test_whitelist_validation_in_add_approved_token() {
     // Now adding to approved tokens should succeed
     rosca_client.add_approved_token(&new_token);
 }
+

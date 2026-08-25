@@ -2,10 +2,7 @@
 use super::*;
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{
-    testutils::{Address as _, Ledger},
-    vec, Address, Env, String,
-};
+use soroban_sdk::{testutils::{Address as _, Ledger}, vec, Address, Env, String};
 
 fn setup_with_payment() -> (
     Env,
@@ -51,20 +48,13 @@ fn setup_with_payment() -> (
         &String::from_str(&env, "Goods not received"),
     );
 
-    (
-        env,
-        client,
-        admin,
-        customer,
-        merchant,
-        token_client,
-        payment_id,
-    )
+    (env, client, admin, customer, merchant, token_client, payment_id)
 }
 
 #[test]
 fn test_configure_dao() {
-    let (env, client, admin, _customer, _merchant, _token, _payment_id) = setup_with_payment();
+    let (env, client, admin, _customer, _merchant, _token, _payment_id) =
+        setup_with_payment();
 
     let member_a = Address::generate(&env);
     let member_b = Address::generate(&env);
@@ -79,7 +69,8 @@ fn test_configure_dao() {
 
 #[test]
 fn test_escalate_to_dao() {
-    let (env, client, admin, customer, _merchant, _token, payment_id) = setup_with_payment();
+    let (env, client, admin, customer, _merchant, _token, payment_id) =
+        setup_with_payment();
 
     let mediator = Address::generate(&env);
     client.configure_dao(&vec![&env, mediator.clone()], &86_400u64, &1u32);
@@ -96,7 +87,8 @@ fn test_escalate_to_dao() {
 
 #[test]
 fn test_cancel_dao_escalation_before_votes() {
-    let (env, client, _admin, customer, _merchant, _token, payment_id) = setup_with_payment();
+    let (env, client, _admin, customer, _merchant, _token, payment_id) =
+        setup_with_payment();
 
     let mediator = Address::generate(&env);
     client.configure_dao(&vec![&env, mediator.clone()], &86_400u64, &1u32);
@@ -114,7 +106,8 @@ fn test_cancel_dao_escalation_before_votes() {
 #[test]
 #[should_panic]
 fn test_cancel_dao_escalation_after_vote_panics() {
-    let (env, client, _admin, customer, _merchant, _token, payment_id) = setup_with_payment();
+    let (env, client, _admin, customer, _merchant, _token, payment_id) =
+        setup_with_payment();
 
     let mediator = Address::generate(&env);
     client.configure_dao(&vec![&env, mediator.clone()], &86_400u64, &1u32);
@@ -128,7 +121,8 @@ fn test_cancel_dao_escalation_after_vote_panics() {
 
 #[test]
 fn test_dao_vote_and_execute_customer_wins() {
-    let (env, client, admin, customer, _merchant, token_client, payment_id) = setup_with_payment();
+    let (env, client, admin, customer, _merchant, token_client, payment_id) =
+        setup_with_payment();
 
     let mediator_a = Address::generate(&env);
     let mediator_b = Address::generate(&env);
@@ -159,7 +153,8 @@ fn test_dao_vote_and_execute_customer_wins() {
 
 #[test]
 fn test_dao_vote_and_execute_merchant_wins() {
-    let (env, client, admin, customer, merchant, _token, payment_id) = setup_with_payment();
+    let (env, client, admin, customer, merchant, _token, payment_id) =
+        setup_with_payment();
 
     let mediator = Address::generate(&env);
     client.configure_dao(&vec![&env, mediator.clone()], &1u64, &1u32);
@@ -178,7 +173,8 @@ fn test_dao_vote_and_execute_merchant_wins() {
 #[test]
 #[should_panic]
 fn test_dao_double_vote_rejected() {
-    let (env, client, admin, customer, _merchant, _token, payment_id) = setup_with_payment();
+    let (env, client, admin, customer, _merchant, _token, payment_id) =
+        setup_with_payment();
 
     let mediator = Address::generate(&env);
     client.configure_dao(&vec![&env, mediator.clone()], &86_400u64, &1u32);
@@ -191,7 +187,8 @@ fn test_dao_double_vote_rejected() {
 #[test]
 #[should_panic]
 fn test_non_dao_member_vote_rejected() {
-    let (env, client, admin, customer, _merchant, _token, payment_id) = setup_with_payment();
+    let (env, client, admin, customer, _merchant, _token, payment_id) =
+        setup_with_payment();
 
     let mediator = Address::generate(&env);
     let outsider = Address::generate(&env);
@@ -204,7 +201,8 @@ fn test_non_dao_member_vote_rejected() {
 #[test]
 #[should_panic]
 fn test_execute_before_window_closes_panics() {
-    let (env, client, admin, customer, _merchant, _token, payment_id) = setup_with_payment();
+    let (env, client, admin, customer, _merchant, _token, payment_id) =
+        setup_with_payment();
 
     let mediator = Address::generate(&env);
     client.configure_dao(&vec![&env, mediator.clone()], &86_400u64, &1u32);
@@ -259,7 +257,8 @@ fn test_escalate_non_disputed_payment_panics() {
 #[test]
 #[should_panic]
 fn test_double_escalation_rejected() {
-    let (env, client, _admin, customer, _merchant, _token, payment_id) = setup_with_payment();
+    let (env, client, _admin, customer, _merchant, _token, payment_id) =
+        setup_with_payment();
 
     let mediator = Address::generate(&env);
     client.configure_dao(&vec![&env, mediator.clone()], &86_400u64, &1u32);
@@ -289,7 +288,8 @@ fn test_double_escalation_rejected() {
 #[test]
 #[should_panic]
 fn test_double_verdict_execution_via_already_resolved_payment_rejected() {
-    let (env, client, admin, customer, _merchant, token_client, payment_id) = setup_with_payment();
+    let (env, client, admin, customer, _merchant, token_client, payment_id) =
+        setup_with_payment();
 
     let mediator = Address::generate(&env);
     client.configure_dao(
@@ -323,10 +323,15 @@ fn test_double_verdict_execution_via_already_resolved_payment_rejected() {
 #[test]
 #[should_panic]
 fn test_execute_already_executed_case_rejected() {
-    let (env, client, _admin, customer, _merchant, _token, payment_id) = setup_with_payment();
+    let (env, client, _admin, customer, _merchant, _token, payment_id) =
+        setup_with_payment();
 
     let mediator = Address::generate(&env);
-    client.configure_dao(&vec![&env, mediator.clone()], &1u64, &1u32);
+    client.configure_dao(
+        &vec![&env, mediator.clone()],
+        &1u64,
+        &1u32,
+    );
 
     let case_id = client.escalate_to_dao(&customer, &payment_id);
     client.dao_vote(&mediator, &case_id, &false); // customer wins

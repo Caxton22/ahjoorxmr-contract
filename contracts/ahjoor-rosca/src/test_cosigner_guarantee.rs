@@ -6,13 +6,7 @@ use soroban_sdk::{
     Address, Env,
 };
 
-fn setup_cosigner<'a>() -> (
-    Env,
-    AhjoorContractClient<'a>,
-    Address,
-    Address,
-    soroban_sdk::Vec<Address>,
-) {
+fn setup_cosigner<'a>() -> (Env, AhjoorContractClient<'a>, Address, Address, soroban_sdk::Vec<Address>) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -20,9 +14,7 @@ fn setup_cosigner<'a>() -> (
     let client = AhjoorContractClient::new(&env, &contract_id);
 
     let admin = Address::generate(&env);
-    let token_addr = env
-        .register_stellar_asset_contract_v2(admin.clone())
-        .address();
+    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
     let token_admin_client = TokenAdminClient::new(&env, &token_addr);
 
     let mut members = soroban_sdk::Vec::new(&env);
@@ -55,13 +47,13 @@ fn setup_cosigner<'a>() -> (
             skip_fee: 0,
             max_skips_per_cycle: 1,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -161,6 +153,7 @@ fn test_unaccepted_cosigner_not_active() {
     assert!(result.is_err());
 }
 
+
 #[test]
 fn test_pending_cosigner_skipped_on_default() {
     let (env, client, _admin, token_addr, members) = setup_cosigner();
@@ -188,24 +181,17 @@ fn test_pending_cosigner_skipped_on_default() {
 
     // member should now be marked as defaulter with incremented count
     let final_defaults = client.get_member_status(&member).default_count;
-    assert_eq!(
-        final_defaults,
-        initial_defaults + 1,
-        "Default count should be incremented"
-    );
+    assert_eq!(final_defaults, initial_defaults + 1, "Default count should be incremented");
 
     // Verify CoSignerWindowStart is NOT in storage (window should not have been opened)
     // The window should not exist because pending co-signers are skipped
     // We verify this by trying to access it - if no window was opened, the test passes
-
+    
     // Attempt a co-signer contribution to confirm window wasn't opened
     // The window should still be closed even for the co-signer
     let result = client.try_co_signer_contribute(&co_signer, &0, &member, &token_addr, &100);
     // This should fail because:
     // 1. No window was opened for the pending co-signer
     // 2. The co-signer hasn't accepted the assignment
-    assert!(
-        result.is_err(),
-        "Co-signer should not be able to contribute without accepted status and open window"
-    );
+    assert!(result.is_err(), "Co-signer should not be able to contribute without accepted status and open window");
 }

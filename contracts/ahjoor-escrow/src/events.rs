@@ -412,11 +412,7 @@ pub fn emit_escrow_receipt_transferred(e: &Env, receipt_id: u32, from: Address, 
 }
 
 pub fn emit_escrow_receipt_burned(e: &Env, receipt_id: u32, escrow_id: u32) {
-    EscrowReceiptBurned {
-        receipt_id,
-        escrow_id,
-    }
-    .publish(e);
+    EscrowReceiptBurned { receipt_id, escrow_id }.publish(e);
 }
 
 pub fn emit_partial_released(
@@ -655,35 +651,19 @@ pub struct EscrowCreatedFromTemplate {
 }
 
 pub fn emit_escrow_template_created(e: &Env, template_id: u32, creator: Address) {
-    EscrowTemplateCreated {
-        template_id,
-        creator,
-    }
-    .publish(e);
+    EscrowTemplateCreated { template_id, creator }.publish(e);
 }
 
 pub fn emit_escrow_template_updated(e: &Env, template_id: u32, creator: Address) {
-    EscrowTemplateUpdated {
-        template_id,
-        creator,
-    }
-    .publish(e);
+    EscrowTemplateUpdated { template_id, creator }.publish(e);
 }
 
 pub fn emit_escrow_template_deactivated(e: &Env, template_id: u32, creator: Address) {
-    EscrowTemplateDeactivated {
-        template_id,
-        creator,
-    }
-    .publish(e);
+    EscrowTemplateDeactivated { template_id, creator }.publish(e);
 }
 
 pub fn emit_escrow_created_from_template(e: &Env, escrow_id: u32, template_id: u32) {
-    EscrowCreatedFromTemplate {
-        escrow_id,
-        template_id,
-    }
-    .publish(e);
+    EscrowCreatedFromTemplate { escrow_id, template_id }.publish(e);
 }
 
 pub fn emit_arbiter_pool_updated(e: &Env, arbiter: Address, added: bool) {
@@ -694,7 +674,12 @@ pub fn emit_arbiter_assigned(e: &Env, escrow_id: u32, arbiter: Address) {
     ArbiterAssigned { escrow_id, arbiter }.publish(e);
 }
 
-pub fn emit_evidence_submitted(e: &Env, escrow_id: u32, party: Address, evidence_hash: BytesN<32>) {
+pub fn emit_evidence_submitted(
+    e: &Env,
+    escrow_id: u32,
+    party: Address,
+    evidence_hash: BytesN<32>,
+) {
     EvidenceSubmitted {
         escrow_id,
         party,
@@ -829,12 +814,7 @@ pub struct MultiPartyEscrowReleased {
     pub total_amount: i128,
 }
 
-pub fn emit_multi_party_escrow_created(
-    e: &Env,
-    escrow_id: u32,
-    buyer_count: u32,
-    total_amount: i128,
-) {
+pub fn emit_multi_party_escrow_created(e: &Env, escrow_id: u32, buyer_count: u32, total_amount: i128) {
     MultiPartyEscrowCreated {
         escrow_id,
         buyer_count,
@@ -921,54 +901,28 @@ pub fn emit_arbiter_timeout_penalty_applied(e: &Env, arbiter: Address, total_tim
 }
 
 // #215: Time-locked escrow events
-pub fn emit_timelocked_escrow_created(
-    e: &Env,
-    escrow_id: u32,
-    unlock_at: u64,
-    beneficiary: Address,
-) {
-    e.events().publish(
-        (Symbol::new(e, "TLEscrowCreated"),),
-        (escrow_id, unlock_at, beneficiary),
-    );
+pub fn emit_timelocked_escrow_created(e: &Env, escrow_id: u32, unlock_at: u64, beneficiary: Address) {
+    e.events().publish((Symbol::new(e, "TLEscrowCreated"),), (escrow_id, unlock_at, beneficiary));
 }
 pub fn emit_timelocked_funds_claimed(e: &Env, escrow_id: u32, beneficiary: Address, amount: i128) {
-    e.events().publish(
-        (Symbol::new(e, "TLFundsClaimed"),),
-        (escrow_id, beneficiary, amount),
-    );
+    e.events().publish((Symbol::new(e, "TLFundsClaimed"),), (escrow_id, beneficiary, amount));
 }
 pub fn emit_timelocked_escrow_cancelled(e: &Env, escrow_id: u32, buyer: Address) {
-    e.events()
-        .publish((Symbol::new(e, "TLEscrowCancelled"),), (escrow_id, buyer));
+    e.events().publish((Symbol::new(e, "TLEscrowCancelled"),), (escrow_id, buyer));
 }
 
 // #229: Mutual Cancellation events
 pub fn emit_cancellation_requested(e: &Env, escrow_id: u32, initiator: Address, expires_at: u64) {
-    e.events().publish(
-        (Symbol::new(e, "CancelRequested"),),
-        (escrow_id, initiator, expires_at),
-    );
+    e.events().publish((Symbol::new(e, "CancelRequested"),), (escrow_id, initiator, expires_at));
 }
-pub fn emit_cancellation_accepted(
-    e: &Env,
-    escrow_id: u32,
-    buyer: Address,
-    amount_returned: i128,
-    penalty: i128,
-) {
-    e.events().publish(
-        (Symbol::new(e, "CancelAccepted"),),
-        (escrow_id, buyer, amount_returned, penalty),
-    );
+pub fn emit_cancellation_accepted(e: &Env, escrow_id: u32, buyer: Address, amount_returned: i128, penalty: i128) {
+    e.events().publish((Symbol::new(e, "CancelAccepted"),), (escrow_id, buyer, amount_returned, penalty));
 }
 pub fn emit_cancellation_rejected(e: &Env, escrow_id: u32, rejector: Address) {
-    e.events()
-        .publish((Symbol::new(e, "CancelRejected"),), (escrow_id, rejector));
+    e.events().publish((Symbol::new(e, "CancelRejected"),), (escrow_id, rejector));
 }
 pub fn emit_cancellation_expired(e: &Env, escrow_id: u32) {
-    e.events()
-        .publish((Symbol::new(e, "CancelExpired"),), (escrow_id,));
+    e.events().publish((Symbol::new(e, "CancelExpired"),), (escrow_id,));
 }
 
 // #225: Escrow Top-Up Event
@@ -983,20 +937,8 @@ pub struct EscrowToppedUp {
     pub buyer: Address,
 }
 
-pub fn emit_escrow_topped_up(
-    e: &Env,
-    escrow_id: u32,
-    added_amount: i128,
-    new_total: i128,
-    buyer: Address,
-) {
-    EscrowToppedUp {
-        escrow_id,
-        added_amount,
-        new_total,
-        buyer,
-    }
-    .publish(e);
+pub fn emit_escrow_topped_up(e: &Env, escrow_id: u32, added_amount: i128, new_total: i128, buyer: Address) {
+    EscrowToppedUp { escrow_id, added_amount, new_total, buyer }.publish(e);
 }
 
 // --- Issue #237: Seller Performance Collateral ---
@@ -1026,38 +968,18 @@ pub struct CollateralReturned {
 }
 
 pub fn emit_collateral_deposited(e: &Env, escrow_id: u32, seller: Address, amount: i128) {
-    CollateralDeposited {
-        escrow_id,
-        seller,
-        amount,
-    }
-    .publish(e);
+    CollateralDeposited { escrow_id, seller, amount }.publish(e);
 }
 pub fn emit_collateral_forfeited(e: &Env, escrow_id: u32, amount: i128, awarded_to_buyer: Address) {
-    CollateralForfeited {
-        escrow_id,
-        amount,
-        awarded_to_buyer,
-    }
-    .publish(e);
+    CollateralForfeited { escrow_id, amount, awarded_to_buyer }.publish(e);
 }
 pub fn emit_collateral_returned(e: &Env, escrow_id: u32, seller: Address, amount: i128) {
-    CollateralReturned {
-        escrow_id,
-        seller,
-        amount,
-    }
-    .publish(e);
+    CollateralReturned { escrow_id, seller, amount }.publish(e);
 }
 
 // --- Issue #361: Collateral Health Alert ---
 
-pub fn emit_collateral_health_alert(
-    e: &Env,
-    escrow_id: u32,
-    current_ratio_bps: u32,
-    required_ratio_bps: u32,
-) {
+pub fn emit_collateral_health_alert(e: &Env, escrow_id: u32, current_ratio_bps: u32, required_ratio_bps: u32) {
     e.events().publish(
         (soroban_sdk::Symbol::new(e, "CollateralHealthAlert"),),
         (escrow_id, current_ratio_bps, required_ratio_bps),
@@ -1094,13 +1016,7 @@ pub fn emit_delivery_proof_submitted(
 
 // #244: Seller Role Transfer Veto Events
 
-pub fn emit_seller_transfer_proposed(
-    e: &Env,
-    escrow_id: u32,
-    original_seller: Address,
-    new_seller: Address,
-    veto_deadline: u32,
-) {
+pub fn emit_seller_transfer_proposed(e: &Env, escrow_id: u32, original_seller: Address, new_seller: Address, veto_deadline: u32) {
     e.events().publish(
         (soroban_sdk::Symbol::new(e, "SellerTransferProposed"),),
         (escrow_id, original_seller, new_seller, veto_deadline),
@@ -1174,12 +1090,7 @@ pub fn emit_resolution_cooling_off(
     );
 }
 
-pub fn emit_resolution_flagged(
-    e: &Env,
-    escrow_id: u32,
-    caller: Address,
-    reason_hash: soroban_sdk::BytesN<32>,
-) {
+pub fn emit_resolution_flagged(e: &Env, escrow_id: u32, caller: Address, reason_hash: soroban_sdk::BytesN<32>) {
     e.events().publish(
         (soroban_sdk::Symbol::new(e, "ResolutionFlagged"),),
         (escrow_id, caller, reason_hash),
@@ -1381,6 +1292,7 @@ pub fn emit_seller_share_delegated(
     .publish(env);
 }
 
+
 pub fn emit_conditional_release_triggered(
     env: &Env,
     escrow_id: u32,
@@ -1442,18 +1354,8 @@ pub fn emit_seller_marked_complete(e: &Env, escrow_id: u32, seller: Address) {
     SellerMarkedComplete { escrow_id, seller }.publish(e);
 }
 
-pub fn emit_inspector_replaced(
-    e: &Env,
-    escrow_id: u32,
-    old_inspector: Address,
-    new_inspector: Address,
-) {
-    InspectorReplaced {
-        escrow_id,
-        old_inspector,
-        new_inspector,
-    }
-    .publish(e);
+pub fn emit_inspector_replaced(e: &Env, escrow_id: u32, old_inspector: Address, new_inspector: Address) {
+    InspectorReplaced { escrow_id, old_inspector, new_inspector }.publish(e);
 }
 
 pub fn emit_inspection_report_submitted(
@@ -1463,13 +1365,7 @@ pub fn emit_inspection_report_submitted(
     approved: bool,
     report_hash: BytesN<32>,
 ) {
-    InspectionReportSubmitted {
-        escrow_id,
-        inspector,
-        approved,
-        report_hash,
-    }
-    .publish(e);
+    InspectionReportSubmitted { escrow_id, inspector, approved, report_hash }.publish(e);
 }
 
 pub fn emit_inspector_score_updated(
@@ -1479,23 +1375,12 @@ pub fn emit_inspector_score_updated(
     correct_rulings: u32,
     accuracy_bps: u32,
 ) {
-    InspectorScoreUpdated {
-        inspector,
-        total_rulings,
-        correct_rulings,
-        accuracy_bps,
-    }
-    .publish(e);
+    InspectorScoreUpdated { inspector, total_rulings, correct_rulings, accuracy_bps }.publish(e);
 }
 
 // ── #332: Milestone BPS Events ────────────────────────────────────────────────
 
-pub fn emit_milestone_submitted(
-    e: &Env,
-    escrow_id: u32,
-    milestone_index: u32,
-    delivery_hash: BytesN<32>,
-) {
+pub fn emit_milestone_submitted(e: &Env, escrow_id: u32, milestone_index: u32, delivery_hash: BytesN<32>) {
     e.events().publish(
         (soroban_sdk::Symbol::new(e, "MilestoneSubmitted"),),
         (escrow_id, milestone_index, delivery_hash),
@@ -1518,7 +1403,12 @@ pub struct TopUpAcknowledged {
     pub new_total: i128,
 }
 
-pub fn emit_top_up_acknowledged(e: &Env, escrow_id: u32, seller: Address, new_total: i128) {
+pub fn emit_top_up_acknowledged(
+    e: &Env,
+    escrow_id: u32,
+    seller: Address,
+    new_total: i128,
+) {
     TopUpAcknowledged {
         escrow_id,
         seller,
@@ -1576,7 +1466,12 @@ pub struct PartialReleaseApproved {
     pub amount: i128,
 }
 
-pub fn emit_partial_release_approved(e: &Env, escrow_id: u32, request_id: u64, amount: i128) {
+pub fn emit_partial_release_approved(
+    e: &Env,
+    escrow_id: u32,
+    request_id: u64,
+    amount: i128,
+) {
     PartialReleaseApproved {
         escrow_id,
         request_id,
@@ -1593,7 +1488,11 @@ pub struct PartialReleaseRejected {
     pub request_id: u64,
 }
 
-pub fn emit_partial_release_rejected(e: &Env, escrow_id: u32, request_id: u64) {
+pub fn emit_partial_release_rejected(
+    e: &Env,
+    escrow_id: u32,
+    request_id: u64,
+) {
     PartialReleaseRejected {
         escrow_id,
         request_id,
@@ -1815,12 +1714,7 @@ pub struct VetoOverridden {
 }
 
 pub fn emit_seller_veto_raised(e: &Env, escrow_id: u32, seller: Address, veto_timestamp: u64) {
-    SellerVetoRaised {
-        escrow_id,
-        seller,
-        veto_timestamp,
-    }
-    .publish(e);
+    SellerVetoRaised { escrow_id, seller, veto_timestamp }.publish(e);
 }
 
 pub fn emit_seller_veto_cancelled(e: &Env, escrow_id: u32, seller: Address) {
@@ -1828,12 +1722,7 @@ pub fn emit_seller_veto_cancelled(e: &Env, escrow_id: u32, seller: Address) {
 }
 
 pub fn emit_veto_overridden(e: &Env, escrow_id: u32, admin: Address, overridden_at: u64) {
-    VetoOverridden {
-        escrow_id,
-        admin,
-        overridden_at,
-    }
-    .publish(e);
+    VetoOverridden { escrow_id, admin, overridden_at }.publish(e);
 }
 
 // ── #376: Bounty Board Milestone Gating Events ───────────────────────────────
@@ -1954,9 +1843,5 @@ pub struct FeesWithdrawn {
 }
 
 pub fn emit_fees_withdrawn(e: &Env, amount: i128, destination: Address) {
-    FeesWithdrawn {
-        amount,
-        destination,
-    }
-    .publish(e);
+    FeesWithdrawn { amount, destination }.publish(e);
 }

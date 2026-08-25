@@ -1,14 +1,11 @@
 #![cfg(test)]
-use soroban_sdk::token::Client as TokenClient;
+use soroban_sdk::{testutils::{Address as _, Ledger}, Address, BytesN, Env, Vec};
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{
-    testutils::{Address as _, Ledger},
-    Address, BytesN, Env, Vec,
-};
+use soroban_sdk::token::Client as TokenClient;
 
 use crate::{
-    AhjoorContract, AhjoorContractClient, GroupStatus, PayoutStrategy, RoscaConfig,
-    SplitProposalStatus, VotingMode,
+    AhjoorContract, AhjoorContractClient, RoscaConfig, PayoutStrategy, VotingMode,
+    GroupStatus, SplitProposalStatus,
 };
 
 fn make_config(env: &Env) -> RoscaConfig {
@@ -61,24 +58,11 @@ fn setup_split_rosca<'a>(
     let members_vec: Vec<Address> = Vec::from_slice(env, members);
     for m in members.iter() {
         token_admin.mint(m, &100_000);
-        token_client.approve(
-            m,
-            &contract_id,
-            &100_000,
-            &(env.ledger().sequence() + 10_000),
-        );
+        token_client.approve(m, &contract_id, &100_000, &(env.ledger().sequence() + 10_000));
     }
 
     let config = make_config(env);
-    client.init(
-        &admin,
-        &members_vec,
-        &1_000i128,
-        &token_addr,
-        &1000u64,
-        &config,
-        &None,
-    );
+    client.init(&admin, &members_vec, &1_000i128, &token_addr, &1000u64, &config, &None);
     (client, admin, token_addr)
 }
 
@@ -89,14 +73,12 @@ fn test_propose_group_split_stores_proposal() {
     let m2 = Address::generate(&env);
     let m3 = Address::generate(&env);
     let m4 = Address::generate(&env);
-    let (client, admin, _token) =
-        setup_split_rosca(&env, &[m1.clone(), m2.clone(), m3.clone(), m4.clone()]);
+    let (client, admin, _token) = setup_split_rosca(&env, &[m1.clone(), m2.clone(), m3.clone(), m4.clone()]);
 
     let a_members = Vec::from_slice(&env, &[m1.clone(), m2.clone()]);
     let b_members = Vec::from_slice(&env, &[m3.clone(), m4.clone()]);
 
-    let proposal_id =
-        client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
+    let proposal_id = client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
     assert_eq!(proposal_id, 1u32);
 
     let proposal = client.get_split_proposal(&proposal_id);
@@ -128,8 +110,7 @@ fn test_confirm_split_participation() {
 
     let a_members = Vec::from_slice(&env, &[m1.clone()]);
     let b_members = Vec::from_slice(&env, &[m2.clone()]);
-    let proposal_id =
-        client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
+    let proposal_id = client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
 
     client.confirm_split_participation(&m1, &0u32, &proposal_id);
     client.confirm_split_participation(&m2, &0u32, &proposal_id);
@@ -148,8 +129,7 @@ fn test_double_confirmation_panics() {
 
     let a_members = Vec::from_slice(&env, &[m1.clone()]);
     let b_members = Vec::from_slice(&env, &[m2.clone()]);
-    let proposal_id =
-        client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
+    let proposal_id = client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
 
     client.confirm_split_participation(&m1, &0u32, &proposal_id);
     // Second confirmation from same member → panic
@@ -165,8 +145,7 @@ fn test_execute_group_split_marks_source_as_split() {
 
     let a_members = Vec::from_slice(&env, &[m1.clone()]);
     let b_members = Vec::from_slice(&env, &[m2.clone()]);
-    let proposal_id =
-        client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
+    let proposal_id = client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
 
     client.confirm_split_participation(&m1, &0u32, &proposal_id);
     client.confirm_split_participation(&m2, &0u32, &proposal_id);
@@ -186,8 +165,7 @@ fn test_operations_blocked_on_split_group() {
 
     let a_members = Vec::from_slice(&env, &[m1.clone()]);
     let b_members = Vec::from_slice(&env, &[m2.clone()]);
-    let proposal_id =
-        client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
+    let proposal_id = client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
 
     client.confirm_split_participation(&m1, &0u32, &proposal_id);
     client.confirm_split_participation(&m2, &0u32, &proposal_id);
@@ -266,12 +244,10 @@ fn test_confirmation_window_enforced() {
 
     let a_members = Vec::from_slice(&env, &[m1.clone()]);
     let b_members = Vec::from_slice(&env, &[m2.clone()]);
-    let proposal_id =
-        client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
+    let proposal_id = client.propose_group_split(&admin, &0u32, &a_members, &b_members, &dummy_hash(&env));
 
     // Advance ledger past window
-    env.ledger()
-        .set_sequence_number(env.ledger().sequence() + 100);
+    env.ledger().set_sequence_number(env.ledger().sequence() + 100);
 
     // Confirmation after window → panic
     client.confirm_split_participation(&m1, &0u32, &proposal_id);
@@ -300,8 +276,7 @@ fn test_split_confirmation_rejects_after_expiry() {
     client.confirm_split_participation(&m1, &0u32, &proposal_id);
 
     // Advance past expiry
-    env.ledger()
-        .set_sequence_number(env.ledger().sequence() + 100);
+    env.ledger().set_sequence_number(env.ledger().sequence() + 100);
 
     // Confirmation after window must return SplitConfirmationWindowClosed
     let err = client

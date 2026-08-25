@@ -1,11 +1,4 @@
-use crate::{
-    audit_trail,
-    errors::{Error, ExtError},
-    events,
-    types::{InsuranceClaim, InsuranceCoverageMode},
-    ContributionEntry, CycleSnapshotData, DataKey, DataKey2, DataKey3, DataKey4, PayoutRecord,
-    PersistentKey, SlotBid,
-};
+use crate::{errors::{Error, ExtError}, events, audit_trail, ContributionEntry, CycleSnapshotData, DataKey, DataKey2, DataKey3, DataKey4, PersistentKey, PayoutRecord, SlotBid, types::{InsuranceClaim, InsuranceCoverageMode}};
 use soroban_sdk::{panic_with_error, token, Address, Bytes, BytesN, Env, Map, Vec};
 
 /// Returns the timestamp (seconds) after which the grace period for a given round deadline expires.
@@ -94,9 +87,7 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
     let mut attempts = 0;
     while attempts < payout_order.len() {
         let potential_recipient = payout_order.get(recipient_idx).unwrap();
-        let has_skipped = skip_requests
-            .get((potential_recipient.clone(), current_round))
-            .unwrap_or(false);
+        let has_skipped = skip_requests.get((potential_recipient.clone(), current_round)).unwrap_or(false);
         if !suspended_members.contains(&potential_recipient)
             && !exited_members.contains(&potential_recipient)
             && !has_skipped
@@ -133,14 +124,23 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
         .unwrap_or(Vec::new(env));
 
     // Get protocol fee configuration
-    let fee_bps: u32 = env.storage().instance().get(&DataKey::FeeBps).unwrap_or(0);
-    let fee_recipient_opt: Option<Address> = env.storage().instance().get(&DataKey2::FeeRecipient);
+    let fee_bps: u32 = env
+        .storage()
+        .instance()
+        .get(&DataKey::FeeBps)
+        .unwrap_or(0);
+    let fee_recipient_opt: Option<Address> = env
+        .storage()
+        .instance()
+        .get(&DataKey2::FeeRecipient);
 
     // Apply reputation-gated fee discount if the payout recipient's credit score
     // meets the configured threshold.
     let effective_fee_bps: u32 = if fee_bps > 0 {
-        let discount_cfg: Option<crate::RepFeeDiscountConfig> =
-            env.storage().instance().get(&DataKey3::RepFeeDiscount);
+        let discount_cfg: Option<crate::RepFeeDiscountConfig> = env
+            .storage()
+            .instance()
+            .get(&DataKey3::RepFeeDiscount);
         if let Some(cfg) = discount_cfg {
             let ms_map: Map<Address, crate::MemberScore> = env
                 .storage()
@@ -242,11 +242,7 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
         let draw_amount = match coverage_mode {
             InsuranceCoverageMode::None => 0,
             InsuranceCoverageMode::Partial => {
-                if insurance_pool >= shortfall {
-                    shortfall
-                } else {
-                    insurance_pool
-                }
+                if insurance_pool >= shortfall { shortfall } else { insurance_pool }
             }
             InsuranceCoverageMode::Full => {
                 if insurance_pool == 0 {
@@ -262,9 +258,7 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
             let insurance_pool_before_draw = insurance_pool;
             insurance_drawn_this_round = draw_amount;
             insurance_pool -= draw_amount;
-            env.storage()
-                .instance()
-                .set(&DataKey2::InsurancePool, &insurance_pool);
+            env.storage().instance().set(&DataKey2::InsurancePool, &insurance_pool);
             events::emit_insurance_paid_out(env, current_round, shortfall, insurance_pool);
 
             let low_threshold: i128 = env
@@ -283,28 +277,16 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
             if insurance_pool == 0 {
                 events::emit_insurance_pool_exhausted(env, current_round, shortfall_remaining);
             }
-            events::emit_insurance_claim_executed(
-                env,
-                current_round,
-                payout_recipient.clone(),
-                draw_amount,
-            );
+            events::emit_insurance_claim_executed(env, current_round, payout_recipient.clone(), draw_amount);
             let mut claims: Map<u32, Vec<InsuranceClaim>> = env
                 .storage()
                 .instance()
                 .get(&DataKey2::InsuranceClaims)
                 .unwrap_or(Map::new(env));
-            let mut round_claims: Vec<InsuranceClaim> =
-                claims.get(current_round).unwrap_or(Vec::new(env));
-            round_claims.push_back(InsuranceClaim {
-                round: current_round,
-                defaulter: payout_recipient.clone(),
-                amount_covered: draw_amount,
-            });
+            let mut round_claims: Vec<InsuranceClaim> = claims.get(current_round).unwrap_or(Vec::new(env));
+            round_claims.push_back(InsuranceClaim { round: current_round, defaulter: payout_recipient.clone(), amount_covered: draw_amount });
             claims.set(current_round, round_claims);
-            env.storage()
-                .instance()
-                .set(&DataKey2::InsuranceClaims, &claims);
+            env.storage().instance().set(&DataKey2::InsuranceClaims, &claims);
             actual_pot += draw_amount;
         }
     } else if shortfall > 0 && insurance_pool == 0 && coverage_mode != InsuranceCoverageMode::None {
@@ -338,26 +320,17 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
 
             if should_reinvest && token_addr == base_token {
                 reinvested_amount = payout_amount;
-                events::emit_payout_reinvested(
-                    env,
-                    payout_recipient.clone(),
-                    current_round,
-                    payout_amount,
-                );
+                events::emit_payout_reinvested(env, payout_recipient.clone(), current_round, payout_amount);
             } else if payout_amount > 0 {
                 // Transfer payout to recipient
-                client.transfer(
-                    &env.current_contract_address(),
-                    &payout_recipient,
-                    &payout_amount,
-                );
+                client.transfer(&env.current_contract_address(), &payout_recipient, &payout_amount);
             }
 
             // Transfer fee to fee recipient
             if fee_amount > 0 {
                 if let Some(fee_recipient) = fee_recipient_opt.clone() {
                     client.transfer(&env.current_contract_address(), &fee_recipient, &fee_amount);
-
+                    
                     // Emit fee collected event (only for base token to avoid duplicates)
                     if token_addr == base_token {
                         total_fee_collected = fee_amount;
@@ -415,10 +388,9 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
             timestamp: env.ledger().timestamp(),
             snapshot_hash: snap_hash.clone(),
         };
-        env.storage().persistent().set(
-            &PersistentKey::CycleSnapshot(current_round),
-            &cycle_snapshot,
-        );
+        env.storage()
+            .persistent()
+            .set(&PersistentKey::CycleSnapshot(current_round), &cycle_snapshot);
         env.storage().persistent().extend_ttl(
             &PersistentKey::CycleSnapshot(current_round),
             PERSISTENT_LIFETIME_THRESHOLD,
@@ -526,12 +498,12 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
             .instance()
             .get(&DataKey::MemberContributions)
             .unwrap_or(Map::new(env));
-
+        
         next_contributions.set(payout_recipient.clone(), reinvested_amount);
         env.storage()
             .instance()
             .set(&DataKey::MemberContributions, &next_contributions);
-
+        
         // Check if this reinvestment fulfills the next round's requirement
         let base_amount: i128 = env
             .storage()
@@ -571,9 +543,7 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
                 .get(&DataKey::MemberParticipation)
                 .unwrap_or(Map::new(env));
 
-            let current_participation = member_participation
-                .get(payout_recipient.clone())
-                .unwrap_or(0);
+            let current_participation = member_participation.get(payout_recipient.clone()).unwrap_or(0);
             member_participation.set(payout_recipient.clone(), current_participation + 1);
             total_participations += 1;
 
@@ -591,28 +561,16 @@ pub(crate) fn complete_round_payout(env: &Env, _paid_members: &Vec<Address>) {
 /// and sets a new deadline.
 pub(crate) fn reset_round_state(env: &Env, current_round: u32) {
     // #227: Apply pending round duration if one was scheduled
-    let pending_duration: Option<u64> = env
-        .storage()
-        .instance()
-        .get(&DataKey4::PendingRoundDuration);
+    let pending_duration: Option<u64> = env.storage().instance().get(&DataKey4::PendingRoundDuration);
     let duration: u64 = if let Some(pending) = pending_duration {
-        env.storage()
-            .instance()
-            .set(&DataKey::RoundDuration, &pending);
-        env.storage()
-            .instance()
-            .remove(&DataKey4::PendingRoundDuration);
+        env.storage().instance().set(&DataKey::RoundDuration, &pending);
+        env.storage().instance().remove(&DataKey4::PendingRoundDuration);
         // Also update RoundDurationSeconds for timestamp-based scheduling
-        env.storage()
-            .instance()
-            .set(&DataKey2::RoundDurationSeconds, &pending);
+        env.storage().instance().set(&DataKey2::RoundDurationSeconds, &pending);
         events::emit_round_duration_applied(env, current_round + 1, pending);
         pending
     } else {
-        env.storage()
-            .instance()
-            .get(&DataKey::RoundDuration)
-            .unwrap()
+        env.storage().instance().get(&DataKey::RoundDuration).unwrap()
     };
     let new_round = current_round + 1;
     env.storage()
@@ -779,7 +737,9 @@ pub(crate) fn execute_max_members_update(env: &Env, new_max_val: Option<i128>) {
                 .get(&DataKey::MaxMembers)
                 .unwrap_or(50);
 
-            env.storage().instance().set(&DataKey::MaxMembers, &new_max);
+            env.storage()
+                .instance()
+                .set(&DataKey::MaxMembers, &new_max);
 
             events::emit_max_members_upd(env, old_max, new_max);
         }
@@ -894,9 +854,8 @@ pub(crate) fn compact_payout_order(
     }
     let new_len = new_order.len();
 
-    env.storage()
-        .instance()
-        .set(&DataKey::PayoutOrder, &new_order);
+    env.storage().instance().set(&DataKey::PayoutOrder, &new_order);
 
     (true, slot_index, old_len, new_len, 0)
 }
+

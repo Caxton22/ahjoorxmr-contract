@@ -1,10 +1,10 @@
 #![allow(dead_code)]
-use crate::savings_goal_tracking::*;
-use crate::types::{DataKey, DataKey3};
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, panic_with_error, token, Address, Bytes,
     BytesN, Env, Map, String, Symbol, Vec,
 };
+use crate::savings_goal_tracking::*;
+use crate::types::{DataKey, DataKey3};
 
 // Storage keys
 const GOAL_COUNTER_KEY: &str = "goal_counter";
@@ -218,20 +218,14 @@ impl SavingsGoalTrackingImpl {
         };
 
         // Store contribution
-        let contribution_key = (
-            Symbol::new(env, CONTRIBUTION_KEY_PREFIX),
-            next_contribution_id,
-        );
-        env.storage()
-            .persistent()
-            .set(&contribution_key, &contribution);
+        let contribution_key = (Symbol::new(env, CONTRIBUTION_KEY_PREFIX), next_contribution_id);
+        env.storage().persistent().set(&contribution_key, &contribution);
 
         // Store updated goal
         env.storage().persistent().set(&key, &goal);
-        env.storage().instance().set(
-            &Symbol::new(env, CONTRIBUTION_COUNTER_KEY),
-            &next_contribution_id,
-        );
+        env.storage()
+            .instance()
+            .set(&Symbol::new(env, CONTRIBUTION_COUNTER_KEY), &next_contribution_id);
 
         // #359: Check milestones with reward_bps > 0 and distribute rewards
         Self::check_and_distribute_milestone_rewards(env, goal_id, &goal, amount);
@@ -248,24 +242,22 @@ impl SavingsGoalTrackingImpl {
         goal: &SavingsGoal,
         contribution_amount: i128,
     ) {
-        if goal.target_amount == 0 {
-            return;
-        }
+        if goal.target_amount == 0 { return; }
         let pct_now = ((goal.current_amount * 100) / goal.target_amount) as u32;
 
         for milestone in goal.milestones.iter() {
-            if milestone.reward_bps == 0 {
-                continue;
-            }
+            if milestone.reward_bps == 0 { continue; }
 
             // Skip milestones already claimed (bitmask check)
             let bitmask_key = DataKey3::SavingsMilestonesClaimed(goal_id, goal.member.clone());
-            let bitmask: u64 = env.storage().persistent().get(&bitmask_key).unwrap_or(0u64);
+            let bitmask: u64 = env
+                .storage()
+                .persistent()
+                .get(&bitmask_key)
+                .unwrap_or(0u64);
 
             let bit = 1u64 << (milestone.milestone_id as u64 % 64);
-            if bitmask & bit != 0 {
-                continue;
-            }
+            if bitmask & bit != 0 { continue; }
 
             // Check if threshold newly crossed
             let pct_before = if contribution_amount >= goal.current_amount {
@@ -296,9 +288,7 @@ impl SavingsGoalTrackingImpl {
                             &goal.member,
                             &reward_amount,
                         );
-                        env.storage()
-                            .instance()
-                            .set(&DataKey::RewardPool, &(pool - reward_amount));
+                        env.storage().instance().set(&DataKey::RewardPool, &(pool - reward_amount));
 
                         crate::events::emit_milestone_reached(
                             env,
@@ -418,13 +408,8 @@ impl SavingsGoalTrackingImpl {
                 goal.completed_milestones.push_back(milestone.milestone_id);
 
                 // Store celebration
-                let celebration_key = (
-                    Symbol::new(env, CELEBRATION_KEY_PREFIX),
-                    celebration.celebration_id,
-                );
-                env.storage()
-                    .persistent()
-                    .set(&celebration_key, &celebration);
+                let celebration_key = (Symbol::new(env, CELEBRATION_KEY_PREFIX), celebration.celebration_id);
+                env.storage().persistent().set(&celebration_key, &celebration);
             }
         }
 
@@ -477,9 +462,7 @@ impl SavingsGoalTrackingImpl {
 
         // Store celebration
         let celebration_key = (Symbol::new(env, CELEBRATION_KEY_PREFIX), celebration_id);
-        env.storage()
-            .persistent()
-            .set(&celebration_key, &celebration);
+        env.storage().persistent().set(&celebration_key, &celebration);
 
         celebration
     }
@@ -500,9 +483,7 @@ impl SavingsGoalTrackingImpl {
         celebration.reward_issued = true;
         celebration.reward_details = reward_details;
 
-        env.storage()
-            .persistent()
-            .set(&celebration_key, &celebration);
+        env.storage().persistent().set(&celebration_key, &celebration);
     }
 
     /// Complete a goal
@@ -539,9 +520,7 @@ impl SavingsGoalTrackingImpl {
 
         // Store celebration
         let celebration_key = (Symbol::new(env, CELEBRATION_KEY_PREFIX), celebration_id);
-        env.storage()
-            .persistent()
-            .set(&celebration_key, &celebration);
+        env.storage().persistent().set(&celebration_key, &celebration);
 
         // Store updated goal
         env.storage().persistent().set(&key, &goal);
@@ -725,7 +704,11 @@ impl SavingsGoalTrackingImpl {
     }
 
     /// Update goal metadata
-    pub fn update_goal_metadata(env: &Env, goal_id: u32, metadata: Map<String, String>) {
+    pub fn update_goal_metadata(
+        env: &Env,
+        goal_id: u32,
+        metadata: Map<String, String>,
+    ) {
         let key = (Symbol::new(env, GOAL_KEY_PREFIX), goal_id);
         let mut goal: SavingsGoal = env
             .storage()
@@ -740,7 +723,11 @@ impl SavingsGoalTrackingImpl {
     }
 
     /// Get goals by category
-    pub fn get_goals_by_category(env: &Env, group_id: u32, category: String) -> Vec<SavingsGoal> {
+    pub fn get_goals_by_category(
+        env: &Env,
+        group_id: u32,
+        category: String,
+    ) -> Vec<SavingsGoal> {
         let mut goals = Vec::new(env);
         let group_key = (Symbol::new(env, GROUP_GOALS_KEY_PREFIX), group_id);
 
@@ -759,7 +746,11 @@ impl SavingsGoalTrackingImpl {
     }
 
     /// Get top goal contributors
-    pub fn get_top_goal_contributors(env: &Env, group_id: u32, limit: u32) -> Vec<(Address, i128)> {
+    pub fn get_top_goal_contributors(
+        env: &Env,
+        group_id: u32,
+        limit: u32,
+    ) -> Vec<(Address, i128)> {
         let mut contributors = Vec::new(env);
         // In production, use proper indexing to retrieve top contributors
         contributors

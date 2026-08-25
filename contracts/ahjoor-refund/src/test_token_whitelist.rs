@@ -11,9 +11,7 @@ fn create_token_contract(e: &Env) -> Address {
 }
 
 fn create_funded_token(e: &Env, admin: &Address, customer: &Address, amount: i128) -> Address {
-    let token_addr = e
-        .register_stellar_asset_contract_v2(admin.clone())
-        .address();
+    let token_addr = e.register_stellar_asset_contract_v2(admin.clone()).address();
     soroban_sdk::token::StellarAssetClient::new(e, &token_addr).mint(customer, &amount);
     token_addr
 }
@@ -69,8 +67,7 @@ fn test_token_validation_in_refund_request() {
 
     let refund_client = AhjoorRefundContractClient::new(&e, &refund_contract);
     let payment_client = ahjoor_payments::AhjoorPaymentsContractClient::new(&e, &payment_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     // Initialize contracts
     refund_client.initialize(&admin, &payment_contract, &86400u64, &None);
@@ -133,8 +130,7 @@ fn test_token_validation_in_merchant_refund() {
 
     let refund_client = AhjoorRefundContractClient::new(&e, &refund_contract);
     let payment_client = ahjoor_payments::AhjoorPaymentsContractClient::new(&e, &payment_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     // Initialize contracts
     refund_client.initialize(&admin, &payment_contract, &86400u64, &None);
@@ -182,8 +178,7 @@ fn test_is_token_allowed_function() {
     let whitelist_contract = create_whitelist_contract(&e);
 
     let refund_client = AhjoorRefundContractClient::new(&e, &refund_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     // Initialize contracts
     refund_client.initialize(&admin, &payment_contract, &86400u64, &None);
@@ -320,8 +315,7 @@ fn test_token_validation_with_multiple_tokens() {
 
     let refund_client = AhjoorRefundContractClient::new(&e, &refund_contract);
     let payment_client = ahjoor_payments::AhjoorPaymentsContractClient::new(&e, &payment_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     // Initialize contracts
     refund_client.initialize(&admin, &payment_contract, &86400u64, &None);
@@ -405,8 +399,7 @@ fn test_token_delisting_prevents_new_refunds() {
 
     let refund_client = AhjoorRefundContractClient::new(&e, &refund_contract);
     let payment_client = ahjoor_payments::AhjoorPaymentsContractClient::new(&e, &payment_contract);
-    let whitelist_client =
-        ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
+    let whitelist_client = ahjoor_token_whitelist::TokenWhitelistContractClient::new(&e, &whitelist_contract);
 
     // Initialize contracts
     refund_client.initialize(&admin, &payment_contract, &86400u64, &None);

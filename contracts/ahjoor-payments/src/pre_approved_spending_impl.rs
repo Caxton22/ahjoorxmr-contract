@@ -1,9 +1,9 @@
 #![allow(dead_code)]
-use crate::pre_approved_spending::*;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, panic_with_error, token, Address, Bytes,
     BytesN, Env, Map, String, Symbol, Vec,
 };
+use crate::pre_approved_spending::*;
 
 // Storage key symbols (used as tuple key prefixes to avoid format!)
 const ALLOWANCE_COUNTER_KEY: &str = "allowance_counter";
@@ -94,9 +94,7 @@ impl PreApprovedSpendingImpl {
         };
 
         // Store allowance
-        env.storage()
-            .persistent()
-            .set(&allowance_key(env, next_id), &allowance);
+        env.storage().persistent().set(&allowance_key(env, next_id), &allowance);
         env.storage()
             .instance()
             .set(&Symbol::new(env, ALLOWANCE_COUNTER_KEY), &next_id);
@@ -181,9 +179,7 @@ impl PreApprovedSpendingImpl {
         };
 
         // Store consent
-        env.storage()
-            .persistent()
-            .set(&consent_key(env, next_id), &consent);
+        env.storage().persistent().set(&consent_key(env, next_id), &consent);
         env.storage()
             .instance()
             .set(&Symbol::new(env, CONSENT_COUNTER_KEY), &next_id);
@@ -199,10 +195,11 @@ impl PreApprovedSpendingImpl {
         reference: String,
     ) -> AllowanceTransaction {
         let key = allowance_key(env, allowance_id);
-        let mut allowance: SpendingAllowance =
-            env.storage().persistent().get(&key).unwrap_or_else(|| {
-                panic_with_error!(env, SpendingAllowanceError::AllowanceNotFound)
-            });
+        let mut allowance: SpendingAllowance = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| panic_with_error!(env, SpendingAllowanceError::AllowanceNotFound));
 
         let now = env.ledger().timestamp();
 
@@ -246,9 +243,7 @@ impl PreApprovedSpendingImpl {
         let new_daily_spent = allowance
             .daily_spent
             .checked_add(amount)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, SpendingAllowanceError::InvalidAllowanceAmount)
-            });
+            .unwrap_or_else(|| panic_with_error!(env, SpendingAllowanceError::InvalidAllowanceAmount));
 
         if new_daily_spent > allowance.daily_limit {
             panic_with_error!(env, SpendingAllowanceError::DailyLimitExceeded);
@@ -258,9 +253,7 @@ impl PreApprovedSpendingImpl {
         let new_total_spent = allowance
             .amount_spent
             .checked_add(amount)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, SpendingAllowanceError::InvalidAllowanceAmount)
-            });
+            .unwrap_or_else(|| panic_with_error!(env, SpendingAllowanceError::InvalidAllowanceAmount));
 
         if new_total_spent > allowance.total_amount {
             panic_with_error!(env, SpendingAllowanceError::AllowanceExhausted);
@@ -295,9 +288,7 @@ impl PreApprovedSpendingImpl {
         };
 
         // Store transaction
-        env.storage()
-            .persistent()
-            .set(&transaction_key(env, next_tx_id), &transaction);
+        env.storage().persistent().set(&transaction_key(env, next_tx_id), &transaction);
 
         // Store updated allowance
         env.storage().persistent().set(&key, &allowance);
@@ -319,25 +310,22 @@ impl PreApprovedSpendingImpl {
 
     /// Get allowance details
     pub fn get_allowance(env: &Env, allowance_id: u32) -> Option<SpendingAllowance> {
-        env.storage()
-            .persistent()
-            .get(&allowance_key(env, allowance_id))
+        env.storage().persistent().get(&allowance_key(env, allowance_id))
     }
 
     /// Get consent record
     pub fn get_consent(env: &Env, consent_id: u32) -> Option<ConsentRecord> {
-        env.storage()
-            .persistent()
-            .get(&consent_key(env, consent_id))
+        env.storage().persistent().get(&consent_key(env, consent_id))
     }
 
     /// Pause an allowance
     pub fn pause_allowance(env: &Env, allowance_id: u32) {
         let key = allowance_key(env, allowance_id);
-        let mut allowance: SpendingAllowance =
-            env.storage().persistent().get(&key).unwrap_or_else(|| {
-                panic_with_error!(env, SpendingAllowanceError::AllowanceNotFound)
-            });
+        let mut allowance: SpendingAllowance = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| panic_with_error!(env, SpendingAllowanceError::AllowanceNotFound));
 
         allowance.customer.require_auth();
 
@@ -356,10 +344,11 @@ impl PreApprovedSpendingImpl {
     /// Resume a paused allowance
     pub fn resume_allowance(env: &Env, allowance_id: u32) {
         let key = allowance_key(env, allowance_id);
-        let mut allowance: SpendingAllowance =
-            env.storage().persistent().get(&key).unwrap_or_else(|| {
-                panic_with_error!(env, SpendingAllowanceError::AllowanceNotFound)
-            });
+        let mut allowance: SpendingAllowance = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| panic_with_error!(env, SpendingAllowanceError::AllowanceNotFound));
 
         allowance.customer.require_auth();
 
@@ -382,10 +371,11 @@ impl PreApprovedSpendingImpl {
     /// Revoke an allowance
     pub fn revoke_allowance(env: &Env, allowance_id: u32) {
         let key = allowance_key(env, allowance_id);
-        let mut allowance: SpendingAllowance =
-            env.storage().persistent().get(&key).unwrap_or_else(|| {
-                panic_with_error!(env, SpendingAllowanceError::AllowanceNotFound)
-            });
+        let mut allowance: SpendingAllowance = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| panic_with_error!(env, SpendingAllowanceError::AllowanceNotFound));
 
         allowance.customer.require_auth();
 
@@ -427,9 +417,7 @@ impl PreApprovedSpendingImpl {
         allowance
             .total_amount
             .checked_sub(allowance.amount_spent)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, SpendingAllowanceError::InvalidAllowanceAmount)
-            })
+            .unwrap_or_else(|| panic_with_error!(env, SpendingAllowanceError::InvalidAllowanceAmount))
     }
 
     /// Get daily remaining balance
@@ -443,9 +431,7 @@ impl PreApprovedSpendingImpl {
         allowance
             .daily_limit
             .checked_sub(allowance.daily_spent)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, SpendingAllowanceError::InvalidAllowanceAmount)
-            })
+            .unwrap_or_else(|| panic_with_error!(env, SpendingAllowanceError::InvalidAllowanceAmount))
     }
 
     /// Get allowance transaction history
@@ -465,11 +451,7 @@ impl PreApprovedSpendingImpl {
 
         if let Some(allowance_ids) = env.storage().persistent().get::<_, Vec<u32>>(&ckey) {
             for id in allowance_ids.iter() {
-                if let Some(allowance) = env
-                    .storage()
-                    .persistent()
-                    .get::<_, SpendingAllowance>(&allowance_key(env, id))
-                {
+                if let Some(allowance) = env.storage().persistent().get::<_, SpendingAllowance>(&allowance_key(env, id)) {
                     allowances.push_back(allowance);
                 }
             }
@@ -485,11 +467,7 @@ impl PreApprovedSpendingImpl {
 
         if let Some(allowance_ids) = env.storage().persistent().get::<_, Vec<u32>>(&mkey) {
             for id in allowance_ids.iter() {
-                if let Some(allowance) = env
-                    .storage()
-                    .persistent()
-                    .get::<_, SpendingAllowance>(&allowance_key(env, id))
-                {
+                if let Some(allowance) = env.storage().persistent().get::<_, SpendingAllowance>(&allowance_key(env, id)) {
                     allowances.push_back(allowance);
                 }
             }
@@ -500,11 +478,7 @@ impl PreApprovedSpendingImpl {
 
     /// Verify consent is valid
     pub fn verify_consent(env: &Env, consent_id: u32) -> bool {
-        if let Some(consent) = env
-            .storage()
-            .persistent()
-            .get::<_, ConsentRecord>(&consent_key(env, consent_id))
-        {
+        if let Some(consent) = env.storage().persistent().get::<_, ConsentRecord>(&consent_key(env, consent_id)) {
             let now = env.ledger().timestamp();
             consent.status == ConsentStatus::Active && now <= consent.expires_at
         } else {
@@ -520,10 +494,11 @@ impl PreApprovedSpendingImpl {
         daily_limit: i128,
     ) {
         let key = allowance_key(env, allowance_id);
-        let mut allowance: SpendingAllowance =
-            env.storage().persistent().get(&key).unwrap_or_else(|| {
-                panic_with_error!(env, SpendingAllowanceError::AllowanceNotFound)
-            });
+        let mut allowance: SpendingAllowance = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| panic_with_error!(env, SpendingAllowanceError::AllowanceNotFound));
 
         allowance.customer.require_auth();
 
@@ -569,9 +544,7 @@ impl PreApprovedSpendingImpl {
             details: String::from_str(env, details),
         };
 
-        env.storage()
-            .persistent()
-            .set(&audit_log_key(env, next_log_id), &log);
+        env.storage().persistent().set(&audit_log_key(env, next_log_id), &log);
         env.storage()
             .instance()
             .set(&Symbol::new(env, AUDIT_LOG_COUNTER_KEY), &next_log_id);

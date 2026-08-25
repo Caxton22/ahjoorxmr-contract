@@ -73,15 +73,9 @@ fn create_completed_payment<'a>(
     amount: i128,
 ) -> u32 {
     s.token_admin_client.mint(customer, &(amount * 2));
-    let pid = s.payment_client.create_payment(
-        customer,
-        merchant,
-        &amount,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-    );
+    let pid =
+        s.payment_client
+            .create_payment(customer, merchant, &amount, &s.token_addr, &None, &None, &None);
     s.payment_client.complete_payment(&pid);
     pid
 }
@@ -149,15 +143,9 @@ fn test_request_refund_against_pending_payment_panics() {
     let merchant = Address::generate(&s.env);
 
     s.token_admin_client.mint(&customer, &500);
-    let pid = s.payment_client.create_payment(
-        &customer,
-        &merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-    );
+    let pid =
+        s.payment_client
+            .create_payment(&customer, &merchant, &500, &s.token_addr, &None, &None, &None);
     // Payment is still Pending — not Completed
 
     s.token_admin_client.mint(&customer, &100);
@@ -197,13 +185,8 @@ fn test_request_refund_exceeds_payment_amount_panics() {
 
     // Try to refund more than the payment amount
     s.token_admin_client.mint(&customer, &200);
-    s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &200,
-        &String::from_str(&s.env, "Too much"),
-        &0u32,
-    );
+    s.refund_client
+        .request_refund(&customer, &pid, &200, &String::from_str(&s.env, "Too much"), &0u32);
 }
 
 #[test]
@@ -215,13 +198,8 @@ fn test_request_refund_zero_amount_panics() {
 
     let pid = create_completed_payment(&s, &customer, &merchant, 100);
 
-    s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &0,
-        &String::from_str(&s.env, "Invalid"),
-        &0u32,
-    );
+    s.refund_client
+        .request_refund(&customer, &pid, &0, &String::from_str(&s.env, "Invalid"), &0u32);
 }
 
 // ===========================================================================
@@ -850,7 +828,7 @@ fn request_n_refunds<'a>(
             &pid,
             &10,
             &String::from_str(&s.env, "reason"),
-            &0u32,
+        &0u32,
         );
         ids.push_back(rid);
     }
@@ -1000,13 +978,9 @@ fn test_get_refunds_by_payment_single() {
 
     let pid = create_completed_payment(&s, &customer, &merchant, 100);
     s.token_admin_client.mint(&customer, &10);
-    let rid = s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &10,
-        &String::from_str(&s.env, "reason"),
-        &0u32,
-    );
+    let rid =
+        s.refund_client
+            .request_refund(&customer, &pid, &10, &String::from_str(&s.env, "reason"), &0u32);
 
     let result = s.refund_client.get_refunds_by_payment(&pid);
     assert_eq!(result.len(), 1);
@@ -1022,20 +996,12 @@ fn test_get_refunds_by_payment_multiple_refunds_same_payment() {
     // One payment, two partial refunds
     let pid = create_completed_payment(&s, &customer, &merchant, 100);
     s.token_admin_client.mint(&customer, &20);
-    let rid0 = s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &10,
-        &String::from_str(&s.env, "first"),
-        &0u32,
-    );
-    let rid1 = s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &10,
-        &String::from_str(&s.env, "second"),
-        &0u32,
-    );
+    let rid0 =
+        s.refund_client
+            .request_refund(&customer, &pid, &10, &String::from_str(&s.env, "first"), &0u32);
+    let rid1 =
+        s.refund_client
+            .request_refund(&customer, &pid, &10, &String::from_str(&s.env, "second"), &0u32);
 
     let result = s.refund_client.get_refunds_by_payment(&pid);
     assert_eq!(result.len(), 2);
@@ -1053,13 +1019,9 @@ fn test_indexes_consistent_across_all_three_dimensions() {
 
     let pid = create_completed_payment(&s, &customer, &merchant, 100);
     s.token_admin_client.mint(&customer, &10);
-    let rid = s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &10,
-        &String::from_str(&s.env, "reason"),
-        &0u32,
-    );
+    let rid =
+        s.refund_client
+            .request_refund(&customer, &pid, &10, &String::from_str(&s.env, "reason"), &0u32);
 
     assert_eq!(
         s.refund_client
@@ -1090,23 +1052,13 @@ fn test_different_customers_indexes_are_isolated() {
 
     let pid_a = create_completed_payment(&s, &customer_a, &merchant, 100);
     s.token_admin_client.mint(&customer_a, &10);
-    s.refund_client.request_refund(
-        &customer_a,
-        &pid_a,
-        &10,
-        &String::from_str(&s.env, "a"),
-        &0u32,
-    );
+    s.refund_client
+        .request_refund(&customer_a, &pid_a, &10, &String::from_str(&s.env, "a"), &0u32);
 
     let pid_b = create_completed_payment(&s, &customer_b, &merchant, 100);
     s.token_admin_client.mint(&customer_b, &10);
-    s.refund_client.request_refund(
-        &customer_b,
-        &pid_b,
-        &10,
-        &String::from_str(&s.env, "b"),
-        &0u32,
-    );
+    s.refund_client
+        .request_refund(&customer_b, &pid_b, &10, &String::from_str(&s.env, "b"), &0u32);
 
     assert_eq!(
         s.refund_client
@@ -1144,13 +1096,9 @@ fn test_get_refundable_remaining_decreases_after_processed_refund() {
 
     let pid = create_completed_payment(&s, &customer, &merchant, 300);
     s.token_admin_client.mint(&customer, &100);
-    let rid = s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &100,
-        &String::from_str(&s.env, "r1"),
-        &0u32,
-    );
+    let rid = s
+        .refund_client
+        .request_refund(&customer, &pid, &100, &String::from_str(&s.env, "r1"), &0u32);
     s.refund_client.approve_refund(&s.admin, &rid);
     s.refund_client.process_refund(&s.admin, &rid);
 
@@ -1195,13 +1143,9 @@ fn test_cumulative_over_refund_rejected() {
     let pid = create_completed_payment(&s, &customer, &merchant, 200);
 
     s.token_admin_client.mint(&customer, &150);
-    let rid = s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &150,
-        &String::from_str(&s.env, "partial"),
-        &0u32,
-    );
+    let rid = s
+        .refund_client
+        .request_refund(&customer, &pid, &150, &String::from_str(&s.env, "partial"), &0u32);
     s.refund_client.approve_refund(&s.admin, &rid);
     s.refund_client.process_refund(&s.admin, &rid);
 
@@ -1228,39 +1172,27 @@ fn test_multiple_partial_refunds_accumulate_correctly() {
 
     // Refund 100
     s.token_admin_client.mint(&customer, &100);
-    let rid1 = s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &100,
-        &String::from_str(&s.env, "r1"),
-        &0u32,
-    );
+    let rid1 = s
+        .refund_client
+        .request_refund(&customer, &pid, &100, &String::from_str(&s.env, "r1"), &0u32);
     s.refund_client.approve_refund(&s.admin, &rid1);
     s.refund_client.process_refund(&s.admin, &rid1);
     assert_eq!(s.refund_client.get_refundable_remaining(&pid), 400);
 
     // Refund 150
     s.token_admin_client.mint(&customer, &150);
-    let rid2 = s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &150,
-        &String::from_str(&s.env, "r2"),
-        &0u32,
-    );
+    let rid2 = s
+        .refund_client
+        .request_refund(&customer, &pid, &150, &String::from_str(&s.env, "r2"), &0u32);
     s.refund_client.approve_refund(&s.admin, &rid2);
     s.refund_client.process_refund(&s.admin, &rid2);
     assert_eq!(s.refund_client.get_refundable_remaining(&pid), 250);
 
     // Refund 250 (exactly remaining)
     s.token_admin_client.mint(&customer, &250);
-    let rid3 = s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &250,
-        &String::from_str(&s.env, "r3"),
-        &0u32,
-    );
+    let rid3 = s
+        .refund_client
+        .request_refund(&customer, &pid, &250, &String::from_str(&s.env, "r3"), &0u32);
     s.refund_client.approve_refund(&s.admin, &rid3);
     s.refund_client.process_refund(&s.admin, &rid3);
     assert_eq!(s.refund_client.get_refundable_remaining(&pid), 0);
@@ -1275,23 +1207,16 @@ fn test_cap_event_emitted_when_remaining_near_zero() {
     // Payment of 100; refund 95 (remaining = 5, which is <= 10% of 100)
     let pid = create_completed_payment(&s, &customer, &merchant, 100);
     s.token_admin_client.mint(&customer, &95);
-    let rid = s.refund_client.request_refund(
-        &customer,
-        &pid,
-        &95,
-        &String::from_str(&s.env, "near-cap"),
-        &0u32,
-    );
+    let rid = s
+        .refund_client
+        .request_refund(&customer, &pid, &95, &String::from_str(&s.env, "near-cap"), &0u32);
     s.refund_client.approve_refund(&s.admin, &rid);
     s.refund_client.process_refund(&s.admin, &rid);
 
     use soroban_sdk::IntoVal;
     let events = s.env.events().all();
     let cap_event = events.iter().find(|e| {
-        e.1 == (soroban_sdk::Symbol::new(
-            &s.env,
-            "partial_refund_cap_applied",
-        ),)
+        e.1 == (soroban_sdk::Symbol::new(&s.env, "partial_refund_cap_applied"),)
             .into_val(&s.env)
     });
     assert!(cap_event.is_some());
@@ -1463,8 +1388,11 @@ fn test_auto_approve_after_merchant_rejected_panics() {
     );
 
     // Admin rejects before the window elapses
-    s.refund_client
-        .reject_refund(&s.admin, &refund_id, &String::from_str(&s.env, "not valid"));
+    s.refund_client.reject_refund(
+        &s.admin,
+        &refund_id,
+        &String::from_str(&s.env, "not valid"),
+    );
 
     // Advance past the dispute window
     s.env.ledger().set_timestamp(86_401);
@@ -1679,14 +1607,8 @@ fn test_bulk_process_refunds_success_and_stats_update() {
     ids.push_back(rid_b);
     s.refund_client.bulk_process_refunds(&s.admin, &ids);
 
-    assert_eq!(
-        s.refund_client.get_refund(&rid_a).status,
-        RefundStatus::Processed
-    );
-    assert_eq!(
-        s.refund_client.get_refund(&rid_b).status,
-        RefundStatus::Processed
-    );
+    assert_eq!(s.refund_client.get_refund(&rid_a).status, RefundStatus::Processed);
+    assert_eq!(s.refund_client.get_refund(&rid_b).status, RefundStatus::Processed);
 
     let stats = s.refund_client.get_global_refund_stats();
     assert!(stats.total_processed >= 2);
@@ -1724,14 +1646,8 @@ fn test_bulk_process_refunds_mixed_status_fails_atomically() {
 
     let res = s.refund_client.try_bulk_process_refunds(&s.admin, &ids);
     assert!(res.is_err());
-    assert_eq!(
-        s.refund_client.get_refund(&rid_a).status,
-        RefundStatus::Approved
-    );
-    assert_eq!(
-        s.refund_client.get_refund(&rid_b).status,
-        RefundStatus::Requested
-    );
+    assert_eq!(s.refund_client.get_refund(&rid_a).status, RefundStatus::Approved);
+    assert_eq!(s.refund_client.get_refund(&rid_b).status, RefundStatus::Requested);
 }
 
 #[test]
@@ -1808,8 +1724,12 @@ fn test_export_refund_policy_prefers_merchant_over_global() {
             excluded_tags: Vec::new(&s.env),
         },
     );
-    s.refund_client
-        .publish_refund_policy(&merchant, &2000u32, &7500u32, &Vec::new(&s.env));
+    s.refund_client.publish_refund_policy(
+        &merchant,
+        &2000u32,
+        &7500u32,
+        &Vec::new(&s.env),
+    );
 
     let policy = s.refund_client.export_refund_policy(&merchant);
     assert_eq!(policy.eligible_window_ledgers, 2000);
@@ -1872,8 +1792,6 @@ fn test_get_refund_stats_by_merchant_mixed_activity() {
     // Matches the existing get_merchant_refund_stats view exactly.
     assert_eq!(
         stats.total_requested,
-        s.refund_client
-            .get_merchant_refund_stats(&merchant)
-            .total_requested
+        s.refund_client.get_merchant_refund_stats(&merchant).total_requested
     );
 }

@@ -148,16 +148,14 @@ fn test_is_consent_valid() {
 
     // Before signing, consent is not valid
     assert_eq!(
-        s.client
-            .is_consent_valid(&merchant, &customer, &terms_version),
+        s.client.is_consent_valid(&merchant, &customer, &terms_version),
         false
     );
 
     // After signing, consent is valid
     s.client.sign_consent(&customer, &consent_id);
     assert_eq!(
-        s.client
-            .is_consent_valid(&merchant, &customer, &terms_version),
+        s.client.is_consent_valid(&merchant, &customer, &terms_version),
         true
     );
 }
@@ -184,8 +182,7 @@ fn test_consent_expiry() {
     // Sign consent
     s.client.sign_consent(&customer, &consent_id);
     assert_eq!(
-        s.client
-            .is_consent_valid(&merchant, &customer, &terms_version),
+        s.client.is_consent_valid(&merchant, &customer, &terms_version),
         true
     );
 
@@ -196,8 +193,7 @@ fn test_consent_expiry() {
 
     // Consent should now be invalid
     assert_eq!(
-        s.client
-            .is_consent_valid(&merchant, &customer, &terms_version),
+        s.client.is_consent_valid(&merchant, &customer, &terms_version),
         false
     );
 }
@@ -224,8 +220,7 @@ fn test_revoke_consent() {
     // Sign consent
     s.client.sign_consent(&customer, &consent_id);
     assert_eq!(
-        s.client
-            .is_consent_valid(&merchant, &customer, &terms_version),
+        s.client.is_consent_valid(&merchant, &customer, &terms_version),
         true
     );
 
@@ -234,8 +229,7 @@ fn test_revoke_consent() {
 
     // Consent should now be invalid
     assert_eq!(
-        s.client
-            .is_consent_valid(&merchant, &customer, &terms_version),
+        s.client.is_consent_valid(&merchant, &customer, &terms_version),
         false
     );
 
@@ -360,13 +354,11 @@ fn test_multiple_consent_records() {
 
     // Both should be valid
     assert_eq!(
-        s.client
-            .is_consent_valid(&merchant, &customer, &terms_version_v1),
+        s.client.is_consent_valid(&merchant, &customer, &terms_version_v1),
         true
     );
     assert_eq!(
-        s.client
-            .is_consent_valid(&merchant, &customer, &terms_version_v2),
+        s.client.is_consent_valid(&merchant, &customer, &terms_version_v2),
         true
     );
 
@@ -375,13 +367,11 @@ fn test_multiple_consent_records() {
 
     // v1 should be invalid, v2 should still be valid
     assert_eq!(
-        s.client
-            .is_consent_valid(&merchant, &customer, &terms_version_v1),
+        s.client.is_consent_valid(&merchant, &customer, &terms_version_v1),
         false
     );
     assert_eq!(
-        s.client
-            .is_consent_valid(&merchant, &customer, &terms_version_v2),
+        s.client.is_consent_valid(&merchant, &customer, &terms_version_v2),
         true
     );
 }

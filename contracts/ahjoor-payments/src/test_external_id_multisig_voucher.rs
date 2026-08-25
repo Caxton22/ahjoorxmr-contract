@@ -2,10 +2,7 @@
 use super::*;
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{
-    testutils::{Address as _, Ledger},
-    vec, Address, BytesN, Env,
-};
+use soroban_sdk::{testutils::{Address as _, Ledger}, vec, Address, BytesN, Env};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -32,9 +29,7 @@ fn setup<'a>() -> Setup<'a> {
     let admin = Address::generate(&env);
     let fee_recipient = Address::generate(&env);
     let merchant = Address::generate(&env);
-    let token_addr = env
-        .register_stellar_asset_contract_v2(admin.clone())
-        .address();
+    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
     let token_client = TokenClient::new(&env, &token_addr);
     let token_admin_client = TokenAdminClient::new(&env, &token_addr);
 
@@ -42,16 +37,7 @@ fn setup<'a>() -> Setup<'a> {
     // Open mode so merchant doesn't need collateral
     client.set_merchant_open_mode(&true);
 
-    Setup {
-        env,
-        client,
-        admin,
-        fee_recipient,
-        merchant,
-        token_addr,
-        token_client,
-        token_admin_client,
-    }
+    Setup { env, client, admin, fee_recipient, merchant, token_addr, token_client, token_admin_client }
 }
 
 fn make_external_id(env: &Env, seed: u8) -> BytesN<32> {
@@ -73,15 +59,8 @@ fn test_external_id_indexes_payment() {
     let ext_id = make_external_id(&s.env, 1);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &Some(ext_id.clone()),
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &None, &Some(ext_id.clone()),
     );
 
     let payment = s.client.get_payment_by_external_id(&s.merchant, &ext_id);
@@ -99,27 +78,13 @@ fn test_duplicate_external_id_same_merchant_rejected() {
     let ext_id = make_external_id(&s.env, 2);
 
     s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &Some(ext_id.clone()),
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &None, &Some(ext_id.clone()),
     );
     // Second call with same merchant + same external_id must panic
     s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &Some(ext_id.clone()),
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &None, &Some(ext_id.clone()),
     );
 }
 
@@ -133,26 +98,12 @@ fn test_same_external_id_different_merchants_allowed() {
     let ext_id = make_external_id(&s.env, 3);
 
     let pid1 = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &Some(ext_id.clone()),
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &None, &Some(ext_id.clone()),
     );
     let pid2 = s.client.create_payment_with_voucher(
-        &customer,
-        &merchant2,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &Some(ext_id.clone()),
+        &customer, &merchant2, &500, &s.token_addr,
+        &None, &None, &None, &None, &Some(ext_id.clone()),
     );
 
     assert_ne!(pid1, pid2);
@@ -169,13 +120,7 @@ fn test_payment_without_external_id_works_normally() {
     s.token_admin_client.mint(&customer, &1000);
 
     let pid = s.client.create_payment(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr, &None, &None, &None,
     );
     let payment = s.client.get_payment(&pid);
     assert_eq!(payment.external_id, None);
@@ -193,8 +138,7 @@ fn test_multisig_policy_set_and_retrieved() {
     let signer3 = Address::generate(&s.env);
     let signers = vec![&s.env, signer1.clone(), signer2.clone(), signer3.clone()];
 
-    s.client
-        .set_multisig_policy(&s.merchant, &1000, &signers, &2, &3600);
+    s.client.set_multisig_policy(&s.merchant, &1000, &signers, &2, &3600);
 
     let policy = s.client.get_multisig_policy(&s.merchant).unwrap();
     assert_eq!(policy.m, 2);
@@ -211,19 +155,11 @@ fn test_high_value_payment_enters_pending_approval() {
     let signer1 = Address::generate(&s.env);
     let signer2 = Address::generate(&s.env);
     let signers = vec![&s.env, signer1.clone(), signer2.clone()];
-    s.client
-        .set_multisig_policy(&s.merchant, &1000, &signers, &2, &3600);
+    s.client.set_multisig_policy(&s.merchant, &1000, &signers, &2, &3600);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &2000,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
+        &customer, &s.merchant, &2000, &s.token_addr,
+        &None, &None, &None, &None, &None,
     );
 
     let payment = s.client.get_payment(&pid);
@@ -238,19 +174,11 @@ fn test_low_value_payment_skips_multisig() {
 
     let signer1 = Address::generate(&s.env);
     let signers = vec![&s.env, signer1.clone()];
-    s.client
-        .set_multisig_policy(&s.merchant, &1000, &signers, &1, &3600);
+    s.client.set_multisig_policy(&s.merchant, &1000, &signers, &1, &3600);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &None, &None,
     );
 
     let payment = s.client.get_payment(&pid);
@@ -268,31 +196,17 @@ fn test_m_of_n_approval_transitions_to_pending() {
     let signer3 = Address::generate(&s.env);
     let signers = vec![&s.env, signer1.clone(), signer2.clone(), signer3.clone()];
     // 2-of-3
-    s.client
-        .set_multisig_policy(&s.merchant, &1000, &signers, &2, &3600);
+    s.client.set_multisig_policy(&s.merchant, &1000, &signers, &2, &3600);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &2000,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
+        &customer, &s.merchant, &2000, &s.token_addr,
+        &None, &None, &None, &None, &None,
     );
-    assert_eq!(
-        s.client.get_payment(&pid).status,
-        PaymentStatus::PendingApproval
-    );
+    assert_eq!(s.client.get_payment(&pid).status, PaymentStatus::PendingApproval);
 
     // First approval — still PendingApproval
     s.client.approve_payment(&signer1, &pid);
-    assert_eq!(
-        s.client.get_payment(&pid).status,
-        PaymentStatus::PendingApproval
-    );
+    assert_eq!(s.client.get_payment(&pid).status, PaymentStatus::PendingApproval);
 
     // Second approval — quorum reached → Pending
     s.client.approve_payment(&signer2, &pid);
@@ -307,19 +221,11 @@ fn test_m_equals_1_single_approval_sufficient() {
 
     let signer1 = Address::generate(&s.env);
     let signers = vec![&s.env, signer1.clone()];
-    s.client
-        .set_multisig_policy(&s.merchant, &1000, &signers, &1, &3600);
+    s.client.set_multisig_policy(&s.merchant, &1000, &signers, &1, &3600);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &2000,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
+        &customer, &s.merchant, &2000, &s.token_addr,
+        &None, &None, &None, &None, &None,
     );
 
     s.client.approve_payment(&signer1, &pid);
@@ -334,25 +240,15 @@ fn test_approval_window_expired_auto_cancels() {
 
     let signer1 = Address::generate(&s.env);
     let signers = vec![&s.env, signer1.clone()];
-    s.client
-        .set_multisig_policy(&s.merchant, &1000, &signers, &1, &100);
+    s.client.set_multisig_policy(&s.merchant, &1000, &signers, &1, &100);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &2000,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
+        &customer, &s.merchant, &2000, &s.token_addr,
+        &None, &None, &None, &None, &None,
     );
 
     // Advance time past approval window
-    s.env
-        .ledger()
-        .set_timestamp(s.env.ledger().timestamp() + 200);
+    s.env.ledger().set_timestamp(s.env.ledger().timestamp() + 200);
 
     s.client.expire_pending_approval(&pid);
     assert_eq!(s.client.get_payment(&pid).status, PaymentStatus::Refunded);
@@ -369,19 +265,11 @@ fn test_get_approval_state_zero_approvals() {
     let signer1 = Address::generate(&s.env);
     let signer2 = Address::generate(&s.env);
     let signers = vec![&s.env, signer1.clone(), signer2.clone()];
-    s.client
-        .set_multisig_policy(&s.merchant, &1000, &signers, &2, &3600);
+    s.client.set_multisig_policy(&s.merchant, &1000, &signers, &2, &3600);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &2000,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
+        &customer, &s.merchant, &2000, &s.token_addr,
+        &None, &None, &None, &None, &None,
     );
 
     let state = s.client.get_approval_state(&pid).unwrap();
@@ -399,19 +287,11 @@ fn test_get_approval_state_partial_approvals() {
     let signer2 = Address::generate(&s.env);
     let signer3 = Address::generate(&s.env);
     let signers = vec![&s.env, signer1.clone(), signer2.clone(), signer3.clone()];
-    s.client
-        .set_multisig_policy(&s.merchant, &1000, &signers, &3, &3600);
+    s.client.set_multisig_policy(&s.merchant, &1000, &signers, &3, &3600);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &2000,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
+        &customer, &s.merchant, &2000, &s.token_addr,
+        &None, &None, &None, &None, &None,
     );
 
     s.client.approve_payment(&signer1, &pid);
@@ -431,19 +311,11 @@ fn test_get_approval_state_fully_approved() {
     let signer1 = Address::generate(&s.env);
     let signer2 = Address::generate(&s.env);
     let signers = vec![&s.env, signer1.clone(), signer2.clone()];
-    s.client
-        .set_multisig_policy(&s.merchant, &1000, &signers, &2, &3600);
+    s.client.set_multisig_policy(&s.merchant, &1000, &signers, &2, &3600);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &2000,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
+        &customer, &s.merchant, &2000, &s.token_addr,
+        &None, &None, &None, &None, &None,
     );
 
     s.client.approve_payment(&signer1, &pid);
@@ -463,13 +335,7 @@ fn test_get_approval_state_returns_none_for_regular_payment() {
 
     // No multisig policy set — payment goes through normally
     let pid = s.client.create_payment(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr, &None, &None, &None,
     );
 
     let state = s.client.get_approval_state(&pid);
@@ -489,19 +355,11 @@ fn test_issue_and_redeem_fixed_discount() {
     s.token_admin_client.mint(&customer, &1000);
 
     let code_hash = make_external_id(&s.env, 10);
-    s.client
-        .issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &100, &5, &0);
+    s.client.issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &100, &5, &0);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &Some(code_hash.clone()),
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &Some(code_hash.clone()), &None,
     );
 
     let payment = s.client.get_payment(&pid);
@@ -521,25 +379,11 @@ fn test_issue_and_redeem_percentage_discount() {
 
     let code_hash = make_external_id(&s.env, 11);
     // 20% off
-    s.client.issue_voucher(
-        &s.merchant,
-        &code_hash,
-        &DiscountType::Percentage,
-        &20,
-        &10,
-        &0,
-    );
+    s.client.issue_voucher(&s.merchant, &code_hash, &DiscountType::Percentage, &20, &10, &0);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &Some(code_hash.clone()),
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &Some(code_hash.clone()), &None,
     );
 
     let payment = s.client.get_payment(&pid);
@@ -555,19 +399,11 @@ fn test_voucher_exhausted_after_max_uses() {
 
     let code_hash = make_external_id(&s.env, 12);
     // max_uses = 1
-    s.client
-        .issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &50, &1, &0);
+    s.client.issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &50, &1, &0);
 
     s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &Some(code_hash.clone()),
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &Some(code_hash.clone()), &None,
     );
 
     let voucher = s.client.get_voucher(&s.merchant, &code_hash);
@@ -582,19 +418,11 @@ fn test_voucher_max_uses_enforced() {
     s.token_admin_client.mint(&customer, &5_000);
 
     let code_hash = make_external_id(&s.env, 42);
-    s.client
-        .issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &50, &1, &0);
+    s.client.issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &50, &1, &0);
 
     s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &Some(code_hash.clone()),
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &Some(code_hash.clone()), &None,
     );
 
     let voucher = s.client.get_voucher(&s.merchant, &code_hash);
@@ -602,20 +430,10 @@ fn test_voucher_max_uses_enforced() {
     assert!(!voucher.revoked);
 
     let second_attempt = s.client.try_create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &Some(code_hash),
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &Some(code_hash), &None,
     );
-    assert_eq!(
-        second_attempt.unwrap_err().unwrap(),
-        Error::VoucherExhausted.into()
-    );
+    assert_eq!(second_attempt.unwrap_err().unwrap(), Error::VoucherExhausted.into());
 }
 
 #[test]
@@ -626,32 +444,17 @@ fn test_exhausted_voucher_rejected() {
     s.token_admin_client.mint(&customer, &5000);
 
     let code_hash = make_external_id(&s.env, 13);
-    s.client
-        .issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &50, &1, &0);
+    s.client.issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &50, &1, &0);
 
     // First use — ok
     s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &Some(code_hash.clone()),
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &Some(code_hash.clone()), &None,
     );
     // Second use — should panic (exhausted)
     s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &Some(code_hash.clone()),
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &Some(code_hash.clone()), &None,
     );
 }
 
@@ -664,30 +467,14 @@ fn test_expired_voucher_rejected() {
 
     let code_hash = make_external_id(&s.env, 14);
     let expiry = s.env.ledger().timestamp() + 100;
-    s.client.issue_voucher(
-        &s.merchant,
-        &code_hash,
-        &DiscountType::Fixed,
-        &50,
-        &10,
-        &expiry,
-    );
+    s.client.issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &50, &10, &expiry);
 
     // Advance past expiry
-    s.env
-        .ledger()
-        .set_timestamp(s.env.ledger().timestamp() + 200);
+    s.env.ledger().set_timestamp(s.env.ledger().timestamp() + 200);
 
     s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &Some(code_hash.clone()),
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &Some(code_hash.clone()), &None,
     );
 }
 
@@ -699,20 +486,12 @@ fn test_revoked_voucher_rejected() {
     s.token_admin_client.mint(&customer, &1000);
 
     let code_hash = make_external_id(&s.env, 15);
-    s.client
-        .issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &50, &10, &0);
+    s.client.issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &50, &10, &0);
     s.client.revoke_voucher(&s.merchant, &code_hash);
 
     s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &Some(code_hash.clone()),
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &Some(code_hash.clone()), &None,
     );
 }
 
@@ -720,8 +499,7 @@ fn test_revoked_voucher_rejected() {
 fn test_revoke_voucher_emits_event() {
     let s = setup();
     let code_hash = make_external_id(&s.env, 16);
-    s.client
-        .issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &50, &10, &0);
+    s.client.issue_voucher(&s.merchant, &code_hash, &DiscountType::Fixed, &50, &10, &0);
     s.client.revoke_voucher(&s.merchant, &code_hash);
 
     let voucher = s.client.get_voucher(&s.merchant, &code_hash);
@@ -735,15 +513,8 @@ fn test_no_voucher_payment_works_normally() {
     s.token_admin_client.mint(&customer, &1000);
 
     let pid = s.client.create_payment_with_voucher(
-        &customer,
-        &s.merchant,
-        &500,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
+        &customer, &s.merchant, &500, &s.token_addr,
+        &None, &None, &None, &None, &None,
     );
 
     let payment = s.client.get_payment(&pid);

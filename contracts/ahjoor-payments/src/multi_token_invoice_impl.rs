@@ -1,9 +1,9 @@
 #![allow(dead_code)]
-use crate::multi_token_invoice::*;
 use soroban_sdk::{
     contract, contracterror, contractimpl, contracttype, panic_with_error, token, Address, Bytes,
     BytesN, Env, Map, String, Symbol, Vec,
 };
+use crate::multi_token_invoice::*;
 
 // Storage keys
 const INVOICE_COUNTER_KEY: &str = "invoice_counter";
@@ -187,44 +187,34 @@ impl MultiTokenInvoiceImpl {
         }
 
         // Get conversion rate
-        let conversion_rate: i128 =
-            invoice
-                .conversion_rates
-                .get(token.clone())
-                .unwrap_or_else(|| {
-                    panic_with_error!(env, MultiTokenInvoiceError::ConversionRateNotSet)
-                });
+        let conversion_rate: i128 = invoice
+            .conversion_rates
+            .get(token.clone())
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::ConversionRateNotSet));
 
         // Calculate amount in base currency
         let amount_in_base = amount
             .checked_mul(conversion_rate)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate)
-            })
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate))
             .checked_div(1_000_000)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate)
-            });
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate));
 
         // Calculate amount in settlement currency
         let amount_in_settlement = amount_in_base
             .checked_mul(invoice.settlement_conversion_rate)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate)
-            })
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate))
             .checked_div(1_000_000)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate)
-            });
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate));
 
         // Update payments received
-        let current_payment: i128 = invoice.payments_received.get(token.clone()).unwrap_or(0);
+        let current_payment: i128 = invoice
+            .payments_received
+            .get(token.clone())
+            .unwrap_or(0);
 
         let new_payment = current_payment
             .checked_add(amount_in_base)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, MultiTokenInvoiceError::PaymentExceedsInvoiceAmount)
-            });
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::PaymentExceedsInvoiceAmount));
 
         if new_payment > invoice.total_amount {
             panic_with_error!(env, MultiTokenInvoiceError::PaymentExceedsInvoiceAmount);
@@ -278,7 +268,12 @@ impl MultiTokenInvoiceImpl {
     }
 
     /// Set conversion rate for a token
-    pub fn set_conversion_rate(env: &Env, merchant: Address, token: Address, rate_to_base: i128) {
+    pub fn set_conversion_rate(
+        env: &Env,
+        merchant: Address,
+        token: Address,
+        rate_to_base: i128,
+    ) {
         merchant.require_auth();
 
         if rate_to_base <= 0 {
@@ -340,7 +335,11 @@ impl MultiTokenInvoiceImpl {
     }
 
     /// Settle invoices in batch
-    pub fn settle_invoices(env: &Env, merchant: Address, invoice_ids: Vec<u32>) -> SettlementBatch {
+    pub fn settle_invoices(
+        env: &Env,
+        merchant: Address,
+        invoice_ids: Vec<u32>,
+    ) -> SettlementBatch {
         merchant.require_auth();
 
         if invoice_ids.len() > 50 {
@@ -351,10 +350,11 @@ impl MultiTokenInvoiceImpl {
 
         for invoice_id in invoice_ids.iter() {
             let key = invoice_key(env, invoice_id);
-            let invoice: MultiTokenInvoice =
-                env.storage().persistent().get(&key).unwrap_or_else(|| {
-                    panic_with_error!(env, MultiTokenInvoiceError::InvoiceNotFound)
-                });
+            let invoice: MultiTokenInvoice = env
+                .storage()
+                .persistent()
+                .get(&key)
+                .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::InvoiceNotFound));
 
             if invoice.merchant != merchant {
                 panic_with_error!(env, MultiTokenInvoiceError::UnauthorizedAccess);
@@ -366,9 +366,7 @@ impl MultiTokenInvoiceImpl {
 
             total_settlement_amount = total_settlement_amount
                 .checked_add(invoice.total_amount)
-                .unwrap_or_else(|| {
-                    panic_with_error!(env, MultiTokenInvoiceError::SettlementFailed)
-                });
+                .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::SettlementFailed));
         }
 
         // Get batch ID
@@ -396,10 +394,9 @@ impl MultiTokenInvoiceImpl {
         // Store batch
         let batch_key = settle_batch_key(env, next_batch_id);
         env.storage().persistent().set(&batch_key, &batch);
-        env.storage().instance().set(
-            &Symbol::new(env, SETTLEMENT_BATCH_COUNTER_KEY),
-            &next_batch_id,
-        );
+        env.storage()
+            .instance()
+            .set(&Symbol::new(env, SETTLEMENT_BATCH_COUNTER_KEY), &next_batch_id);
 
         batch
     }
@@ -501,9 +498,7 @@ impl MultiTokenInvoiceImpl {
         let oracle_client = InvoiceOracleClient::new(env, &oracle_addr);
         let oracle_price: i128 = oracle_client
             .get_price(&payment_token, &invoice.base_currency)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, MultiTokenInvoiceError::OraclePriceUnavailable)
-            });
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::OraclePriceUnavailable));
 
         if oracle_price <= 0 {
             panic_with_error!(env, MultiTokenInvoiceError::OraclePriceUnavailable);
@@ -512,13 +507,9 @@ impl MultiTokenInvoiceImpl {
         // Compute the base-currency equivalent of the payment
         let amount_in_base = payment_amount
             .checked_mul(oracle_price)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate)
-            })
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate))
             .checked_div(1_000_000)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate)
-            });
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate));
 
         // Slippage check: ensure oracle price does not deviate from stored conversion rate
         // by more than max_slippage_bps relative to the stored rate.
@@ -531,9 +522,7 @@ impl MultiTokenInvoiceImpl {
                 };
                 // diff / stored_rate > max_slippage_bps / 10_000
                 if diff.checked_mul(10_000).unwrap_or(i128::MAX)
-                    > stored_rate
-                        .checked_mul(max_slippage_bps as i128)
-                        .unwrap_or(i128::MAX)
+                    > stored_rate.checked_mul(max_slippage_bps as i128).unwrap_or(i128::MAX)
                 {
                     panic_with_error!(env, MultiTokenInvoiceError::SlippageExceeded);
                 }
@@ -545,9 +534,9 @@ impl MultiTokenInvoiceImpl {
             .payments_received
             .get(payment_token.clone())
             .unwrap_or(0);
-        let new_paid = current_paid.checked_add(amount_in_base).unwrap_or_else(|| {
-            panic_with_error!(env, MultiTokenInvoiceError::PaymentExceedsInvoiceAmount)
-        });
+        let new_paid = current_paid
+            .checked_add(amount_in_base)
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::PaymentExceedsInvoiceAmount));
 
         if new_paid > invoice.total_amount {
             panic_with_error!(env, MultiTokenInvoiceError::PaymentExceedsInvoiceAmount);
@@ -557,9 +546,7 @@ impl MultiTokenInvoiceImpl {
         let token_client = token::Client::new(env, &payment_token);
         token_client.transfer(&payer, &env.current_contract_address(), &payment_amount);
 
-        invoice
-            .payments_received
-            .set(payment_token.clone(), new_paid);
+        invoice.payments_received.set(payment_token.clone(), new_paid);
 
         if new_paid >= invoice.total_amount {
             invoice.status = InvoiceStatus::FullyPaid;
@@ -569,22 +556,18 @@ impl MultiTokenInvoiceImpl {
 
         let amount_in_settlement = amount_in_base
             .checked_mul(invoice.settlement_conversion_rate)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate)
-            })
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate))
             .checked_div(1_000_000)
-            .unwrap_or_else(|| {
-                panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate)
-            });
+            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::InvalidConversionRate));
 
         let payment_id: u32 = env
             .storage()
             .instance()
             .get(&Symbol::new(env, PAYMENT_COUNTER_KEY))
             .unwrap_or(0u32);
-        let next_payment_id = payment_id
-            .checked_add(1)
-            .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::SettlementFailed));
+        let next_payment_id = payment_id.checked_add(1).unwrap_or_else(|| {
+            panic_with_error!(env, MultiTokenInvoiceError::SettlementFailed)
+        });
 
         let now = env.ledger().timestamp();
 
@@ -618,9 +601,7 @@ impl MultiTokenInvoiceImpl {
             oracle_price,
             max_slippage_bps,
         };
-        env.storage()
-            .persistent()
-            .set(&settlement_key, &settlement_record);
+        env.storage().persistent().set(&settlement_key, &settlement_record);
 
         // Emit cross-token settlement event
         env.events().publish(
@@ -648,9 +629,9 @@ impl MultiTokenInvoiceImpl {
 
         let mut total_paid: i128 = 0;
         for payment in invoice.payments_received.iter() {
-            total_paid = total_paid.checked_add(payment.1).unwrap_or_else(|| {
-                panic_with_error!(env, MultiTokenInvoiceError::SettlementFailed)
-            });
+            total_paid = total_paid
+                .checked_add(payment.1)
+                .unwrap_or_else(|| panic_with_error!(env, MultiTokenInvoiceError::SettlementFailed));
         }
 
         invoice

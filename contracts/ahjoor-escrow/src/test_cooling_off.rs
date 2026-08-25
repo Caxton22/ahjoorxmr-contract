@@ -2,22 +2,9 @@
 use super::*;
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{
-    testutils::{Address as _, Ledger},
-    Address, BytesN, Env, Vec,
-};
+use soroban_sdk::{testutils::{Address as _, Ledger}, Address, BytesN, Env, Vec};
 
-fn setup_cooling_off<'a>() -> (
-    Env,
-    AhjoorEscrowContractClient<'a>,
-    Address,
-    Address,
-    Address,
-    Address,
-    Address,
-    TokenClient<'a>,
-    TokenAdminClient<'a>,
-) {
+fn setup_cooling_off<'a>() -> (Env, AhjoorEscrowContractClient<'a>, Address, Address, Address, Address, Address, TokenClient<'a>, TokenAdminClient<'a>) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -29,9 +16,7 @@ fn setup_cooling_off<'a>() -> (
     let seller = Address::generate(&env);
     let arbiter = Address::generate(&env);
 
-    let token_addr = env
-        .register_stellar_asset_contract_v2(admin.clone())
-        .address();
+    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
     let token_client = TokenClient::new(&env, &token_addr);
     let token_admin_client = TokenAdminClient::new(&env, &token_addr);
 
@@ -41,36 +26,13 @@ fn setup_cooling_off<'a>() -> (
 
     let deadline = env.ledger().timestamp() + 10_000;
     let escrow_id = client.create_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &500,
-        &token_addr,
-        &deadline,
-        &None,
-        &Vec::new(&env),
-        &false,
-        &0u32,
+        &buyer, &seller, &arbiter, &500, &token_addr, &deadline,
+        &None, &Vec::new(&env), &false, &0u32,
     );
     // Raise dispute
-    client.dispute_escrow(
-        &buyer,
-        &escrow_id,
-        &soroban_sdk::String::from_str(&env, "bad delivery"),
-        &500,
-    );
+    client.dispute_escrow(&buyer, &escrow_id, &soroban_sdk::String::from_str(&env, "bad delivery"), &500);
 
-    (
-        env,
-        client,
-        admin,
-        buyer,
-        seller,
-        arbiter,
-        token_addr,
-        token_client,
-        token_admin_client,
-    )
+    (env, client, admin, buyer, seller, arbiter, token_addr, token_client, token_admin_client)
 }
 
 fn make_reason_hash(env: &Env) -> BytesN<32> {
@@ -82,8 +44,7 @@ fn make_reason_hash(env: &Env) -> BytesN<32> {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_normal_finalization_after_cooling_off() {
-    let (env, client, admin, buyer, seller, arbiter, _token_addr, token_client, _) =
-        setup_cooling_off();
+    let (env, client, admin, buyer, seller, arbiter, _token_addr, token_client, _) = setup_cooling_off();
     let escrow_id = 0u32;
     let cooling_off = 3600u64; // 1 hour
 
@@ -116,8 +77,7 @@ fn test_normal_finalization_after_cooling_off() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_flagged_then_reviewed() {
-    let (env, client, admin, buyer, _seller, arbiter, _token_addr, _token_client, _) =
-        setup_cooling_off();
+    let (env, client, admin, buyer, _seller, arbiter, _token_addr, _token_client, _) = setup_cooling_off();
     let escrow_id = 0u32;
     let cooling_off = 3600u64;
 
@@ -144,8 +104,7 @@ fn test_flagged_then_reviewed() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_flag_after_window_expired() {
-    let (env, client, admin, buyer, _seller, arbiter, _token_addr, _token_client, _) =
-        setup_cooling_off();
+    let (env, client, admin, buyer, _seller, arbiter, _token_addr, _token_client, _) = setup_cooling_off();
     let escrow_id = 0u32;
     let cooling_off = 3600u64;
 
@@ -156,12 +115,8 @@ fn test_flag_after_window_expired() {
     env.ledger().with_mut(|l| l.timestamp += cooling_off + 1);
 
     // Attempt to flag after window — should panic
-    let __typed_err_result =
-        client.try_flag_resolution_error(&buyer, &escrow_id, &make_reason_hash(&env));
-    assert_eq!(
-        __typed_err_result.unwrap_err().unwrap(),
-        EscrowErrorExt::CoolingOffWindowHasExpired.into()
-    );
+    let __typed_err_result = client.try_flag_resolution_error(&buyer, &escrow_id, &make_reason_hash(&env));
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::CoolingOffWindowHasExpired.into());
 }
 
 // ---------------------------------------------------------------------------
@@ -169,8 +124,7 @@ fn test_flag_after_window_expired() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_finalize_before_window_elapsed() {
-    let (env, client, admin, _buyer, _seller, arbiter, _token_addr, _token_client, _) =
-        setup_cooling_off();
+    let (env, client, admin, _buyer, _seller, arbiter, _token_addr, _token_client, _) = setup_cooling_off();
     let escrow_id = 0u32;
     let cooling_off = 3600u64;
 
@@ -179,10 +133,7 @@ fn test_finalize_before_window_elapsed() {
 
     // Try to finalize immediately — should panic
     let __typed_err_result = client.try_finalize_resolution(&escrow_id);
-    assert_eq!(
-        __typed_err_result.unwrap_err().unwrap(),
-        EscrowErrorExt::CoolingOffWindowHasNotElapsed.into()
-    );
+    assert_eq!(__typed_err_result.unwrap_err().unwrap(), EscrowErrorExt::CoolingOffWindowHasNotElapsed.into());
 }
 
 // ---------------------------------------------------------------------------
@@ -190,8 +141,7 @@ fn test_finalize_before_window_elapsed() {
 // ---------------------------------------------------------------------------
 #[test]
 fn test_no_cooling_off_immediate_release() {
-    let (_env, client, _admin, buyer, _seller, arbiter, _token_addr, token_client, _) =
-        setup_cooling_off();
+    let (_env, client, _admin, buyer, _seller, arbiter, _token_addr, token_client, _) = setup_cooling_off();
     let escrow_id = 0u32;
 
     // cooling_off = 0 (default) → immediate execution
@@ -217,14 +167,12 @@ fn test_flag_resolution_error_winner_buyer_cannot_flag() {
     let contract_id = env.register(AhjoorEscrowContract, ());
     let client = AhjoorEscrowContractClient::new(&env, &contract_id);
 
-    let admin = Address::generate(&env);
-    let buyer = Address::generate(&env);
-    let seller = Address::generate(&env);
+    let admin   = Address::generate(&env);
+    let buyer   = Address::generate(&env);
+    let seller  = Address::generate(&env);
     let arbiter = Address::generate(&env);
 
-    let token_addr = env
-        .register_stellar_asset_contract_v2(admin.clone())
-        .address();
+    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
     let token_admin_client = soroban_sdk::token::StellarAssetClient::new(&env, &token_addr);
     token_admin_client.mint(&buyer, &1_000);
 
@@ -233,22 +181,12 @@ fn test_flag_resolution_error_winner_buyer_cannot_flag() {
 
     let deadline = env.ledger().timestamp() + 10_000;
     let escrow_id = client.create_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &500,
-        &token_addr,
-        &deadline,
-        &None,
-        &Vec::new(&env),
-        &false,
-        &0u32,
+        &buyer, &seller, &arbiter, &500, &token_addr, &deadline,
+        &None, &Vec::new(&env), &false, &0u32,
     );
     client.dispute_escrow(
-        &buyer,
-        &escrow_id,
-        &soroban_sdk::String::from_str(&env, "dispute"),
-        &500,
+        &buyer, &escrow_id,
+        &soroban_sdk::String::from_str(&env, "dispute"), &500,
     );
     client.set_resolution_cooloff_secs(&admin, &3_600u64);
     // Arbiter rules 100% in buyer's favour → buyer is the WINNER
@@ -261,19 +199,13 @@ fn test_flag_resolution_error_winner_buyer_cannot_flag() {
         .try_flag_resolution_error(&buyer, &escrow_id, &reason)
         .unwrap_err()
         .unwrap();
-    assert_eq!(
-        err,
-        EscrowErrorExt4::OnlyLosingPartyCanFlagResolutionError.into()
-    );
+    assert_eq!(err, EscrowErrorExt4::OnlyLosingPartyCanFlagResolutionError.into());
 
     // Losing seller flags — must succeed
     client.flag_resolution_error(&seller, &escrow_id, &reason);
     // Confirm the flag was recorded (finalization now blocked)
     env.ledger().with_mut(|l| l.timestamp += 3_601);
-    let finalize_err = client
-        .try_finalize_resolution(&escrow_id)
-        .unwrap_err()
-        .unwrap();
+    let finalize_err = client.try_finalize_resolution(&escrow_id).unwrap_err().unwrap();
     assert_eq!(
         finalize_err,
         EscrowErrorExt::ResolutionIsFlaggedAdminMustReviewBeforeFinalization.into(),
@@ -290,14 +222,12 @@ fn test_flag_resolution_error_winner_seller_cannot_flag() {
     let contract_id = env.register(AhjoorEscrowContract, ());
     let client = AhjoorEscrowContractClient::new(&env, &contract_id);
 
-    let admin = Address::generate(&env);
-    let buyer = Address::generate(&env);
-    let seller = Address::generate(&env);
+    let admin   = Address::generate(&env);
+    let buyer   = Address::generate(&env);
+    let seller  = Address::generate(&env);
     let arbiter = Address::generate(&env);
 
-    let token_addr = env
-        .register_stellar_asset_contract_v2(admin.clone())
-        .address();
+    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
     let token_admin_client = soroban_sdk::token::StellarAssetClient::new(&env, &token_addr);
     token_admin_client.mint(&buyer, &1_000);
 
@@ -306,22 +236,12 @@ fn test_flag_resolution_error_winner_seller_cannot_flag() {
 
     let deadline = env.ledger().timestamp() + 10_000;
     let escrow_id = client.create_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &500,
-        &token_addr,
-        &deadline,
-        &None,
-        &Vec::new(&env),
-        &false,
-        &0u32,
+        &buyer, &seller, &arbiter, &500, &token_addr, &deadline,
+        &None, &Vec::new(&env), &false, &0u32,
     );
     client.dispute_escrow(
-        &buyer,
-        &escrow_id,
-        &soroban_sdk::String::from_str(&env, "dispute"),
-        &500,
+        &buyer, &escrow_id,
+        &soroban_sdk::String::from_str(&env, "dispute"), &500,
     );
     client.set_resolution_cooloff_secs(&admin, &3_600u64);
     // Arbiter rules 0% for buyer → seller is the WINNER
@@ -334,19 +254,13 @@ fn test_flag_resolution_error_winner_seller_cannot_flag() {
         .try_flag_resolution_error(&seller, &escrow_id, &reason)
         .unwrap_err()
         .unwrap();
-    assert_eq!(
-        err,
-        EscrowErrorExt4::OnlyLosingPartyCanFlagResolutionError.into()
-    );
+    assert_eq!(err, EscrowErrorExt4::OnlyLosingPartyCanFlagResolutionError.into());
 
     // Losing buyer flags — must succeed
     client.flag_resolution_error(&buyer, &escrow_id, &reason);
     // Confirm finalization is blocked
     env.ledger().with_mut(|l| l.timestamp += 3_601);
-    let finalize_err = client
-        .try_finalize_resolution(&escrow_id)
-        .unwrap_err()
-        .unwrap();
+    let finalize_err = client.try_finalize_resolution(&escrow_id).unwrap_err().unwrap();
     assert_eq!(
         finalize_err,
         EscrowErrorExt::ResolutionIsFlaggedAdminMustReviewBeforeFinalization.into(),
@@ -364,14 +278,12 @@ fn test_flag_resolution_error_split_verdict_both_parties_may_flag() {
     let contract_id = env.register(AhjoorEscrowContract, ());
     let client = AhjoorEscrowContractClient::new(&env, &contract_id);
 
-    let admin = Address::generate(&env);
-    let buyer = Address::generate(&env);
-    let seller = Address::generate(&env);
+    let admin   = Address::generate(&env);
+    let buyer   = Address::generate(&env);
+    let seller  = Address::generate(&env);
     let arbiter = Address::generate(&env);
 
-    let token_addr = env
-        .register_stellar_asset_contract_v2(admin.clone())
-        .address();
+    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
     let token_admin_client = soroban_sdk::token::StellarAssetClient::new(&env, &token_addr);
     token_admin_client.mint(&buyer, &1_000);
 
@@ -380,22 +292,12 @@ fn test_flag_resolution_error_split_verdict_both_parties_may_flag() {
 
     let deadline = env.ledger().timestamp() + 10_000;
     let escrow_id = client.create_escrow(
-        &buyer,
-        &seller,
-        &arbiter,
-        &500,
-        &token_addr,
-        &deadline,
-        &None,
-        &Vec::new(&env),
-        &false,
-        &0u32,
+        &buyer, &seller, &arbiter, &500, &token_addr, &deadline,
+        &None, &Vec::new(&env), &false, &0u32,
     );
     client.dispute_escrow(
-        &buyer,
-        &escrow_id,
-        &soroban_sdk::String::from_str(&env, "dispute"),
-        &500,
+        &buyer, &escrow_id,
+        &soroban_sdk::String::from_str(&env, "dispute"), &500,
     );
     client.set_resolution_cooloff_secs(&admin, &3_600u64);
     // Split verdict — neither side is an outright winner
@@ -408,10 +310,7 @@ fn test_flag_resolution_error_split_verdict_both_parties_may_flag() {
 
     // Confirm flag recorded and finalization blocked
     env.ledger().with_mut(|l| l.timestamp += 3_601);
-    let finalize_err = client
-        .try_finalize_resolution(&escrow_id)
-        .unwrap_err()
-        .unwrap();
+    let finalize_err = client.try_finalize_resolution(&escrow_id).unwrap_err().unwrap();
     assert_eq!(
         finalize_err,
         EscrowErrorExt::ResolutionIsFlaggedAdminMustReviewBeforeFinalization.into(),

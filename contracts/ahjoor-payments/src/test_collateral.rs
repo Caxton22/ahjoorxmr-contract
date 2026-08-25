@@ -2,7 +2,10 @@
 use super::*;
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{testutils::Address as _, Address, Env};
+use soroban_sdk::{
+    testutils::Address as _,
+    Address, Env,
+};
 
 // ---------------------------------------------------------------------------
 //  Test Helpers
@@ -293,10 +296,7 @@ fn test_resolve_dispute_for_merchant_no_slash() {
     // Resolve in merchant's favour — no slash
     s.client.resolve_dispute(&payment_id, &true);
 
-    assert_eq!(
-        s.client.get_collateral_balance(&merchant),
-        collateral_before
-    );
+    assert_eq!(s.client.get_collateral_balance(&merchant), collateral_before);
 }
 
 #[test]

@@ -667,10 +667,7 @@ fn test_dispute_escalation_changes_status() {
     s.client.dispute_payment(&customer, &payment_id, &reason);
 
     // Confirm status is Disputed before escalation.
-    assert_eq!(
-        s.client.get_payment(&payment_id).status,
-        PaymentStatus::Disputed
-    );
+    assert_eq!(s.client.get_payment(&payment_id).status, PaymentStatus::Disputed);
 
     s.client.set_dispute_timeout(&3600);
 
@@ -897,13 +894,10 @@ fn test_get_customer_rate_limit_status_fresh_customer() {
 
     let customer = Address::generate(&s.env);
     let (count, window_start) = s.client.get_customer_rate_limit_status(&customer);
-
+    
     // Fresh customer should have no recorded activity
     assert_eq!(count, 0, "Fresh customer should have count 0");
-    assert_eq!(
-        window_start, 0,
-        "Fresh customer should return window_start_ledger 0"
-    );
+    assert_eq!(window_start, 0, "Fresh customer should return window_start_ledger 0");
 }
 
 /// #649: get_customer_rate_limit_status returns current count and window for active customer.
@@ -935,10 +929,7 @@ fn test_get_customer_rate_limit_status_mid_window() {
     // Check status: should show count=1, window_start at or near initial_ledger
     let (count, window_start) = s.client.get_customer_rate_limit_status(&customer);
     assert_eq!(count, 1, "Should have count=1 after first payment");
-    assert!(
-        window_start >= initial_ledger,
-        "window_start should be >= initial_ledger"
-    );
+    assert!(window_start >= initial_ledger, "window_start should be >= initial_ledger");
 
     // Create second payment in same window
     s.client.create_payment(
@@ -953,10 +944,7 @@ fn test_get_customer_rate_limit_status_mid_window() {
 
     let (count2, window_start2) = s.client.get_customer_rate_limit_status(&customer);
     assert_eq!(count2, 2, "Should have count=2 after second payment");
-    assert_eq!(
-        window_start2, window_start,
-        "window_start should not change within window"
-    );
+    assert_eq!(window_start2, window_start, "window_start should not change within window");
 
     // Create third payment (at max)
     s.client.create_payment(
@@ -971,10 +959,7 @@ fn test_get_customer_rate_limit_status_mid_window() {
 
     let (count3, window_start3) = s.client.get_customer_rate_limit_status(&customer);
     assert_eq!(count3, 3, "Should have count=3 after third payment");
-    assert_eq!(
-        window_start3, window_start,
-        "window_start should remain consistent"
-    );
+    assert_eq!(window_start3, window_start, "window_start should remain consistent");
 }
 
 /// #649: get_customer_rate_limit_status shows window reset after window expires.
@@ -1000,11 +985,9 @@ fn test_get_customer_rate_limit_status_window_reset() {
         &None,
     );
 
-    let (count_before, window_start_before) = s.client.get_customer_rate_limit_status(&customer);
-    assert_eq!(
-        count_before, 1,
-        "Should have 1 payment before window expires"
-    );
+    let (count_before, window_start_before) =
+        s.client.get_customer_rate_limit_status(&customer);
+    assert_eq!(count_before, 1, "Should have 1 payment before window expires");
 
     // Advance ledger by exactly the window size to expire the window
     s.env
@@ -1481,9 +1464,9 @@ fn test_multi_token_usdc_fallback() {
     let merchant = Address::generate(&s.env);
     s.usdc_admin.mint(&customer, &1000);
 
-    let pid =
-        s.client
-            .create_payment_multi_token(&customer, &merchant, &500, &s.usdc_addr, &Some(50));
+    let pid = s
+        .client
+        .create_payment_multi_token(&customer, &merchant, &500, &s.usdc_addr, &Some(50));
 
     // Verify payment was created
     let payment = s.client.get_payment(&pid);
@@ -1510,9 +1493,9 @@ fn test_multi_token_xlm_payment_correct_amount() {
     // Customer needs 1000 XLM for 100 USDC
     s.xlm_admin.mint(&customer, &2000);
 
-    let pid =
-        s.client
-            .create_payment_multi_token(&customer, &merchant, &100, &s.xlm_addr, &Some(50));
+    let pid = s
+        .client
+        .create_payment_multi_token(&customer, &merchant, &100, &s.xlm_addr, &Some(50));
 
     // required_token_amount = 100 * 10_000_000 / 1_000_000 = 1000
     assert_eq!(s.xlm_client.balance(&customer), 1000);
@@ -4216,34 +4199,14 @@ fn test_bulk_expire_ineligible_payment_skipped() {
     let merchant = Address::generate(&s.env);
     s.token_admin_client.mint(&customer, &1000);
 
-    let pid0 = s.client.create_payment(
-        &customer,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-    );
-    let pid1 = s.client.create_payment(
-        &customer,
-        &merchant,
-        &200,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-    );
+    let pid0 = s.client.create_payment(&customer, &merchant, &100, &s.token_addr, &None, &None, &None);
+    let pid1 = s.client.create_payment(&customer, &merchant, &200, &s.token_addr, &None, &None, &None);
 
     s.client.complete_payment(&pid1);
-    s.env
-        .ledger()
-        .with_mut(|l| l.timestamp = 7 * 24 * 60 * 60 + 1);
+    s.env.ledger().with_mut(|l| l.timestamp = 7 * 24 * 60 * 60 + 1);
 
     // pid1 is Completed (ineligible) — it should be skipped, pid0 expired
-    let skipped = s
-        .client
-        .bulk_expire_payments(&s.admin, &vec![&s.env, pid0, pid1]);
+    let skipped = s.client.bulk_expire_payments(&s.admin, &vec![&s.env, pid0, pid1]);
 
     assert_eq!(s.client.get_payment(&pid0).status, PaymentStatus::Expired);
     assert_eq!(s.client.get_payment(&pid1).status, PaymentStatus::Completed);
@@ -4259,11 +4222,7 @@ fn test_bulk_expire_exceeds_cap_rejected() {
     for i in 0u32..21 {
         ids.push_back(i);
     }
-    let err = s
-        .client
-        .try_bulk_expire_payments(&s.admin, &ids)
-        .unwrap_err()
-        .unwrap();
+    let err = s.client.try_bulk_expire_payments(&s.admin, &ids).unwrap_err().unwrap();
     assert_eq!(err, ExtError::InvalidAmount.into());
 }
 
@@ -4275,15 +4234,7 @@ fn test_bulk_expire_not_expired_skipped() {
     let merchant = Address::generate(&s.env);
     s.token_admin_client.mint(&customer, &500);
 
-    let pid = s.client.create_payment(
-        &customer,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-    );
+    let pid = s.client.create_payment(&customer, &merchant, &100, &s.token_addr, &None, &None, &None);
     // Do NOT advance time — payment hasn't expired; should be skipped
     let skipped = s.client.bulk_expire_payments(&s.admin, &vec![&s.env, pid]);
     assert_eq!(skipped.len(), 1);
@@ -4301,37 +4252,19 @@ fn test_bulk_expire_cap_enforced() {
     // Create 5 expired + 3 already-expired (completed) payments
     let mut expired_ids = soroban_sdk::Vec::new(&s.env);
     for _ in 0..5 {
-        let pid = s.client.create_payment(
-            &customer,
-            &merchant,
-            &100,
-            &s.token_addr,
-            &None,
-            &None,
-            &None,
-        );
+        let pid = s.client.create_payment(&customer, &merchant, &100, &s.token_addr, &None, &None, &None);
         expired_ids.push_back(pid);
     }
     let mut completed_ids = soroban_sdk::Vec::new(&s.env);
     for _ in 0..3 {
-        let pid = s.client.create_payment(
-            &customer,
-            &merchant,
-            &100,
-            &s.token_addr,
-            &None,
-            &None,
-            &None,
-        );
+        let pid = s.client.create_payment(&customer, &merchant, &100, &s.token_addr, &None, &None, &None);
         completed_ids.push_back(pid);
     }
 
     for i in 0..3 {
         s.client.complete_payment(&completed_ids.get(i).unwrap());
     }
-    s.env
-        .ledger()
-        .with_mut(|l| l.timestamp = 7 * 24 * 60 * 60 + 1);
+    s.env.ledger().with_mut(|l| l.timestamp = 7 * 24 * 60 * 60 + 1);
 
     let mut all_ids = expired_ids.clone();
     for pid in completed_ids.iter() {
@@ -4347,14 +4280,8 @@ fn test_bulk_expire_cap_enforced() {
 
     // Cap enforcement: 21 IDs → InvalidAmount
     let mut big_batch = soroban_sdk::Vec::new(&s.env);
-    for i in 0u32..21 {
-        big_batch.push_back(i);
-    }
-    let err = s
-        .client
-        .try_bulk_expire_payments(&s.admin, &big_batch)
-        .unwrap_err()
-        .unwrap();
+    for i in 0u32..21 { big_batch.push_back(i); }
+    let err = s.client.try_bulk_expire_payments(&s.admin, &big_batch).unwrap_err().unwrap();
     assert_eq!(err, ExtError::InvalidAmount.into());
 }
 
@@ -5292,13 +5219,7 @@ fn test_subscription_without_trial_charges_immediately() {
     s.token_admin_client.mint(&subscriber, &10_000);
 
     let sub_id = s.client.create_subscription_with_trial(
-        &subscriber,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &60,
-        &10,
-        &None,
+        &subscriber, &merchant, &100, &s.token_addr, &60, &10, &None,
     );
 
     s.client.charge_subscription(&sub_id);
@@ -5316,13 +5237,7 @@ fn test_subscription_with_zero_trial_charges_immediately() {
     s.token_admin_client.mint(&subscriber, &10_000);
 
     let sub_id = s.client.create_subscription_with_trial(
-        &subscriber,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &60,
-        &10,
-        &Some(0),
+        &subscriber, &merchant, &100, &s.token_addr, &60, &10, &Some(0),
     );
 
     s.client.charge_subscription(&sub_id);
@@ -5339,13 +5254,7 @@ fn test_charge_during_trial_panics() {
     s.token_admin_client.mint(&subscriber, &10_000);
 
     let sub_id = s.client.create_subscription_with_trial(
-        &subscriber,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &60,
-        &10,
-        &Some(86_400),
+        &subscriber, &merchant, &100, &s.token_addr, &60, &10, &Some(86_400),
     );
 
     s.client.charge_subscription(&sub_id);
@@ -5360,13 +5269,7 @@ fn test_charge_after_trial_succeeds() {
     s.token_admin_client.mint(&subscriber, &10_000);
 
     let sub_id = s.client.create_subscription_with_trial(
-        &subscriber,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &60,
-        &10,
-        &Some(86_400),
+        &subscriber, &merchant, &100, &s.token_addr, &60, &10, &Some(86_400),
     );
 
     s.env.ledger().with_mut(|l| l.timestamp += 86_400 + 1);
@@ -5385,13 +5288,7 @@ fn test_get_trial_remaining_during_and_after_trial() {
     s.token_admin_client.mint(&subscriber, &10_000);
 
     let sub_id = s.client.create_subscription_with_trial(
-        &subscriber,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &60,
-        &10,
-        &Some(3600),
+        &subscriber, &merchant, &100, &s.token_addr, &60, &10, &Some(3600),
     );
 
     assert_eq!(s.client.get_trial_remaining(&sub_id), 3600);
@@ -5412,13 +5309,7 @@ fn test_subscription_without_trial_reports_zero_remaining() {
     s.token_admin_client.mint(&subscriber, &10_000);
 
     let sub_id = s.client.create_subscription_with_trial(
-        &subscriber,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &60,
-        &10,
-        &None,
+        &subscriber, &merchant, &100, &s.token_addr, &60, &10, &None,
     );
 
     assert_eq!(s.client.get_trial_remaining(&sub_id), 0);
@@ -5599,16 +5490,8 @@ fn test_create_payment_with_default_expiry_uses_global_timeout() {
 
     let now = s.env.ledger().timestamp();
     let pid = s.client.create_payment_with_expiry(
-        &customer,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
+        &customer, &merchant, &100, &s.token_addr,
+        &None, &None, &None, &None, &None, &None,
     );
     let payment = s.client.get_payment(&pid);
     assert_eq!(payment.expires_at, now + s.client.get_payment_timeout());
@@ -5626,16 +5509,8 @@ fn test_create_payment_with_custom_expiry_overrides_default() {
     let now = s.env.ledger().timestamp();
     let custom_expiry: u64 = 3600;
     let pid = s.client.create_payment_with_expiry(
-        &customer,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &Some(custom_expiry),
+        &customer, &merchant, &100, &s.token_addr,
+        &None, &None, &None, &None, &None, &Some(custom_expiry),
     );
     let payment = s.client.get_payment(&pid);
     assert_eq!(payment.expires_at, now + custom_expiry);
@@ -5653,16 +5528,8 @@ fn test_create_payment_at_min_boundary_succeeds() {
     s.token_admin_client.mint(&customer, &1000);
 
     let pid = s.client.create_payment_with_expiry(
-        &customer,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &Some(60),
+        &customer, &merchant, &100, &s.token_addr,
+        &None, &None, &None, &None, &None, &Some(60),
     );
     let payment = s.client.get_payment(&pid);
     let now = s.env.ledger().timestamp();
@@ -5680,16 +5547,8 @@ fn test_create_payment_at_max_boundary_succeeds() {
     s.token_admin_client.mint(&customer, &1000);
 
     let pid = s.client.create_payment_with_expiry(
-        &customer,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &Some(86_400),
+        &customer, &merchant, &100, &s.token_addr,
+        &None, &None, &None, &None, &None, &Some(86_400),
     );
     let payment = s.client.get_payment(&pid);
     let now = s.env.ledger().timestamp();
@@ -5708,16 +5567,8 @@ fn test_create_payment_below_min_expiry_panics() {
     s.token_admin_client.mint(&customer, &1000);
 
     s.client.create_payment_with_expiry(
-        &customer,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &Some(30),
+        &customer, &merchant, &100, &s.token_addr,
+        &None, &None, &None, &None, &None, &Some(30),
     );
 }
 
@@ -5733,16 +5584,8 @@ fn test_create_payment_above_max_expiry_panics() {
     s.token_admin_client.mint(&customer, &1000);
 
     s.client.create_payment_with_expiry(
-        &customer,
-        &merchant,
-        &100,
-        &s.token_addr,
-        &None,
-        &None,
-        &None,
-        &None,
-        &None,
-        &Some(86_500),
+        &customer, &merchant, &100, &s.token_addr,
+        &None, &None, &None, &None, &None, &Some(86_500),
     );
 }
 
@@ -5778,9 +5621,9 @@ fn test_multi_token_uses_provided_slippage_within_bounds() {
     s.xlm_admin.mint(&customer, &500);
 
     // Provide explicit 100 bps — within default bounds [0, 10000]
-    let pid =
-        s.client
-            .create_payment_multi_token(&customer, &merchant, &200, &s.xlm_addr, &Some(100));
+    let pid = s
+        .client
+        .create_payment_multi_token(&customer, &merchant, &200, &s.xlm_addr, &Some(100));
 
     let payment = s.client.get_payment(&pid);
     assert_eq!(payment.amount, 200);
@@ -5790,7 +5633,8 @@ fn test_multi_token_uses_provided_slippage_within_bounds() {
 fn test_update_slippage_config_and_enforce_bounds() {
     let s = setup_multi_token();
     // Set tight bounds: default=100, min=50, max=200
-    s.client.update_slippage_config(&s._admin, &100, &50, &200);
+    s.client
+        .update_slippage_config(&s._admin, &100, &50, &200);
 
     let cfg = s.client.get_slippage_config();
     assert_eq!(cfg.default_bps, 100);
@@ -5803,7 +5647,8 @@ fn test_update_slippage_config_and_enforce_bounds() {
 fn test_multi_token_slippage_below_min_rejected() {
     let s = setup_multi_token();
     // Set min=50
-    s.client.update_slippage_config(&s._admin, &100, &50, &200);
+    s.client
+        .update_slippage_config(&s._admin, &100, &50, &200);
 
     set_oracle_price(&s, 10_000_000, 100);
     let customer = Address::generate(&s.env);
@@ -5820,7 +5665,8 @@ fn test_multi_token_slippage_below_min_rejected() {
 fn test_multi_token_slippage_above_max_rejected() {
     let s = setup_multi_token();
     // Set max=200
-    s.client.update_slippage_config(&s._admin, &100, &50, &200);
+    s.client
+        .update_slippage_config(&s._admin, &100, &50, &200);
 
     set_oracle_price(&s, 10_000_000, 100);
     let customer = Address::generate(&s.env);
@@ -5853,7 +5699,8 @@ fn test_slippage_tolerance_applied_event_emitted() {
 fn test_update_slippage_config_default_out_of_bounds_rejected() {
     let s = setup_multi_token();
     // default=300 is outside [50, 200]
-    s.client.update_slippage_config(&s._admin, &300, &50, &200);
+    s.client
+        .update_slippage_config(&s._admin, &300, &50, &200);
 }
 
 // ===========================================================================
@@ -6046,7 +5893,10 @@ fn test_cap_window_resets_after_window_seconds() {
         &None,
     );
     s.client.complete_payment(&pid3);
-    assert_eq!(s.client.get_payment(&pid3).status, PaymentStatus::Completed);
+    assert_eq!(
+        s.client.get_payment(&pid3).status,
+        PaymentStatus::Completed
+    );
 }
 
 #[test]
@@ -6109,9 +5959,15 @@ fn test_volume_cap_boundary_n_minus_1_pass_nth_rejected() {
     s.client.complete_payment(&pid_n);
 
     // N+1 payment is rejected
-    let pid_over =
-        s.client
-            .create_payment(&customer, &merchant, &1, &s.token_addr, &None, &None, &None);
+    let pid_over = s.client.create_payment(
+        &customer,
+        &merchant,
+        &1,
+        &s.token_addr,
+        &None,
+        &None,
+        &None,
+    );
     let result = s.client.try_complete_payment(&pid_over);
     assert_eq!(
         result.unwrap_err().unwrap(),
@@ -6149,10 +6005,7 @@ fn test_extend_payment_expiry_single() {
 
     let updated_payment = s.client.get_payment(&payment_id);
     assert_eq!(updated_payment.extension_count, 1);
-    assert_eq!(
-        updated_payment.expires_at,
-        initial_payment.expires_at + 100 * 5
-    ); // 5 seconds per ledger
+    assert_eq!(updated_payment.expires_at, initial_payment.expires_at + 100 * 5); // 5 seconds per ledger
 }
 
 #[test]
@@ -6180,13 +6033,8 @@ fn test_extend_payment_expiry_max_extensions() {
     s.client.extend_payment_expiry(&merchant, &payment_id, &100);
 
     // 4th extension should fail
-    let result = s
-        .client
-        .try_extend_payment_expiry(&merchant, &payment_id, &100);
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        Error::MaxExtensionsReached.into()
-    );
+    let result = s.client.try_extend_payment_expiry(&merchant, &payment_id, &100);
+    assert_eq!(result.unwrap_err().unwrap(), Error::MaxExtensionsReached.into());
 }
 
 #[test]
@@ -6212,13 +6060,8 @@ fn test_extend_payment_expiry_invalid_status() {
     s.client.complete_payment(&payment_id);
 
     // Try to extend completed payment
-    let result = s
-        .client
-        .try_extend_payment_expiry(&merchant, &payment_id, &100);
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        Error::InvalidPaymentStatus.into()
-    );
+    let result = s.client.try_extend_payment_expiry(&merchant, &payment_id, &100);
+    assert_eq!(result.unwrap_err().unwrap(), Error::InvalidPaymentStatus.into());
 }
 
 #[test]
@@ -6258,15 +6101,8 @@ fn test_extend_payment_expiry_max_ledgers_exceeded() {
     );
 
     // Try to extend with more than default max ledgers
-    let result = s.client.try_extend_payment_expiry(
-        &merchant,
-        &payment_id,
-        &(DEFAULT_MAX_EXTENSION_LEDGERS + 1),
-    );
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        Error::MaxExtensionLedgersExceeded.into()
-    );
+    let result = s.client.try_extend_payment_expiry(&merchant, &payment_id, &(DEFAULT_MAX_EXTENSION_LEDGERS + 1));
+    assert_eq!(result.unwrap_err().unwrap(), Error::MaxExtensionLedgersExceeded.into());
 }
 
 #[test]
@@ -6282,12 +6118,12 @@ fn test_withdrawal_default_limits_apply_to_new_merchant() {
     assert_eq!(cap, i128::MAX);
 
     // If admin updates defaults, new merchant should receive new bounds
-    s.client
-        .set_default_withdrawal_limits(&s.admin, &3600, &1000);
+    s.client.set_default_withdrawal_limits(&s.admin, &3600, &1000);
     let (new_window, new_cap) = s.client.get_withdrawal_rate_limit(&merchant);
     assert_eq!(new_window, 3600);
     assert_eq!(new_cap, 1000);
 }
+
 
 // ===========================================================================
 //  Customer Blocking Tests (#646)
@@ -6319,29 +6155,16 @@ fn test_get_block_entry_blocked_customer() {
     let evidence_hash = BytesN::<32>::from_array(&s.env, &[1u8; 32]);
 
     // Block the customer
-    s.client
-        .block_customer(&merchant, &customer, &reason, &evidence_hash);
+    s.client.block_customer(&merchant, &customer, &reason, &evidence_hash);
 
     // Retrieve the block entry
     let entry = s.client.get_block_entry(&merchant, &customer);
-    assert!(
-        entry.is_some(),
-        "Blocked customer should have a block entry"
-    );
+    assert!(entry.is_some(), "Blocked customer should have a block entry");
 
     let block_entry = entry.unwrap();
-    assert_eq!(
-        block_entry.customer, customer,
-        "Block entry customer should match"
-    );
-    assert_eq!(
-        block_entry.reason_code, reason,
-        "Block entry reason should match"
-    );
-    assert_eq!(
-        block_entry.evidence_hash, evidence_hash,
-        "Block entry evidence hash should match"
-    );
+    assert_eq!(block_entry.customer, customer, "Block entry customer should match");
+    assert_eq!(block_entry.reason_code, reason, "Block entry reason should match");
+    assert_eq!(block_entry.evidence_hash, evidence_hash, "Block entry evidence hash should match");
     assert_eq!(
         block_entry.blocked_at_ledger,
         s.env.ledger().sequence(),
@@ -6361,8 +6184,7 @@ fn test_get_block_entry_after_unblock() {
     let evidence_hash = BytesN::<32>::from_array(&s.env, &[2u8; 32]);
 
     // Block the customer
-    s.client
-        .block_customer(&merchant, &customer, &reason, &evidence_hash);
+    s.client.block_customer(&merchant, &customer, &reason, &evidence_hash);
     assert!(
         s.client.get_block_entry(&merchant, &customer).is_some(),
         "Customer should be blocked"
@@ -6401,8 +6223,7 @@ fn test_is_customer_blocked_true_for_blocked() {
     let evidence_hash = BytesN::<32>::from_array(&s.env, &[3u8; 32]);
 
     // Block the customer
-    s.client
-        .block_customer(&merchant, &customer, &reason, &evidence_hash);
+    s.client.block_customer(&merchant, &customer, &reason, &evidence_hash);
 
     let blocked = s.client.is_customer_blocked(&merchant, &customer);
     assert!(blocked, "Blocked customer should return true");
@@ -6420,8 +6241,7 @@ fn test_is_customer_blocked_after_unblock() {
     let evidence_hash = BytesN::<32>::from_array(&s.env, &[4u8; 32]);
 
     // Block and verify
-    s.client
-        .block_customer(&merchant, &customer, &reason, &evidence_hash);
+    s.client.block_customer(&merchant, &customer, &reason, &evidence_hash);
     assert!(
         s.client.is_customer_blocked(&merchant, &customer),
         "Customer should be blocked"
@@ -6450,8 +6270,7 @@ fn test_block_entry_per_merchant_isolation() {
     let evidence_b = BytesN::<32>::from_array(&s.env, &[6u8; 32]);
 
     // Block by merchant_a
-    s.client
-        .block_customer(&merchant_a, &customer, &reason_a, &evidence_a);
+    s.client.block_customer(&merchant_a, &customer, &reason_a, &evidence_a);
 
     // Merchant_a should see the customer blocked
     assert!(
@@ -6466,8 +6285,7 @@ fn test_block_entry_per_merchant_isolation() {
     );
 
     // Merchant_b can block the same customer with different reason
-    s.client
-        .block_customer(&merchant_b, &customer, &reason_b, &evidence_b);
+    s.client.block_customer(&merchant_b, &customer, &reason_b, &evidence_b);
     assert!(
         s.client.is_customer_blocked(&merchant_b, &customer),
         "Merchant_b should now see customer blocked"
@@ -6476,12 +6294,6 @@ fn test_block_entry_per_merchant_isolation() {
     // Both merchants should have block entries
     let entry_a = s.client.get_block_entry(&merchant_a, &customer).unwrap();
     let entry_b = s.client.get_block_entry(&merchant_b, &customer).unwrap();
-    assert_eq!(
-        entry_a.reason_code, reason_a,
-        "Merchant_a entry should have its reason"
-    );
-    assert_eq!(
-        entry_b.reason_code, reason_b,
-        "Merchant_b entry should have its reason"
-    );
+    assert_eq!(entry_a.reason_code, reason_a, "Merchant_a entry should have its reason");
+    assert_eq!(entry_b.reason_code, reason_b, "Merchant_b entry should have its reason");
 }

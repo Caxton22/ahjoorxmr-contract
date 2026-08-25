@@ -11,12 +11,14 @@
 //!   left unallocated.
 //! - Valid reveal, invalid reveal, no-reserve-met, and sniping prevention.
 
-use crate::{AhjoorContract, AhjoorContractClient, PayoutStrategy, RoscaConfig, VotingMode};
-use soroban_sdk::xdr::ToXdr;
+use crate::{
+    AhjoorContract, AhjoorContractClient, PayoutStrategy, RoscaConfig, VotingMode,
+};
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
     token, Address, Bytes, BytesN, Env, Vec,
 };
+use soroban_sdk::xdr::ToXdr;
 
 const COMMIT_DURATION: u64 = 500;
 const REVEAL_DURATION: u64 = 500;
@@ -134,9 +136,9 @@ fn test_sealed_auction_highest_valid_bid_wins() {
 
     // ── Commit phase ── bids stay hidden; deposit is the bid upper bound.
     hx.client
-        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1, 300, &salt1), &300);
+        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1,300, &salt1), &300);
     hx.client
-        .commit_slot_bid(&m2, &commit_hash(&hx.env, &m2, 500, &salt2), &500);
+        .commit_slot_bid(&m2, &commit_hash(&hx.env, &m2,500, &salt2), &500);
     assert_eq!(hx.token.balance(&hx.contract_id), 800);
 
     // ── Reveal phase ──
@@ -171,7 +173,7 @@ fn test_reveal_with_wrong_values_rejected() {
     let salt = BytesN::from_array(&hx.env, &[7u8; 32]);
 
     hx.client
-        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1, 300, &salt), &500);
+        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1,300, &salt), &500);
 
     hx.env.ledger().set_timestamp(1_000 + COMMIT_DURATION + 1);
     // Reveal a different amount (400) than was committed (300) → hash mismatch.
@@ -188,7 +190,7 @@ fn test_reveal_before_reveal_phase_rejected() {
     let salt = BytesN::from_array(&hx.env, &[7u8; 32]);
 
     hx.client
-        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1, 300, &salt), &300);
+        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1,300, &salt), &300);
 
     // Still inside the commit phase — reveal must be rejected.
     hx.client.reveal_slot_bid(&m1, &0, &300, &salt);
@@ -204,7 +206,7 @@ fn test_commit_after_commit_phase_rejected() {
 
     hx.env.ledger().set_timestamp(1_000 + COMMIT_DURATION + 1);
     hx.client
-        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1, 300, &salt), &300);
+        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1,300, &salt), &300);
 }
 
 #[test]
@@ -218,9 +220,9 @@ fn test_no_bid_above_reserve_leaves_slot_unallocated() {
     let salt2 = BytesN::from_array(&hx.env, &[9u8; 32]);
 
     hx.client
-        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1, 300, &salt1), &300);
+        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1,300, &salt1), &300);
     hx.client
-        .commit_slot_bid(&m2, &commit_hash(&hx.env, &m2, 500, &salt2), &500);
+        .commit_slot_bid(&m2, &commit_hash(&hx.env, &m2,500, &salt2), &500);
 
     hx.env.ledger().set_timestamp(1_000 + COMMIT_DURATION + 1);
     hx.client.reveal_slot_bid(&m1, &0, &300, &salt1);
@@ -245,13 +247,10 @@ fn test_unrevealed_commit_is_forfeited() {
     let salt2 = BytesN::from_array(&hx.env, &[9u8; 32]);
 
     // m1 commits but never reveals; m2 commits and reveals.
-    hx.client.commit_slot_bid(
-        &m1,
-        &commit_hash(&hx.env, &m1, 300, &BytesN::from_array(&hx.env, &[7u8; 32])),
-        &300,
-    );
     hx.client
-        .commit_slot_bid(&m2, &commit_hash(&hx.env, &m2, 500, &salt2), &500);
+        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1,300, &BytesN::from_array(&hx.env, &[7u8; 32])), &300);
+    hx.client
+        .commit_slot_bid(&m2, &commit_hash(&hx.env, &m2,500, &salt2), &500);
 
     hx.env.ledger().set_timestamp(1_000 + COMMIT_DURATION + 1);
     hx.client.reveal_slot_bid(&m2, &0, &500, &salt2);
@@ -280,19 +279,13 @@ fn test_late_reveal_rejected() {
     let m1 = hx.members.get(1).unwrap();
     let salt = BytesN::from_array(&hx.env, &[7u8; 32]);
 
-    hx.client
-        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1, 300, &salt), &300);
+    hx.client.commit_slot_bid(&m1, &commit_hash(&hx.env, &m1, 300, &salt), &300);
 
     // Advance past the entire reveal window.
-    hx.env
-        .ledger()
-        .set_timestamp(1_000 + COMMIT_DURATION + REVEAL_DURATION + 1);
+    hx.env.ledger().set_timestamp(1_000 + COMMIT_DURATION + REVEAL_DURATION + 1);
 
     let result = hx.client.try_reveal_slot_bid(&m1, &0, &300, &salt);
-    assert!(
-        result.is_err(),
-        "Reveal after reveal_until must be rejected"
-    );
+    assert!(result.is_err(), "Reveal after reveal_until must be rejected");
 }
 
 /// settle_sealed_slot_auction called before reveal_until returns AuctionWindowClosed (103).
@@ -302,8 +295,7 @@ fn test_early_settle_rejected() {
     let m1 = hx.members.get(1).unwrap();
     let salt = BytesN::from_array(&hx.env, &[7u8; 32]);
 
-    hx.client
-        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1, 300, &salt), &300);
+    hx.client.commit_slot_bid(&m1, &commit_hash(&hx.env, &m1, 300, &salt), &300);
 
     // Advance into the reveal phase but NOT past it.
     hx.env.ledger().set_timestamp(1_000 + COMMIT_DURATION + 1);
@@ -311,10 +303,7 @@ fn test_early_settle_rejected() {
 
     // Still inside the reveal window — settlement must be rejected.
     let result = hx.client.try_settle_sealed_slot_auction();
-    assert!(
-        result.is_err(),
-        "Settle during reveal phase must be rejected"
-    );
+    assert!(result.is_err(), "Settle during reveal phase must be rejected");
 }
 
 /// A bid revealed within the window is accepted and appears in SealedRevealedBids.
@@ -324,8 +313,7 @@ fn test_reveal_within_window_accepted() {
     let m1 = hx.members.get(1).unwrap();
     let salt = BytesN::from_array(&hx.env, &[7u8; 32]);
 
-    hx.client
-        .commit_slot_bid(&m1, &commit_hash(&hx.env, &m1, 300, &salt), &300);
+    hx.client.commit_slot_bid(&m1, &commit_hash(&hx.env, &m1, 300, &salt), &300);
 
     // Advance to the start of the reveal phase.
     hx.env.ledger().set_timestamp(1_000 + COMMIT_DURATION + 1);

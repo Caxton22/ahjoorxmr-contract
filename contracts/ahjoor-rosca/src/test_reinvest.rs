@@ -2,18 +2,10 @@
 use super::*;
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
-    token, Address, Env,
+    Address, Env, token
 };
 
-fn setup_with_members<'a>(
-    n: usize,
-) -> (
-    Env,
-    AhjoorContractClient<'a>,
-    Address,
-    Address,
-    soroban_sdk::Vec<Address>,
-) {
+fn setup_with_members<'a>(n: usize) -> (Env, AhjoorContractClient<'a>, Address, Address, soroban_sdk::Vec<Address>) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -53,13 +45,13 @@ fn setup_with_members<'a>(
             skip_fee: 0,
             max_skips_per_cycle: 0,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -125,3 +117,5 @@ fn test_cannot_set_reinvest_preference_after_deadline() {
     env.ledger().set_timestamp(4000); // Past deadline (3600)
     client.set_reinvest_preference(&member1, &true);
 }
+
+

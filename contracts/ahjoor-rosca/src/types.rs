@@ -185,50 +185,50 @@ pub struct Proposal {
 #[contracttype]
 pub enum DataKey {
     // --- Instance ---
-    Admin,                  // Address
-    Members,                // Vec<Address>
-    PayoutOrder,            // Vec<Address>
-    Strategy,               // PayoutStrategy
-    ContributionAmt,        // i128
-    Token,                  // Address
-    CurrentRound,           // u32
-    PaidMembers,            // Vec<Address>
-    RoundDuration,          // u64
-    RoundDeadline,          // u64
-    Defaulters,             // Vec<Address>
-    PenaltyAmount,          // i128
-    DefaultCount,           // Map<Address, u32>
-    SuspendedMembers,       // Vec<Address>
-    ApprovedTokens,         // Vec<Address>
-    RewardPool,             // i128
-    TotalParticipations,    // u32
-    MemberParticipation,    // Map<Address, u32>
-    ClaimedRewards,         // Map<Address, i128>
-    RewardWeights,          // Map<Address, u32>
-    RewardDistType,         // DistributionType
-    ExitedMembers,          // Vec<Address>
-    ExitPenaltyBps,         // u32 (basis points, e.g. 1000 = 10%)
-    Paused,                 // bool (global pause alias)
-    IsPaused,               // bool
-    PauseReason,            // String
-    PauseTimestamp,         // u64
-    CollectiveGoal,         // i128
-    TotalCollected,         // i128
-    MemberGoals,            // Map<Address, i128>
-    MemberCollected,        // Map<Address, i128>
-    MilestonesReached,      // Vec<u32> (e.g. 25, 50, 75, 100)
-    ExchangeRates,          // Map<Address, i128>
-    TokenLimits,            // Map<Address, i128>
-    ProposalCounter,        // u32
-    Proposals,              // Map<u32, Proposal>
-    ProposalVotes,          // Map<u32, Map<Address, bool>>
-    VotingDeadline,         // u64
-    QuorumPercentage,       // u32 (e.g., 51 for 51%)
-    MemberContributions,    // Map<Address, i128> cumulative per round
-    FeeBps,                 // u32 — protocol fee in basis points
-    MaxDefaults,            // u32 — suspension threshold
-    RoundDeadlineTimestamp, // u64
-    MaxMembers,             // u32
+    Admin,                   // Address
+    Members,                 // Vec<Address>
+    PayoutOrder,             // Vec<Address>
+    Strategy,                // PayoutStrategy
+    ContributionAmt,         // i128
+    Token,                   // Address
+    CurrentRound,            // u32
+    PaidMembers,             // Vec<Address>
+    RoundDuration,           // u64
+    RoundDeadline,           // u64
+    Defaulters,              // Vec<Address>
+    PenaltyAmount,           // i128
+    DefaultCount,            // Map<Address, u32>
+    SuspendedMembers,        // Vec<Address>
+    ApprovedTokens,          // Vec<Address>
+    RewardPool,              // i128
+    TotalParticipations,     // u32
+    MemberParticipation,     // Map<Address, u32>
+    ClaimedRewards,          // Map<Address, i128>
+    RewardWeights,           // Map<Address, u32>
+    RewardDistType,          // DistributionType
+    ExitedMembers,           // Vec<Address>
+    ExitPenaltyBps,          // u32 (basis points, e.g. 1000 = 10%)
+    Paused,                  // bool (global pause alias)
+    IsPaused,                // bool
+    PauseReason,             // String
+    PauseTimestamp,          // u64
+    CollectiveGoal,          // i128
+    TotalCollected,          // i128
+    MemberGoals,             // Map<Address, i128>
+    MemberCollected,         // Map<Address, i128>
+    MilestonesReached,       // Vec<u32> (e.g. 25, 50, 75, 100)
+    ExchangeRates,           // Map<Address, i128>
+    TokenLimits,             // Map<Address, i128>
+    ProposalCounter,         // u32
+    Proposals,               // Map<u32, Proposal>
+    ProposalVotes,           // Map<u32, Map<Address, bool>>
+    VotingDeadline,          // u64
+    QuorumPercentage,        // u32 (e.g., 51 for 51%)
+    MemberContributions,     // Map<Address, i128> cumulative per round
+    FeeBps,                  // u32 — protocol fee in basis points
+    MaxDefaults,             // u32 — suspension threshold
+    RoundDeadlineTimestamp,  // u64
+    MaxMembers,              // u32
 }
 
 /// Overflow key enum — DataKey is capped at 50 variants by the soroban XDR limit.
@@ -237,12 +237,12 @@ pub enum DataKey {
 #[contracttype]
 pub enum DataKey2 {
     // Preserved discriminants for keys moved from `DataKey` to maintain storage slot identity.
-    ProposedAdmin = 40,        // Address — proposed new admin (pending acceptance)
-    ContractVersion = 41,      // u32
-    FeeRecipient = 43,         // Address — receives protocol fees
-    UseTimestampSchedule = 45, // bool
-    RoundDurationSeconds = 46, // u64
-    MemberTiers = 49,          // Map<Address, u32>
+    ProposedAdmin = 40,      // Address — proposed new admin (pending acceptance)
+    ContractVersion = 41,    // u32
+    FeeRecipient = 43,       // Address — receives protocol fees
+    UseTimestampSchedule = 45,    // bool
+    RoundDurationSeconds = 46,    // u64
+    MemberTiers = 49,             // Map<Address, u32>
 
     InsurancePool = 50,
     InsuranceContributionBps = 51,
@@ -322,27 +322,27 @@ pub enum WaitlistMode {
 #[contracttype]
 pub enum DataKey3 {
     // #315: Payout Order Randomization
-    RandomizePayoutOrder, // bool — enable randomization for this group
-    PayoutOrderSeed,      // BytesN<32> — seed for Fisher-Yates shuffle
-    PayoutOrderFinalized, // bool — track if order has been finalized
+    RandomizePayoutOrder,    // bool — enable randomization for this group
+    PayoutOrderSeed,         // BytesN<32> — seed for Fisher-Yates shuffle
+    PayoutOrderFinalized,    // bool — track if order has been finalized
     // #352: Contribution Rebalancing
-    BasePoolTarget, // i128 — immutable payout target per cycle (initial_members × contribution_amount)
-    CoSignerWindowStart, // Map<Address, u32> — member → ledger when window opened (#240)
-    ProxyAuthorizations, // Map<(u32, Address), ProxyAuthorization> — (group_id, member)
-    IsFrozen,       // bool — group is frozen by contract-level admin (#236)
+    BasePoolTarget,          // i128 — immutable payout target per cycle (initial_members × contribution_amount)
+    CoSignerWindowStart,     // Map<Address, u32> — member → ledger when window opened (#240)
+    ProxyAuthorizations,     // Map<(u32, Address), ProxyAuthorization> — (group_id, member)
+    IsFrozen,                // bool — group is frozen by contract-level admin (#236)
     // #267: Tiered Contribution Levels
-    GroupTiers,        // Vec<Tier> — named tier definitions
-    MemberTierIndex,   // Map<Address, u32> — member → tier_id
-    PendingTierChange, // Map<Address, u32> — queued tier changes for next cycle
+    GroupTiers,              // Vec<Tier> — named tier definitions
+    MemberTierIndex,         // Map<Address, u32> — member → tier_id
+    PendingTierChange,       // Map<Address, u32> — queued tier changes for next cycle
     // #269: On-Chain Member Credit Score
-    ScoreWeights,   // ScoreWeights — admin-configurable scoring formula weights
-    MinCreditScore, // i128 — minimum score required to join this group
+    ScoreWeights,            // ScoreWeights — admin-configurable scoring formula weights
+    MinCreditScore,          // i128 — minimum score required to join this group
     // #398: Contribution-weight voting delegation
-    ContribDelegations, // Map<Address, ContribDelegationRecord>
+    ContribDelegations,      // Map<Address, ContribDelegationRecord>
     // Member freeze proposal context
-    MemberFreezeReasons, // Map<u32, BytesN<32>> — proposal_id -> freeze reason hash
+    MemberFreezeReasons,     // Map<u32, BytesN<32>> — proposal_id -> freeze reason hash
     // #390: Timestamp-mode grace period
-    GracePeriodSeconds, // u64 — grace window in seconds (used when UseTimestampSchedule=true)
+    GracePeriodSeconds,      // u64 — grace window in seconds (used when UseTimestampSchedule=true)
     // Reputation-gated fee discount
     RepFeeDiscount,
     // Slot Auction
@@ -389,7 +389,7 @@ pub enum DataKey3 {
     ContributionReceipt(u32),
     MemberReceiptIds(Address),
     // #456: Waitlist priority ordering mode
-    WaitlistPriorityMode, // WaitlistMode — settable by admin
+    WaitlistPriorityMode,       // WaitlistMode — settable by admin
 }
 
 /// Overflow key enum — DataKey3 is capped at 50 variants by the soroban XDR limit.
@@ -397,7 +397,7 @@ pub enum DataKey3 {
 #[contracttype]
 pub enum DataKey5 {
     // #454: Collective goal reward pool
-    GoalRewardPool, // i128 — funded by admin, distributed once collective_goal is reached
+    GoalRewardPool,             // i128 — funded by admin, distributed once collective_goal is reached
     GoalRewardDistributed,
     // #544: per-cycle CycleRecord storage, keyed by cycle_number, replacing
     // the single CycleRecords blob so lookups/writes are O(1) instead of
@@ -410,6 +410,7 @@ pub enum DataKey5 {
     // can find archival candidates without scanning every persisted cycle.
     OldestPersistentCycle,
 }
+
 
 // ── #330: Contribution Delegation ────────────────────────────────────────────
 
@@ -458,16 +459,16 @@ pub struct SplitProposal {
 #[derive(Clone)]
 #[contracttype]
 pub enum PersistentKey {
-    RoundHistory,               // Vec<PayoutRecord> — grows every round
-    ReputationScores,           // Map<Address, i128> — cumulative member reliability score
-    FreezeLog,                  // Vec<FreezeRecord> — append-only freeze audit log
-    SnapshotLog,                // Vec<GroupSnapshot> — append-only snapshot log (#243)
-    SnapshotByRound(u32),       // round_number → latest GroupSnapshot for that round
-    LastSnapshotLedger,         // u32 — last snapshot ledger for spam guard (#243)
+    RoundHistory,              // Vec<PayoutRecord> — grows every round
+    ReputationScores,          // Map<Address, i128> — cumulative member reliability score
+    FreezeLog,                 // Vec<FreezeRecord> — append-only freeze audit log
+    SnapshotLog,               // Vec<GroupSnapshot> — append-only snapshot log (#243)
+    SnapshotByRound(u32),      // round_number → latest GroupSnapshot for that round
+    LastSnapshotLedger,        // u32 — last snapshot ledger for spam guard (#243)
     MinSnapshotIntervalLedgers, // u32 — min interval between snapshots (#243)
-    MemberCreditScores,         // Map<Address, MemberScore> — per-member credit score (#269)
+    MemberCreditScores,        // Map<Address, MemberScore> — per-member credit score (#269)
     /// #364: Point-in-time cycle snapshot keyed by cycle number
-    CycleSnapshot(u32), // cycle_number → CycleSnapshotData
+    CycleSnapshot(u32),        // cycle_number → CycleSnapshotData
     /// #457: Ledger at which a member's credit score was last updated (cross-contract oracle)
     CreditScoreUpdatedAt(Address), // u32 — ledger sequence of last credit score update
 }
@@ -515,8 +516,8 @@ pub struct GroupSnapshot {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[contracttype]
 pub enum CoSignerStatus {
-    Pending = 0, // set by member, not yet accepted
-    Active = 1,  // accepted by co-signer
+    Pending = 0,   // set by member, not yet accepted
+    Active = 1,    // accepted by co-signer
 }
 
 #[contracttype]
@@ -578,9 +579,9 @@ pub struct EmergencyPayoutRequest {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EmergencyPayoutConfig {
-    pub emergency_quorum_bps: u32,    // e.g., 6667 = 66.67%
-    pub vote_window_seconds: u64,     // how long voting lasts
-    pub max_emergency_per_cycle: u32, // max emergency payouts per cycle
+    pub emergency_quorum_bps: u32,      // e.g., 6667 = 66.67%
+    pub vote_window_seconds: u64,       // how long voting lasts
+    pub max_emergency_per_cycle: u32,   // max emergency payouts per cycle
 }
 
 // --- Emergency Liquidity Reserve Types (#313) ---
@@ -611,7 +612,7 @@ pub enum GroupStatus {
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DissolutionConfig {
-    pub dissolution_quorum_bps: u32, // e.g., 7500 = 75%
+    pub dissolution_quorum_bps: u32,    // e.g., 7500 = 75%
     pub vote_window_seconds: u64,
 }
 

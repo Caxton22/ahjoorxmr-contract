@@ -50,17 +50,11 @@ pub(crate) fn record_cycle_audit(
     // many cycles the group has completed.
     let entry_key = DataKey5::CycleRecordEntry(cycle_number);
     env.storage().persistent().set(&entry_key, &record);
-    env.storage().persistent().extend_ttl(
-        &entry_key,
-        PERSISTENT_LIFETIME_THRESHOLD,
-        PERSISTENT_BUMP_AMOUNT,
-    );
-
-    if !env
-        .storage()
+    env.storage()
         .persistent()
-        .has(&DataKey5::OldestPersistentCycle)
-    {
+        .extend_ttl(&entry_key, PERSISTENT_LIFETIME_THRESHOLD, PERSISTENT_BUMP_AMOUNT);
+
+    if !env.storage().persistent().has(&DataKey5::OldestPersistentCycle) {
         env.storage()
             .persistent()
             .set(&DataKey5::OldestPersistentCycle, &cycle_number);

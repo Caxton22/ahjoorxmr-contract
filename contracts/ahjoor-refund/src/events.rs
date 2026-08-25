@@ -603,12 +603,7 @@ pub fn emit_refund_counter_rejected(e: &Env, refund_id: u32, customer: Address) 
     .publish(e);
 }
 
-pub fn emit_counter_offer_expired(
-    e: &Env,
-    refund_id: u32,
-    resolution: bool,
-    original_amount: i128,
-) {
+pub fn emit_counter_offer_expired(e: &Env, refund_id: u32, resolution: bool, original_amount: i128) {
     CounterOfferExpired {
         refund_id,
         resolution,

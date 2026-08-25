@@ -24,9 +24,7 @@ fn setup_proxy<'a>() -> (
     let client = AhjoorContractClient::new(&env, &contract_id);
 
     let admin = Address::generate(&env);
-    let token_addr = env
-        .register_stellar_asset_contract_v2(admin.clone())
-        .address();
+    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
     let token_client = TokenClient::new(&env, &token_addr);
     let token_admin_client = TokenAdminClient::new(&env, &token_addr);
 

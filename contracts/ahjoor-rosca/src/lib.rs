@@ -2772,7 +2772,7 @@ impl AhjoorContract {
     }
 
     /// #644: Returns the current contents of DataKey3::AuctionBids for the active round.
-    ///
+    /// 
     /// This getter allows inspection of all current (non-sealed) auction bids before
     /// resolution. Each SlotBid includes the bidder, desired slot, amount, and timestamp.
     pub fn get_slot_bids(env: Env) -> Vec<SlotBid> {
@@ -9010,12 +9010,7 @@ impl AhjoorContract {
 
     /// Returns the proxy authorization record for `member` in `group_id` (issue #643).
     /// Returns `None` if no proxy has been authorized or if it was revoked.
-    pub fn get_proxy_authorization(
-        env: Env,
-        group_id: u32,
-        member: Address,
-        _proxy: Address,
-    ) -> Option<ProxyAuthorization> {
+    pub fn get_proxy_authorization(env: Env, group_id: u32, member: Address, _proxy: Address) -> Option<ProxyAuthorization> {
         let proxy_auths: Map<(u32, Address), ProxyAuthorization> = env
             .storage()
             .instance()
@@ -9138,11 +9133,7 @@ impl AhjoorContract {
 
     /// Returns the co-signer record for `member` (issue #642).
     /// Returns `None` if no co-signer has ever been set for that member.
-    pub fn get_co_signer_record(
-        env: Env,
-        _group_id: u32,
-        member: Address,
-    ) -> Option<CoSignerRecord> {
+    pub fn get_co_signer_record(env: Env, _group_id: u32, member: Address) -> Option<CoSignerRecord> {
         let co_signers: Map<Address, CoSignerRecord> = env
             .storage()
             .instance()
@@ -9720,11 +9711,7 @@ impl AhjoorContract {
     /// Batch-read member credit score records for UI/leaderboard rendering.
     /// Returns entries in the same order as the `members` input.
     /// `group_id` is currently unused because this contract manages one group.
-    pub fn get_member_scores(
-        env: Env,
-        _group_id: u32,
-        members: Vec<Address>,
-    ) -> Vec<Option<MemberScore>> {
+    pub fn get_member_scores(env: Env, _group_id: u32, members: Vec<Address>) -> Vec<Option<MemberScore>> {
         let scores: Map<Address, MemberScore> = env
             .storage()
             .persistent()

@@ -44,15 +44,7 @@ fn setup_with_members<'a>(
         members.push_back(addr);
     }
 
-    (
-        env,
-        client,
-        admin,
-        token_admin,
-        token_client,
-        token_admin_client,
-        members,
-    )
+    (env, client, admin, token_admin, token_client, token_admin_client, members)
 }
 
 /// Initialise the contract with auction enabled.
@@ -189,11 +181,7 @@ fn test_single_bidder_wins_auction() {
     let bidder_balance_before = token_client.balance(&bidder);
     client.place_slot_bid(&bidder, &0, &bid_amount);
     let bidder_balance_after = token_client.balance(&bidder);
-    assert_eq!(
-        bidder_balance_before - bidder_balance_after,
-        bid_amount,
-        "Bid amount should be deducted from bidder"
-    );
+    assert_eq!(bidder_balance_before - bidder_balance_after, bid_amount, "Bid amount should be deducted from bidder");
 
     // Advance past auction window
     env.ledger().set_timestamp(900);
@@ -211,16 +199,8 @@ fn test_single_bidder_wins_auction() {
     let bonus = bid_amount / 2; // 2 eligible non-winning members
     let bal0_after = token_client.balance(&member0);
     let bal1_after = token_client.balance(&member1);
-    assert_eq!(
-        bal0_after - bal0_before,
-        bonus,
-        "Member 0 should receive bonus"
-    );
-    assert_eq!(
-        bal1_after - bal1_before,
-        bonus,
-        "Member 1 should receive bonus"
-    );
+    assert_eq!(bal0_after - bal0_before, bonus, "Member 0 should receive bonus");
+    assert_eq!(bal1_after - bal1_before, bonus, "Member 1 should receive bonus");
 }
 
 /// Multiple bidders: highest bid wins; tie-break by earliest submission.
@@ -272,16 +252,8 @@ fn test_multi_bidder_highest_wins() {
     // member0 and member2: refund (200) + winning_bid / eligible_count (500/3=166 bonus) = 366
     let eligible_count: i128 = 3; // member0, member2, member3 (3 non-winning active members)
     let bonus = 500i128 / eligible_count;
-    assert_eq!(
-        token_client.balance(&member0) - bal0_before,
-        200 + bonus,
-        "Loser member0 should be refunded plus bonus"
-    );
-    assert_eq!(
-        token_client.balance(&member2) - bal2_before,
-        200 + bonus,
-        "Loser member2 should be refunded plus bonus"
-    );
+    assert_eq!(token_client.balance(&member0) - bal0_before, 200 + bonus, "Loser member0 should be refunded plus bonus");
+    assert_eq!(token_client.balance(&member2) - bal2_before, 200 + bonus, "Loser member2 should be refunded plus bonus");
 }
 
 /// Tie-break: two equal bids — earliest submission wins.
@@ -400,10 +372,7 @@ fn test_auction_not_enabled_rejected() {
     env.ledger().set_timestamp(100);
     let bidder = members.get(0).unwrap();
     let result = client.try_place_slot_bid(&bidder, &0, &100);
-    assert!(
-        result.is_err(),
-        "Bid on non-auction group should be rejected"
-    );
+    assert!(result.is_err(), "Bid on non-auction group should be rejected");
 }
 
 /// update_slot_bid atomically replaces the previous bid.
@@ -471,10 +440,7 @@ fn test_update_slot_bid_no_existing_bid_fails() {
     env.ledger().set_timestamp(410);
     let bidder = members.get(0).unwrap();
     let result = client.try_update_slot_bid(&bidder, &1, &200);
-    assert!(
-        result.is_err(),
-        "update_slot_bid with no existing bid should fail"
-    );
+    assert!(result.is_err(), "update_slot_bid with no existing bid should fail");
 }
 
 /// resolve_slot_auction before window closes is rejected.
@@ -501,10 +467,7 @@ fn test_resolve_before_window_closes_rejected() {
     // Try to resolve while window is still open (t=410, window closes at 400+1000=1400)
     env.ledger().set_timestamp(410);
     let result = client.try_resolve_slot_auction();
-    assert!(
-        result.is_err(),
-        "Resolving while window is open should fail"
-    );
+    assert!(result.is_err(), "Resolving while window is open should fail");
 }
 
 /// #644: get_slot_bids returns an empty Vec when no bids have been placed.
@@ -571,26 +534,17 @@ fn test_get_slot_bids_multiple_bids() {
     // Verify bid details
     let bid0 = bids.get(0).unwrap();
     assert_eq!(bid0.bidder, member0, "First bid should be from member0");
-    assert_eq!(
-        bid0.desired_slot, 0u32,
-        "First bid desired_slot should be 0"
-    );
+    assert_eq!(bid0.desired_slot, 0u32, "First bid desired_slot should be 0");
     assert_eq!(bid0.amount, 200i128, "First bid amount should be 200");
 
     let bid1 = bids.get(1).unwrap();
     assert_eq!(bid1.bidder, member1, "Second bid should be from member1");
-    assert_eq!(
-        bid1.desired_slot, 1u32,
-        "Second bid desired_slot should be 1"
-    );
+    assert_eq!(bid1.desired_slot, 1u32, "Second bid desired_slot should be 1");
     assert_eq!(bid1.amount, 350i128, "Second bid amount should be 350");
 
     let bid2 = bids.get(2).unwrap();
     assert_eq!(bid2.bidder, member2, "Third bid should be from member2");
-    assert_eq!(
-        bid2.desired_slot, 2u32,
-        "Third bid desired_slot should be 2"
-    );
+    assert_eq!(bid2.desired_slot, 2u32, "Third bid desired_slot should be 2");
     assert_eq!(bid2.amount, 150i128, "Third bid amount should be 150");
 }
 
@@ -639,16 +593,10 @@ fn test_get_slot_bids_after_update() {
     let mut found_updated_bid = false;
     for bid in bids_after.iter() {
         if bid.bidder == member0 {
-            assert_eq!(
-                bid.amount, 500i128,
-                "member0's bid should be updated to 500"
-            );
+            assert_eq!(bid.amount, 500i128, "member0's bid should be updated to 500");
             found_updated_bid = true;
             break;
         }
     }
-    assert!(
-        found_updated_bid,
-        "member0's updated bid should be in get_slot_bids"
-    );
+    assert!(found_updated_bid, "member0's updated bid should be in get_slot_bids");
 }

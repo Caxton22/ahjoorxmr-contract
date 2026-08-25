@@ -2,20 +2,9 @@
 use super::*;
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{
-    testutils::{Address as _, Ledger},
-    Address, Env,
-};
+use soroban_sdk::{testutils::{Address as _, Ledger}, Address, Env};
 
-fn setup_referral<'a>() -> (
-    Env,
-    AhjoorPaymentsContractClient<'a>,
-    Address,
-    Address,
-    Address,
-    TokenClient<'a>,
-    TokenAdminClient<'a>,
-) {
+fn setup_referral<'a>() -> (Env, AhjoorPaymentsContractClient<'a>, Address, Address, Address, TokenClient<'a>, TokenAdminClient<'a>) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -24,9 +13,7 @@ fn setup_referral<'a>() -> (
 
     let admin = Address::generate(&env);
     let fee_recipient = Address::generate(&env);
-    let token_addr = env
-        .register_stellar_asset_contract_v2(admin.clone())
-        .address();
+    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
     let token_client = TokenClient::new(&env, &token_addr);
     let token_admin_client = TokenAdminClient::new(&env, &token_addr);
 
@@ -34,15 +21,7 @@ fn setup_referral<'a>() -> (
     client.initialize(&admin, &fee_recipient, &100u32);
     client.set_min_collateral(&0i128);
 
-    (
-        env,
-        client,
-        admin,
-        fee_recipient,
-        token_addr,
-        token_client,
-        token_admin_client,
-    )
+    (env, client, admin, fee_recipient, token_addr, token_client, token_admin_client)
 }
 
 // ---------------------------------------------------------------------------
@@ -65,15 +44,7 @@ fn test_commission_accrues() {
     client.approve_merchant(&referred);
 
     tac.mint(&customer, &10_000);
-    let pid = client.create_payment(
-        &customer,
-        &referred,
-        &1000,
-        &token_addr,
-        &None,
-        &None,
-        &None,
-    );
+    let pid = client.create_payment(&customer, &referred, &1000, &token_addr, &None, &None, &None);
     client.complete_payment(&pid);
 
     // fee = 1000 * 100 / 10000 = 10; commission = 10 * 1000 / 10000 = 1
@@ -102,15 +73,7 @@ fn test_window_expiry_stops_accrual() {
     env.ledger().with_mut(|l| l.sequence_number += 100);
 
     tac.mint(&customer, &10_000);
-    let pid = client.create_payment(
-        &customer,
-        &referred,
-        &1000,
-        &token_addr,
-        &None,
-        &None,
-        &None,
-    );
+    let pid = client.create_payment(&customer, &referred, &1000, &token_addr, &None, &None, &None);
     client.complete_payment(&pid);
 
     // No commission should have accrued
@@ -134,15 +97,7 @@ fn test_claim_commission() {
     client.approve_merchant(&referred);
 
     tac.mint(&customer, &10_000);
-    let pid = client.create_payment(
-        &customer,
-        &referred,
-        &1000,
-        &token_addr,
-        &None,
-        &None,
-        &None,
-    );
+    let pid = client.create_payment(&customer, &referred, &1000, &token_addr, &None, &None, &None);
     client.complete_payment(&pid);
 
     let pending = client.get_pending_commission(&referrer);
@@ -198,15 +153,7 @@ fn test_zero_commission_config() {
     client.approve_merchant(&referred);
 
     tac.mint(&customer, &10_000);
-    let pid = client.create_payment(
-        &customer,
-        &referred,
-        &1000,
-        &token_addr,
-        &None,
-        &None,
-        &None,
-    );
+    let pid = client.create_payment(&customer, &referred, &1000, &token_addr, &None, &None, &None);
     client.complete_payment(&pid);
 
     assert_eq!(client.get_pending_commission(&referrer), 0);
@@ -240,27 +187,11 @@ fn test_referral_commission_summary() {
     tac.mint(&customer, &100_000);
 
     // Payment through first referred merchant
-    let pid_a = client.create_payment(
-        &customer,
-        &referred_a,
-        &1000,
-        &token_addr,
-        &None,
-        &None,
-        &None,
-    );
+    let pid_a = client.create_payment(&customer, &referred_a, &1000, &token_addr, &None, &None, &None);
     client.complete_payment(&pid_a);
 
     // Payment through second referred merchant
-    let pid_b = client.create_payment(
-        &customer,
-        &referred_b,
-        &1000,
-        &token_addr,
-        &None,
-        &None,
-        &None,
-    );
+    let pid_b = client.create_payment(&customer, &referred_b, &1000, &token_addr, &None, &None, &None);
     client.complete_payment(&pid_b);
 
     let (total_earned, total_claimed) = client.get_referral_commission_summary(&referrer);
@@ -280,15 +211,7 @@ fn test_referral_commission_summary() {
     assert_eq!(client.get_pending_commission(&referrer), 0);
 
     // Accrue more commission after the claim
-    let pid_c = client.create_payment(
-        &customer,
-        &referred_a,
-        &1000,
-        &token_addr,
-        &None,
-        &None,
-        &None,
-    );
+    let pid_c = client.create_payment(&customer, &referred_a, &1000, &token_addr, &None, &None, &None);
     client.complete_payment(&pid_c);
 
     let (total_earned_final, total_claimed_final) =

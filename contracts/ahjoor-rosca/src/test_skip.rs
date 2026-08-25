@@ -7,18 +7,7 @@ use soroban_sdk::{
     Address, Env,
 };
 
-fn setup_with_members<'a>(
-    n: usize,
-    mint_amount: i128,
-) -> (
-    Env,
-    AhjoorContractClient<'a>,
-    Address,
-    Address,
-    TokenClient<'a>,
-    TokenAdminClient<'a>,
-    soroban_sdk::Vec<Address>,
-) {
+fn setup_with_members<'a>(n: usize, mint_amount: i128) -> (Env, AhjoorContractClient<'a>, Address, Address, TokenClient<'a>, TokenAdminClient<'a>, soroban_sdk::Vec<Address>) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -41,20 +30,12 @@ fn setup_with_members<'a>(
         members.push_back(addr);
     }
 
-    (
-        env,
-        client,
-        admin,
-        token_admin,
-        token_client,
-        token_admin_client,
-        members,
-    )
+    (env, client, admin, token_admin, token_client, token_admin_client, members)
 }
 
 #[test]
 fn test_skip_success_pays_fee_and_excludes_defaulter() {
-    let (env, client, admin, token_admin, token_client, _token_admin_client, members) =
+    let (env, client, admin, token_admin, token_client, _token_admin_client, members) = 
         setup_with_members(3, 1000);
 
     let skip_fee = 50;
@@ -83,13 +64,13 @@ fn test_skip_success_pays_fee_and_excludes_defaulter() {
             skip_fee,
             max_skips_per_cycle: 1,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
@@ -102,7 +83,7 @@ fn test_skip_success_pays_fee_and_excludes_defaulter() {
 
     // Member 1 skips
     client.request_skip(&member_skipping, &0);
-
+    
     // Check fee deducted
     assert_eq!(token_client.balance(&member_skipping), 950); // 1000 - 50
 
@@ -122,7 +103,7 @@ fn test_skip_success_pays_fee_and_excludes_defaulter() {
     // So member 2 should get it.
     // Pot = 100 (m2) + 100 (m3) + 50 (skip fee) = 250
     assert_eq!(token_client.balance(&member2), 1150); // 900 (after contrib) + 250 (pot)
-
+    
     // Round advanced
     let (current_round, _, _, _, _) = client.get_state();
     assert_eq!(current_round, 1);
@@ -130,7 +111,7 @@ fn test_skip_success_pays_fee_and_excludes_defaulter() {
 
 #[test]
 fn test_skip_limit_enforced() {
-    let (env, client, admin, token_admin, _token_client, _token_admin_client, members) =
+    let (env, client, admin, token_admin, _token_client, _token_admin_client, members) = 
         setup_with_members(2, 1000);
 
     client.init(
@@ -175,15 +156,12 @@ fn test_skip_limit_enforced() {
 
     // Second skip in same cycle (cycle 0) - fail
     let result = client.try_request_skip(&member, &1);
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        ExtError::SkipLimitReached.into()
-    );
+    assert_eq!(result.unwrap_err().unwrap(), ExtError::SkipLimitReached.into());
 }
 
 #[test]
 fn test_skip_deadline_enforced() {
-    let (env, client, admin, token_admin, _token_client, _token_admin_client, members) =
+    let (env, client, admin, token_admin, _token_client, _token_admin_client, members) = 
         setup_with_members(2, 1000);
 
     client.init(
@@ -210,32 +188,29 @@ fn test_skip_deadline_enforced() {
             round_duration_seconds: 0,
             max_members: None,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
 
     let member = members.get(0).unwrap();
-
+    
     // Past deadline
     env.ledger().set_timestamp(4000);
-
+    
     let result = client.try_request_skip(&member, &0);
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        Error::ContributionWindowClosed.into()
-    );
+    assert_eq!(result.unwrap_err().unwrap(), Error::ContributionWindowClosed.into());
 }
 
 #[test]
 fn test_cannot_skip_after_contribution() {
-    let (env, client, admin, token_admin, _token_client, _token_admin_client, members) =
+    let (env, client, admin, token_admin, _token_client, _token_admin_client, members) = 
         setup_with_members(2, 1000);
 
     client.init(
@@ -262,25 +237,27 @@ fn test_cannot_skip_after_contribution() {
             round_duration_seconds: 0,
             max_members: None,
             voting_mode: VotingMode::Equal,
-            late_fee_bps: 0,
-            grace_period_seconds: 0,
-            auction_enabled: false,
-            auction_window_ledgers: 0,
-            randomize_payout_order: false,
-            reserve_enabled: false,
-            reserve_contribution_bps: 0,
+        late_fee_bps: 0,
+        grace_period_seconds: 0,
+        auction_enabled: false,
+        auction_window_ledgers: 0,
+        randomize_payout_order: false,
+        reserve_enabled: false,
+        reserve_contribution_bps: 0,
         },
         &None,
     );
 
     let member = members.get(0).unwrap();
     env.ledger().set_timestamp(100);
-
+    
     client.contribute(&member, &token_admin, &100);
-
+    
     let result = client.try_request_skip(&member, &0);
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        Error::AlreadyContributed.into()
-    );
+    assert_eq!(result.unwrap_err().unwrap(), Error::AlreadyContributed.into());
 }
+
+
+
+
+

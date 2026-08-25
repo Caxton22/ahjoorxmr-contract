@@ -265,8 +265,7 @@ fn test_auto_reinstatement_on_expiry_query() {
     assert!(!client.is_token_allowed(&token));
 
     // Advance ledger past suspension expiry
-    env.ledger()
-        .with_mut(|l| l.sequence_number = start_seq + 51);
+    env.ledger().with_mut(|l| l.sequence_number = start_seq + 51);
 
     // Lazy reinstatement: first call after expiry clears the record and returns true
     assert!(client.is_token_allowed(&token));
@@ -304,13 +303,11 @@ fn test_suspension_extension() {
     client.extend_token_suspension(&admin, &token, &50u32);
 
     // Advance past original expiry (50) but before extended expiry (100)
-    env.ledger()
-        .with_mut(|l| l.sequence_number = start_seq + 55);
+    env.ledger().with_mut(|l| l.sequence_number = start_seq + 55);
     assert!(!client.is_token_allowed(&token));
 
     // Advance past extended expiry
-    env.ledger()
-        .with_mut(|l| l.sequence_number = start_seq + 101);
+    env.ledger().with_mut(|l| l.sequence_number = start_seq + 101);
     assert!(client.is_token_allowed(&token));
 }
 
@@ -355,10 +352,7 @@ fn test_suspension_history_capped_at_ten() {
     let history = client.get_suspension_history(&token);
     assert_eq!(history.len(), 10);
     // Oldest entry (i=0) must have been evicted; the first kept entry is i=1
-    assert_eq!(
-        history.get(0).unwrap().reason_hash,
-        BytesN::from_array(&env, &[1u8; 32])
-    );
+    assert_eq!(history.get(0).unwrap().reason_hash, BytesN::from_array(&env, &[1u8; 32]));
 }
 
 #[test]
@@ -533,26 +527,16 @@ fn test_record_token_volume_cost_bounded_at_max_period() {
     env.ledger().set_sequence_number(1_000);
 
     env.cost_estimate().budget().reset_default();
-    assert!(client
-        .try_record_token_volume(&small_period_token, &1i128)
-        .is_ok());
+    assert!(client.try_record_token_volume(&small_period_token, &1i128).is_ok());
     let small_period_cost = env.cost_estimate().budget().cpu_instruction_cost();
 
     let max_period_token = Address::generate(&env);
     client.add_token(&admin, &max_period_token);
-    client.set_token_quota(
-        &admin,
-        &max_period_token,
-        &1_000_000_000i128,
-        &MAX_QUOTA_PERIOD_LEDGERS,
-    );
-    env.ledger()
-        .set_sequence_number(MAX_QUOTA_PERIOD_LEDGERS + 1_000);
+    client.set_token_quota(&admin, &max_period_token, &1_000_000_000i128, &MAX_QUOTA_PERIOD_LEDGERS);
+    env.ledger().set_sequence_number(MAX_QUOTA_PERIOD_LEDGERS + 1_000);
 
     env.cost_estimate().budget().reset_default();
-    assert!(client
-        .try_record_token_volume(&max_period_token, &1i128)
-        .is_ok());
+    assert!(client.try_record_token_volume(&max_period_token, &1i128).is_ok());
     let max_period_cost = env.cost_estimate().budget().cpu_instruction_cost();
 
     // Cost is driven by the fixed VOLUME_AGG_BUCKET_COUNT, not by

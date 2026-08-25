@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 use soroban_sdk::{
-    contract, contractclient, contracterror, contractimpl, contracttype, panic_with_error, token,
-    Address, Bytes, BytesN, Env, Map, String, Symbol, Vec,
+    contract, contracterror, contractclient, contractimpl, contracttype, panic_with_error, token, Address, Bytes,
+    BytesN, Env, Map, String, Symbol, Vec,
 };
 
 /// Minimal oracle interface for cross-token price lookups (#354).
@@ -186,10 +186,20 @@ pub trait MultiTokenInvoiceInterface {
     ) -> InvoicePayment;
 
     /// Set conversion rate for a token
-    fn set_conversion_rate(env: Env, merchant: Address, token: Address, rate_to_base: i128);
+    fn set_conversion_rate(
+        env: Env,
+        merchant: Address,
+        token: Address,
+        rate_to_base: i128,
+    );
 
     /// Set settlement conversion rate
-    fn set_settlement_conversion_rate(env: Env, merchant: Address, invoice_id: u32, rate: i128);
+    fn set_settlement_conversion_rate(
+        env: Env,
+        merchant: Address,
+        invoice_id: u32,
+        rate: i128,
+    );
 
     /// Get invoice details
     fn get_invoice(env: Env, invoice_id: u32) -> Option<MultiTokenInvoice>;
@@ -198,7 +208,11 @@ pub trait MultiTokenInvoiceInterface {
     fn get_invoice_payments(env: Env, invoice_id: u32) -> Vec<InvoicePayment>;
 
     /// Settle invoices in batch with preferred token conversion
-    fn settle_invoices(env: Env, merchant: Address, invoice_ids: Vec<u32>) -> SettlementBatch;
+    fn settle_invoices(
+        env: Env,
+        merchant: Address,
+        invoice_ids: Vec<u32>,
+    ) -> SettlementBatch;
 
     /// Get settlement batch details
     fn get_settlement_batch(env: Env, batch_id: u32) -> Option<SettlementBatch>;

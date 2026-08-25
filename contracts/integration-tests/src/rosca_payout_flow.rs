@@ -3,7 +3,7 @@ use soroban_sdk::{
     token, Address, Env, Vec,
 };
 
-use ahjoor_rosca::{AhjoorContract, AhjoorContractClient, PayoutStrategy, RoscaConfig, VotingMode};
+use ahjoor_rosca::{AhjoorContract, AhjoorContractClient, RoscaConfig, PayoutStrategy, VotingMode};
 
 /// Shared test harness: deploys the ROSCA contract plus a mock token,
 /// and wires up funded member accounts so each test starts from a clean,
@@ -104,8 +104,7 @@ impl<'a> TestEnvironment<'a> {
     /// Has every member contribute their full required amount for the current round.
     fn all_members_contribute(&self, amount: i128) {
         for m in self.members.iter() {
-            self.rosca
-                .contribute(&m, &self.token_client.address, &amount);
+            self.rosca.contribute(&m, &self.token_client.address, &amount);
         }
     }
 
@@ -143,10 +142,7 @@ fn test_rosca_round_completes_payout_on_full_contribution() {
     // All four members contributing the full amount should auto-trigger
     // complete_round_payout inside the final contribute() call.
     let (round_after, paid_members_after, _, _, _) = t.rosca.get_state();
-    assert_eq!(
-        round_after, 1,
-        "round should have advanced after full contribution"
-    );
+    assert_eq!(round_after, 1, "round should have advanced after full contribution");
     assert_eq!(
         paid_members_after.len(),
         0,
@@ -190,8 +186,7 @@ fn test_rosca_finalize_round_flags_defaulter_and_pays_partial_pot() {
     let defaulter = t.members.get(2).unwrap();
 
     for m in paying_members.iter() {
-        t.rosca
-            .contribute(m, &t.token_client.address, &CONTRIBUTION);
+        t.rosca.contribute(m, &t.token_client.address, &CONTRIBUTION);
     }
 
     t.advance_past_deadline(ROUND_DURATION);
@@ -199,10 +194,7 @@ fn test_rosca_finalize_round_flags_defaulter_and_pays_partial_pot() {
 
     let status = t.rosca.get_member_status(&defaulter);
     assert!(!status.has_paid_this_round || status.default_count >= 1);
-    assert_eq!(
-        status.default_count, 1,
-        "defaulter's default_count should increment"
-    );
+    assert_eq!(status.default_count, 1, "defaulter's default_count should increment");
 
     // finalize_round pays out before applying new suspensions, so round
     // history should still show a completed payout for round 0 even though

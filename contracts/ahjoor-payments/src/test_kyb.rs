@@ -102,10 +102,7 @@ fn test_create_payment_rejects_expired_kyb() {
     );
 
     assert!(result.is_err());
-    assert_eq!(
-        result.unwrap_err().unwrap(),
-        ExtError::MerchantKYBExpired.into()
-    );
+    assert_eq!(result.unwrap_err().unwrap(), ExtError::MerchantKYBExpired.into());
 }
 
 #[test]
