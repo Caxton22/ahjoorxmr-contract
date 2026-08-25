@@ -1,0 +1,120 @@
+#![cfg(test)]
+use super::*;
+use soroban_sdk::{
+    testutils::{Address as _, Ledger},
+    Address, Env, String,
+};
+use soroban_sdk::token::{Client as TokenClient, StellarAssetClient as TokenAdminClient};
+use ahjoor_payments::{AhjoorPaymentsContract, AhjoorPaymentsContractClient};
+
+fn setup_getters<'a>() -> (
+    Env,
+    AhjoorRefundContractClient<'a>,
+    AhjoorPaymentsContractClient<'a>,
+    Address, // admin
+    Address, // token
+    TokenClient<'a>,
+    TokenAdminClient<'a>,
+) {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let payment_id = env.register(AhjoorPaymentsContract, ());
+    let payment_client = AhjoorPaymentsContractClient::new(&env, &payment_id);
+
+    let refund_id = env.register(AhjoorRefundContract, ());
+    let refund_client = AhjoorRefundContractClient::new(&env, &refund_id);
+
+    let admin = Address::generate(&env);
+    let token_addr = env.register_stellar_asset_contract_v2(admin.clone()).address();
+    let token_client = TokenClient::new(&env, &token_addr);
+    let token_admin = TokenAdminClient::new(&env, &token_addr);
+
+    payment_client.initialize(&admin, &admin, &0u32);
+    refund_client.initialize(&admin, &payment_id, &86_400u64, &None);
+
+    (env, refund_client, payment_client, admin, token_addr, token_client, token_admin)
+}
+
+// ===========================================================================
+//  Test: get_merchant_auto_approve_exempt
+// ===========================================================================
+
+#[test]
+fn test_get_merchant_auto_approve_exempt_default_false() {
+    let (_env, refund_client, _payment_client, _admin, _token_addr, _tc, _token_admin) = setup_getters();
+    let merchant = Address::generate(&_env);
+
+    // Should return false by default when not set
+    let exempt = refund_client.get_merchant_auto_approve_exempt(&merchant);
+    assert_eq!(exempt, false);
+}
+
+#[test]
+fn test_get_merchant_auto_approve_exempt_after_set_true() {
+    let (_env, refund_client, _payment_client, admin, _token_addr, _tc, _token_admin) = setup_getters();
+    let merchant = Address::generate(&_env);
+
+    // Set merchant as exempt
+    refund_client.set_merchant_auto_approve_exempt(&admin, &merchant, &true);
+
+    // Should return true
+    let exempt = refund_client.get_merchant_auto_approve_exempt(&merchant);
+    assert_eq!(exempt, true);
+}
+
+// ===========================================================================
+//  Test: get_abuse_block_config
+// ===========================================================================
+
+#[test]
+fn test_get_abuse_block_config_defaults() {
+    let (_env, refund_client, _payment_client, _admin, _token_addr, _tc, _token_admin) = setup_getters();
+
+    // Should return defaults when not configured
+    let (threshold, block_duration) = refund_client.get_abuse_block_config();
+    
+    // Default threshold is 100, default block_duration is DEFAULT_BLOCK_DURATION_LEDGERS (518_400)
+    assert_eq!(threshold, 100);
+    assert_eq!(block_duration, 518_400);
+}
+
+#[test]
+fn test_get_abuse_block_config_after_set() {
+    let (_env, refund_client, _payment_client, admin, _token_addr, _tc, _token_admin) = setup_getters();
+
+    // Set custom values
+    refund_client.set_abuse_block_threshold(&admin, &50u32);
+    refund_client.set_block_duration_ledgers(&admin, &100_000u64);
+
+    // Should return the configured values
+    let (threshold, block_duration) = refund_client.get_abuse_block_config();
+    assert_eq!(threshold, 50);
+    assert_eq!(block_duration, 100_000);
+}
+
+// ===========================================================================
+//  Test: get_merchant_response_window
+// ===========================================================================
+
+#[test]
+fn test_get_merchant_response_window_default_zero() {
+    let (_env, refund_client, _payment_client, _admin, _token_addr, _tc, _token_admin) = setup_getters();
+
+    // Should return 0 by default when not configured
+    let window = refund_client.get_merchant_response_window();
+    assert_eq!(window, 0);
+}
+
+#[test]
+fn test_get_merchant_response_window_after_set() {
+    let (_env, refund_client, _payment_client, admin, _token_addr, _tc, _token_admin) = setup_getters();
+
+    // Set custom merchant response window
+    let expected_window = 120_960u32; // ~7 days in ledgers
+    refund_client.set_merchant_response_window(&admin, &expected_window);
+
+    // Should return the configured value
+    let window = refund_client.get_merchant_response_window();
+    assert_eq!(window, expected_window);
+}

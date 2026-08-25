@@ -4228,6 +4228,15 @@ impl AhjoorRefundContract {
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
+    /// Get the merchant response window in ledgers.
+    /// Returns 0 if not configured.
+    pub fn get_merchant_response_window(env: Env) -> u32 {
+        env.storage()
+            .instance()
+            .get(&DataKey::MerchantResponseWindow)
+            .unwrap_or(0)
+    }
+
     /// Merchant submits evidence hashes before the deadline.
     /// `content_hash` is a SHA-256 hash of the actual evidence content anchored on-chain (#365).
     /// While the window is open, a second call from the same merchant overwrites the previous hash.
@@ -4752,6 +4761,22 @@ impl AhjoorRefundContract {
         env.storage()
             .instance()
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
+    }
+
+    /// Get the abuse block configuration: (threshold, block_duration_ledgers).
+    /// Returns defaults if not configured.
+    pub fn get_abuse_block_config(env: Env) -> (u32, u64) {
+        let threshold: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey2::AbuseBlockThreshold)
+            .unwrap_or(100); // Default threshold
+        let block_duration: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey2::BlockDurationLedgers)
+            .unwrap_or(DEFAULT_BLOCK_DURATION_LEDGERS);
+        (threshold, block_duration)
     }
 
     /// Admin sets the rapid-submission detection window in ledgers.
@@ -5688,6 +5713,15 @@ impl AhjoorRefundContract {
             .set(&DataKey2::MerchantAutoApproveExempt(merchant), &exempt);
     }
 
+    /// Get whether a merchant is exempt from auto-approval on non-response.
+    /// Returns false if not set.
+    pub fn get_merchant_auto_approve_exempt(env: Env, merchant: Address) -> bool {
+        env.storage()
+            .persistent()
+            .get(&DataKey2::MerchantAutoApproveExempt(merchant))
+            .unwrap_or(false)
+    }
+
     // --- #335: Refund Auto-Approval on Merchant Non-Response ---
 
     /// Trigger auto-approval after merchant deadline has passed.
@@ -5978,3 +6012,6 @@ mod test_cross_contract_refund;
 
 #[cfg(test)]
 mod test_deadline_boundaries;
+
+#[cfg(test)]
+mod test_getters;
