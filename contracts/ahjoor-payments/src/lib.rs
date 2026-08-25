@@ -3205,7 +3205,7 @@ impl AhjoorPaymentsContract {
         // Wait let's check the rest of the codebase to confirm!
         // Wait let's check the existing code for expires_at usage! For example, how is a payment considered expired?
         // Let's look for expire_payment or similar!
-        let now = env.ledger().timestamp();
+        let _now = env.ledger().timestamp();
         // Assuming 1 ledger is 5 seconds (common in Stellar Soroban), but wait - actually, maybe the user intended additional_ledgers to mean additional seconds? Wait, let's check the issue description again! Wait the issue says:
         // "merchant calls extend_payment_expiry(payment_id, additional_ledgers: u32) on a Pending payment before it expires, the contract advances expiry_ledger by additional_ledgers."
         // But wait in our current code, we don't have expiry_ledger - we have expires_at which is a timestamp in seconds! Oh! Wait let's check the existing codebase to see if there's an expiry_ledger field anywhere!
@@ -5375,7 +5375,7 @@ impl AhjoorPaymentsContract {
     }
 
     /// #327: Pause subscription with authority enforcement and pause count tracking.
-    pub fn pause_subscription_v2(env: Env, caller: Address, sub_id: u32, reason_hash: BytesN<32>) {
+    pub fn pause_subscription_v2(env: Env, caller: Address, sub_id: u32, _reason_hash: BytesN<32>) {
         Self::require_not_paused(&env);
         caller.require_auth();
 
@@ -6532,13 +6532,13 @@ impl AhjoorPaymentsContract {
 
     fn execute_token_swap(
         env: &Env,
-        payment_id: u32,
-        customer: &Address,
-        input_token: &Address,
-        output_token: &Address,
+        _payment_id: u32,
+        _customer: &Address,
+        _input_token: &Address,
+        _output_token: &Address,
         input_amount: i128,
     ) -> Result<i128, Symbol> {
-        let router: Address = env
+        let _router: Address = env
             .storage()
             .instance()
             .get(&DataKey::SwapRouter)
@@ -6546,7 +6546,7 @@ impl AhjoorPaymentsContract {
 
         // Get slippage config
         let slippage_cfg = Self::get_slippage_config_internal(env);
-        let max_slippage_bps = slippage_cfg.max_bps;
+        let _max_slippage_bps = slippage_cfg.max_bps;
 
         // For now, we simulate a swap by checking if the router is set
         // In a real implementation, this would call the DEX router contract
@@ -6636,7 +6636,7 @@ impl AhjoorPaymentsContract {
                 // Swap is needed
                 let router: Option<Address> = env.storage().instance().get(&DataKey::SwapRouter);
 
-                if let Some(router_addr) = router {
+                if let Some(_router_addr) = router {
                     // Attempt swap
                     let swap_result = Self::execute_token_swap(
                         env,
