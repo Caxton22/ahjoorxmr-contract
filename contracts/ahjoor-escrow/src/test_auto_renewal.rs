@@ -462,3 +462,358 @@ fn test_max_renewals_cap_enforced() {
     let result = s.client.try_get_escrow(&2u32);
     assert!(result.is_err(), "No renewal after max_renewals reached");
 }
+
+/// Zero max_renewals: no renewal should occur on first release.
+#[test]
+fn test_zero_max_renewals_no_renewal() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 500;
+
+    let cfg = AutoRenewConfig {
+        max_renewals: 0,
+        renewal_interval_ledgers: 100,
+    };
+
+    let escrow_id = s.client.create_escrow_with_auto_renew(
+        &buyer, &seller, &arbiter, &200, &s.token_addr, &deadline, &None, &cfg,
+    );
+
+    approve_allowance(&s, &buyer, 200);
+
+    // Release should succeed but NOT create any renewal
+    s.client.release_escrow(&buyer, &escrow_id);
+
+    let original = s.client.get_escrow(&escrow_id);
+    assert_eq!(original.status, EscrowStatus::Released);
+
+    // No renewed escrow
+    let result = s.client.try_get_escrow(&1u32);
+    assert!(result.is_err(), "Zero max_renewals should prevent any renewal");
+
+    // History is empty
+    let history = s.client.get_renewal_history(&escrow_id);
+    assert_eq!(history.len(), 0);
+}
+
+/// Refund on auto-renew enabled escrow should not trigger renewal.
+#[test]
+fn test_refund_does_not_trigger_renewal() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 500;
+
+    let cfg = AutoRenewConfig {
+        max_renewals: 3,
+        renewal_interval_ledgers: 100,
+    };
+
+    let escrow_id = s.client.create_escrow_with_auto_renew(
+        &buyer, &seller, &arbiter, &200, &s.token_addr, &deadline, &None, &cfg,
+    );
+
+    approve_allowance(&s, &buyer, 200 * 3);
+
+    // Refund the escrow instead of releasing
+    s.client.refund_escrow(&seller, &escrow_id);
+
+    let original = s.client.get_escrow(&escrow_id);
+    assert_eq!(original.status, EscrowStatus::Refunded);
+
+    // Buyer received funds back
+    assert_eq!(s.token_client.balance(&buyer), 1_000);
+
+    // No renewed escrow should exist
+    let result = s.client.try_get_escrow(&1u32);
+    assert!(result.is_err(), "Refund should not trigger renewal");
+
+    // Renewal history should be empty
+    let history = s.client.get_renewal_history(&escrow_id);
+    assert_eq!(history.len(), 0);
+}
+
+/// Dispute resolution (resolved_to_buyer) should not trigger renewal.
+#[test]
+fn test_dispute_resolved_to_buyer_no_renewal() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 500;
+
+    let cfg = AutoRenewConfig {
+        max_renewals: 3,
+        renewal_interval_ledgers: 100,
+    };
+
+    let escrow_id = s.client.create_escrow_with_auto_renew(
+        &buyer, &seller, &arbiter, &200, &s.token_addr, &deadline, &None, &cfg,
+    );
+
+    approve_allowance(&s, &buyer, 200 * 3);
+
+    // Dispute the escrow
+    s.client.dispute_escrow(&buyer, &escrow_id);
+
+    // Resolve to buyer (refund scenario)
+    s.client.resolve_dispute(&arbiter, &escrow_id, &true);
+
+    let original = s.client.get_escrow(&escrow_id);
+    assert_eq!(original.status, EscrowStatus::Refunded);
+
+    // No renewal should occur
+    let result = s.client.try_get_escrow(&1u32);
+    assert!(result.is_err(), "Dispute resolution to buyer should not trigger renewal");
+
+    let history = s.client.get_renewal_history(&escrow_id);
+    assert_eq!(history.len(), 0);
+}
+
+/// Dispute resolution (resolved_to_seller) should not trigger renewal.
+#[test]
+fn test_dispute_resolved_to_seller_no_renewal() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 500;
+
+    let cfg = AutoRenewConfig {
+        max_renewals: 3,
+        renewal_interval_ledgers: 100,
+    };
+
+    let escrow_id = s.client.create_escrow_with_auto_renew(
+        &buyer, &seller, &arbiter, &200, &s.token_addr, &deadline, &None, &cfg,
+    );
+
+    approve_allowance(&s, &buyer, 200 * 3);
+
+    // Dispute the escrow
+    s.client.dispute_escrow(&buyer, &escrow_id);
+
+    // Resolve to seller
+    s.client.resolve_dispute(&arbiter, &escrow_id, &false);
+
+    let original = s.client.get_escrow(&escrow_id);
+    assert_eq!(original.status, EscrowStatus::Released);
+
+    // No renewal should occur even though status is Released
+    let result = s.client.try_get_escrow(&1u32);
+    assert!(result.is_err(), "Dispute resolution to seller should not trigger renewal");
+
+    let history = s.client.get_renewal_history(&escrow_id);
+    assert_eq!(history.len(), 0);
+}
+
+/// Renewed escrows inherit correct buyer, seller, arbiter, and token.
+#[test]
+fn test_renewed_escrow_inherits_parties_and_token() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 500;
+
+    let cfg = AutoRenewConfig {
+        max_renewals: 2,
+        renewal_interval_ledgers: 100,
+    };
+
+    let escrow_id = s.client.create_escrow_with_auto_renew(
+        &buyer, &seller, &arbiter, &200, &s.token_addr, &deadline, &None, &cfg,
+    );
+
+    approve_allowance(&s, &buyer, 200 * 2);
+
+    // Release to trigger first renewal
+    s.client.release_escrow(&buyer, &escrow_id);
+
+    let renewed = s.client.get_escrow(&1u32);
+    assert_eq!(renewed.buyer, buyer);
+    assert_eq!(renewed.seller, seller);
+    assert_eq!(renewed.arbiter, arbiter);
+    assert_eq!(renewed.token, s.token_addr);
+    assert_eq!(renewed.amount, 200);
+}
+
+/// Renewed escrow deadline is correctly calculated from renewal_interval_ledgers.
+#[test]
+fn test_renewed_escrow_deadline_calculation() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    s.env.ledger().with_mut(|info| info.sequence_number = 100);
+    
+    let original_deadline = s.env.ledger().timestamp() + 500;
+    let renewal_interval_ledgers = 50u32;
+
+    let cfg = AutoRenewConfig {
+        max_renewals: 2,
+        renewal_interval_ledgers,
+    };
+
+    let escrow_id = s.client.create_escrow_with_auto_renew(
+        &buyer, &seller, &arbiter, &200, &s.token_addr, &original_deadline, &None, &cfg,
+    );
+
+    approve_allowance(&s, &buyer, 200 * 2);
+
+    // Capture current ledger before release
+    let current_ledger = s.env.ledger().sequence();
+
+    // Release to trigger renewal
+    s.client.release_escrow(&buyer, &escrow_id);
+
+    let renewed = s.client.get_escrow(&1u32);
+    
+    // New deadline should be based on renewal_interval_ledgers
+    // Expected: current_timestamp + (renewal_interval_ledgers * 5)
+    let expected_deadline = s.env.ledger().timestamp() + (renewal_interval_ledgers as u64 * 5);
+    assert_eq!(renewed.deadline, expected_deadline);
+}
+
+/// Multiple cancellations on same escrow should not panic.
+#[test]
+fn test_multiple_cancel_calls_idempotent() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 500;
+
+    let cfg = AutoRenewConfig {
+        max_renewals: 3,
+        renewal_interval_ledgers: 100,
+    };
+
+    let escrow_id = s.client.create_escrow_with_auto_renew(
+        &buyer, &seller, &arbiter, &200, &s.token_addr, &deadline, &None, &cfg,
+    );
+
+    // First cancellation
+    s.client.cancel_auto_renewal(&buyer, &escrow_id);
+    assert_eq!(s.client.get_auto_renewal_cancelled(&escrow_id), true);
+
+    // Second cancellation should not panic
+    s.client.cancel_auto_renewal(&buyer, &escrow_id);
+    assert_eq!(s.client.get_auto_renewal_cancelled(&escrow_id), true);
+
+    // Third cancellation should also not panic
+    s.client.cancel_auto_renewal(&buyer, &escrow_id);
+    assert_eq!(s.client.get_auto_renewal_cancelled(&escrow_id), true);
+}
+
+/// Renewal with very large max_renewals value.
+#[test]
+fn test_large_max_renewals_value() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &10_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 500;
+
+    let cfg = AutoRenewConfig {
+        max_renewals: 1000,
+        renewal_interval_ledgers: 100,
+    };
+
+    let escrow_id = s.client.create_escrow_with_auto_renew(
+        &buyer, &seller, &arbiter, &200, &s.token_addr, &deadline, &None, &cfg,
+    );
+
+    // Approve for 5 renewals only
+    approve_allowance(&s, &buyer, 200 * 5);
+
+    // Execute 5 renewals successfully
+    let mut current_id = escrow_id;
+    for i in 1..=5 {
+        s.client.release_escrow(&buyer, &current_id);
+        let next_id = current_id + 1;
+        let renewed = s.client.get_escrow(&next_id);
+        assert_eq!(renewed.extensions.renewals_completed, i);
+        current_id = next_id;
+    }
+
+    // 6th renewal should fail due to insufficient allowance, not max_renewals
+    s.client.release_escrow(&buyer, &current_id);
+    let result = s.client.try_get_escrow(&(current_id + 1));
+    assert!(result.is_err(), "Should fail due to insufficient allowance");
+
+    // History should have 5 entries
+    let history = s.client.get_renewal_history(&escrow_id);
+    assert_eq!(history.len(), 5);
+}
+
+/// get_renewal_history on non-existent escrow returns empty vector.
+#[test]
+fn test_get_renewal_history_non_existent_escrow() {
+    let s = setup();
+    
+    // Query history for an escrow that was never created
+    let history = s.client.get_renewal_history(&999u32);
+    assert_eq!(history.len(), 0);
+}
+
+/// Renewed escrow maintains same AutoRenewConfig structure.
+#[test]
+fn test_renewed_escrow_preserves_auto_renew_config() {
+    let s = setup();
+    let buyer = Address::generate(&s.env);
+    let seller = Address::generate(&s.env);
+    let arbiter = Address::generate(&s.env);
+    s.token_admin_client.mint(&buyer, &1_000);
+
+    s.env.ledger().set_timestamp(1_000);
+    let deadline = s.env.ledger().timestamp() + 500;
+
+    let cfg = AutoRenewConfig {
+        max_renewals: 5,
+        renewal_interval_ledgers: 200,
+    };
+
+    let escrow_id = s.client.create_escrow_with_auto_renew(
+        &buyer, &seller, &arbiter, &200, &s.token_addr, &deadline, &None, &cfg,
+    );
+
+    approve_allowance(&s, &buyer, 200 * 5);
+
+    // Release to create first renewal
+    s.client.release_escrow(&buyer, &escrow_id);
+
+    let renewed = s.client.get_escrow(&1u32);
+    
+    // Verify AutoRenewConfig is preserved (with renewals_completed incremented)
+    assert_eq!(renewed.extensions.auto_renew_max_renewals.unwrap(), 5);
+    assert_eq!(renewed.extensions.auto_renew_interval_ledgers.unwrap(), 200);
+    assert_eq!(renewed.extensions.renewals_completed, 1);
+}
