@@ -6012,3 +6012,6 @@ mod test_cross_contract_refund;
 
 #[cfg(test)]
 mod test_deadline_boundaries;
+
+#[cfg(test)]
+mod test_getters;
