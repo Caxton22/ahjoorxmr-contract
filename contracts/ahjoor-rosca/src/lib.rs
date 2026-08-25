@@ -11749,5 +11749,6 @@ mod test_quorum;
 mod test_savings_milestone_rewards;
 mod test_skip;
 mod test_snapshot;
+mod test_view_functions;
 mod test_waitlist;
 pub use events::*;
