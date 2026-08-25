@@ -7581,6 +7581,14 @@ impl AhjoorContract {
         events::emit_insurance_coverage_mode_set(&env, mode as u32);
     }
 
+    /// #750: Read back the group's insurance coverage mode, defaulting to `None` if unset.
+    pub fn get_insurance_coverage_mode(env: Env) -> InsuranceCoverageMode {
+        env.storage()
+            .instance()
+            .get(&DataKey2::InsuranceCoverageMode)
+            .unwrap_or(InsuranceCoverageMode::None)
+    }
+
     pub fn set_insurance_pool_low_threshold(env: Env, admin: Address, threshold: i128) {
         admin.require_auth();
         internals::check_not_paused(&env);
