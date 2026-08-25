@@ -6399,6 +6399,26 @@ impl AhjoorContract {
             .unwrap_or(51)
     }
 
+    /// #751: Read the per-ProposalType quorum override set via `set_quorum_per_type`,
+    /// falling back to the same global-default-derived quorum used internally when unset.
+    pub fn get_quorum_for_type(env: Env, proposal_type: ProposalType) -> u32 {
+        let quorum_config: Map<ProposalType, u32> = env
+            .storage()
+            .instance()
+            .get(&DataKey2::QuorumConfig)
+            .unwrap_or(Map::new(&env));
+        if let Some(q) = quorum_config.get(proposal_type) {
+            q
+        } else {
+            let global_q: u32 = env
+                .storage()
+                .instance()
+                .get(&DataKey::QuorumPercentage)
+                .unwrap_or(51);
+            global_q * 100
+        }
+    }
+
     /// Update the protocol fee configuration. Admin only.
     /// Fee is capped at 500 bps (5%).
     pub fn update_fee(env: Env, new_fee_bps: u32) {
