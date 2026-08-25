@@ -268,6 +268,13 @@ impl TokenWhitelistContract {
         }
     }
 
+    /// Delists `token` and clears its per-token state (quota, tier,
+    /// limit override, metadata, suspension record) so a later `add_token`
+    /// for the same address starts clean. `TokenVolumeBucket` /
+    /// `TokenVolumeAggBucket` entries are intentionally left in place: they
+    /// are keyed by `(token, ledger/bucket)` and expire via TTL like any
+    /// other persistent entry, so leaving them costs nothing and avoids an
+    /// unbounded sweep over historical buckets here.
     pub fn remove_token(env: Env, admin: Address, token: Address) {
         admin.require_auth();
         Self::require_admin(&env, &admin);
@@ -294,6 +301,18 @@ impl TokenWhitelistContract {
         env.storage().persistent().remove(&membership_key);
         if env.storage().persistent().has(&DataKey::SuspensionRecord(token.clone())) {
             env.storage().persistent().remove(&DataKey::SuspensionRecord(token.clone()));
+        }
+        if env.storage().persistent().has(&DataKey::TokenQuota(token.clone())) {
+            env.storage().persistent().remove(&DataKey::TokenQuota(token.clone()));
+        }
+        if env.storage().persistent().has(&DataKey::TokenTier(token.clone())) {
+            env.storage().persistent().remove(&DataKey::TokenTier(token.clone()));
+        }
+        if env.storage().persistent().has(&DataKey::TokenLimitOverride(token.clone())) {
+            env.storage().persistent().remove(&DataKey::TokenLimitOverride(token.clone()));
+        }
+        if env.storage().persistent().has(&DataKey::TokenMetadata(token.clone())) {
+            env.storage().persistent().remove(&DataKey::TokenMetadata(token.clone()));
         }
         env.storage().instance().extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
         events::emit_token_delisted(&env, token, admin);
@@ -448,6 +467,12 @@ impl TokenWhitelistContract {
 
     pub fn get_admin(env: Env) -> Address {
         env.storage().instance().get(&DataKey::Admin).expect("Contract not initialized")
+    }
+
+    /// Returns the pending admin transfer target, or `None` if no transfer
+    /// is currently proposed (never proposed, or already accepted).
+    pub fn get_proposed_admin(env: Env) -> Option<Address> {
+        env.storage().instance().get(&DataKey::ProposedAdmin)
     }
 
     pub fn propose_admin(env: Env, current_admin: Address, new_admin: Address) {
