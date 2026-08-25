@@ -104,6 +104,74 @@ fn test_only_seller_can_initiate_transfer() {
     assert!(result.is_err());
 }
 
+// ── get_seller_transfer_proposal Tests ───────────────────────────────────────
+
+#[test]
+fn test_get_seller_transfer_proposal_none_before_transfer() {
+    let (env, client, _admin, _buyer, _seller, _arbiter, _token_addr, _token_client, _) = setup_veto();
+    let escrow_id = 0u32;
+    let _ = &env;
+    assert_eq!(client.get_seller_transfer_proposal(&escrow_id), None);
+}
+
+#[test]
+fn test_get_seller_transfer_proposal_readable_after_transfer() {
+    let (env, client, _admin, _buyer, seller, _arbiter, _token_addr, _token_client, _) = setup_veto();
+    let escrow_id = 0u32;
+    let new_seller = Address::generate(&env);
+
+    client.transfer_seller_role(&seller, &escrow_id, &new_seller);
+
+    let proposal = client
+        .get_seller_transfer_proposal(&escrow_id)
+        .expect("proposal should be readable after transfer_seller_role");
+    assert_eq!(proposal.original_seller, seller);
+    assert_eq!(proposal.new_seller, new_seller);
+    assert!(proposal.veto_deadline > 0);
+}
+
+#[test]
+fn test_get_seller_transfer_proposal_cleared_after_veto() {
+    let (env, client, _admin, buyer, seller, _arbiter, _token_addr, _token_client, _) = setup_veto();
+    let escrow_id = 0u32;
+    let new_seller = Address::generate(&env);
+
+    client.transfer_seller_role(&seller, &escrow_id, &new_seller);
+    assert!(client.get_seller_transfer_proposal(&escrow_id).is_some());
+
+    client.veto_seller_transfer(&buyer, &escrow_id);
+    assert_eq!(client.get_seller_transfer_proposal(&escrow_id), None);
+}
+
+#[test]
+fn test_get_seller_transfer_proposal_cleared_after_approve() {
+    let (env, client, _admin, buyer, seller, _arbiter, _token_addr, _token_client, _) = setup_veto();
+    let escrow_id = 0u32;
+    let new_seller = Address::generate(&env);
+
+    client.transfer_seller_role(&seller, &escrow_id, &new_seller);
+    assert!(client.get_seller_transfer_proposal(&escrow_id).is_some());
+
+    client.approve_seller_transfer(&buyer, &escrow_id);
+    assert_eq!(client.get_seller_transfer_proposal(&escrow_id), None);
+}
+
+#[test]
+fn test_get_seller_transfer_proposal_cleared_after_expiry() {
+    let (env, client, admin, _buyer, seller, _arbiter, _token_addr, _token_client, _) = setup_veto();
+    let escrow_id = 0u32;
+    let new_seller = Address::generate(&env);
+
+    client.set_seller_transfer_veto_window(&admin, &10u32);
+    client.transfer_seller_role(&seller, &escrow_id, &new_seller);
+    assert!(client.get_seller_transfer_proposal(&escrow_id).is_some());
+
+    env.ledger().with_mut(|l| l.sequence_number += 20);
+    client.expire_seller_transfer_veto(&escrow_id);
+
+    assert_eq!(client.get_seller_transfer_proposal(&escrow_id), None);
+}
+
 // ── #420: Seller Veto Cooldown Tests ─────────────────────────────────────────
 
 /// Helper: creates a fresh env + escrow ready for veto tests.
