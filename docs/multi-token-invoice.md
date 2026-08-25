@@ -243,4 +243,3 @@ path.
 - Use `create_invoice_with_oracle(...)` if you want oracle-backed
   cross-token settlement from the start.
 - Keep `accepted_tokens` narrow so invoice payments stay predictable.
-
