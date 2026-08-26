@@ -262,3 +262,19 @@ fn test_round_duration_getters_before_and_after_set() {
     assert_eq!(client.get_round_duration_bounds(), (3600, 86400));
     assert_eq!(client.get_pending_round_duration(), Some(7200));
 }
+
+// ─── #753: get_treasury_config ─────────────────────────────────────────────
+
+#[test]
+fn test_get_treasury_config_none_until_enabled() {
+    let (_env, client, admin, _token_addr, _members) = setup_with_members(3, false, 0);
+
+    assert_eq!(client.get_treasury_config(), None);
+
+    let treasury_admin = admin.clone();
+    client.enable_group_treasury(&admin, &treasury_admin);
+
+    let config = client.get_treasury_config().unwrap();
+    assert_eq!(config.treasury_admin, treasury_admin);
+    assert_eq!(config.enabled, true);
+}

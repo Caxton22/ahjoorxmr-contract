@@ -10046,6 +10046,12 @@ impl AhjoorContract {
             .unwrap_or(0)
     }
 
+    /// Get treasury configuration (admin and enabled flag), if the group
+    /// treasury has been enabled (#753).
+    pub fn get_treasury_config(env: Env) -> Option<TreasuryConfig> {
+        env.storage().instance().get(&DataKey3::TreasuryConfig)
+    }
+
     /// Internal: update a member's credit score after a relevant event.
     fn update_credit_score_internal(env: &Env, member: &Address, reason: Symbol) {
         let mut scores: Map<Address, MemberScore> = env
