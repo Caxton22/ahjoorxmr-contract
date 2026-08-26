@@ -5706,7 +5706,6 @@ impl AhjoorRefundContract {
         exempt: bool,
     ) {
         Self::require_not_paused(&env);
-        admin.require_auth();
         Self::require_admin(&env, &admin);
         env.storage()
             .persistent()
