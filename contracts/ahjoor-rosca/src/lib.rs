@@ -2782,6 +2782,38 @@ impl AhjoorContract {
             .unwrap_or(Vec::new(&env))
     }
 
+    /// #749: Returns (auction_enabled, auction_window_ledgers, auction_open_until, auction_round)
+    /// so callers can check whether an auction is currently open, which round it targets,
+    /// and when the bidding window closes, without inferring it from bid events.
+    pub fn get_auction_status(env: Env) -> (bool, u64, u64, u32) {
+        let auction_enabled: bool = env
+            .storage()
+            .instance()
+            .get(&DataKey3::AuctionEnabled)
+            .unwrap_or(false);
+        let auction_window_ledgers: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey3::AuctionWindowLedgers)
+            .unwrap_or(0);
+        let auction_open_until: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey3::AuctionOpenUntil)
+            .unwrap_or(0);
+        let auction_round: u32 = env
+            .storage()
+            .instance()
+            .get(&DataKey3::AuctionRound)
+            .unwrap_or(0);
+        (
+            auction_enabled,
+            auction_window_ledgers,
+            auction_open_until,
+            auction_round,
+        )
+    }
+
     // ─── Cross-Group Member Migration ────────────────────────────────────────
 
     /// Returns the base token address of this group (used by cross-contract migration checks).
@@ -6367,6 +6399,26 @@ impl AhjoorContract {
             .unwrap_or(51)
     }
 
+    /// #751: Read the per-ProposalType quorum override set via `set_quorum_per_type`,
+    /// falling back to the same global-default-derived quorum used internally when unset.
+    pub fn get_quorum_for_type(env: Env, proposal_type: ProposalType) -> u32 {
+        let quorum_config: Map<ProposalType, u32> = env
+            .storage()
+            .instance()
+            .get(&DataKey2::QuorumConfig)
+            .unwrap_or(Map::new(&env));
+        if let Some(q) = quorum_config.get(proposal_type) {
+            q
+        } else {
+            let global_q: u32 = env
+                .storage()
+                .instance()
+                .get(&DataKey::QuorumPercentage)
+                .unwrap_or(51);
+            global_q * 100
+        }
+    }
+
     /// Update the protocol fee configuration. Admin only.
     /// Fee is capped at 500 bps (5%).
     pub fn update_fee(env: Env, new_fee_bps: u32) {
@@ -7517,6 +7569,19 @@ impl AhjoorContract {
         events::emit_slot_swap_executed(env, swap_id, swap.round_a, swap.round_b);
     }
 
+    /// #748: Look up a slot swap's current status/initiator/counterparty by id.
+    pub fn get_slot_swap(env: Env, swap_id: u32) -> SlotSwap {
+        let swaps: Map<u32, SlotSwap> = env
+            .storage()
+            .instance()
+            .get(&DataKey2::SlotSwaps)
+            .unwrap_or(Map::new(&env));
+        match swaps.get(swap_id) {
+            Some(swap) => swap,
+            None => panic_with_error!(&env, ExtError2::SwapNotFound),
+        }
+    }
+
     // ─── #214: Insurance Coverage Mode ───────────────────────────────────────
 
     pub fn set_insurance_coverage_mode(env: Env, admin: Address, mode: InsuranceCoverageMode) {
@@ -7534,6 +7599,14 @@ impl AhjoorContract {
             .instance()
             .set(&DataKey2::InsuranceCoverageMode, &mode);
         events::emit_insurance_coverage_mode_set(&env, mode as u32);
+    }
+
+    /// #750: Read back the group's insurance coverage mode, defaulting to `None` if unset.
+    pub fn get_insurance_coverage_mode(env: Env) -> InsuranceCoverageMode {
+        env.storage()
+            .instance()
+            .get(&DataKey2::InsuranceCoverageMode)
+            .unwrap_or(InsuranceCoverageMode::None)
     }
 
     pub fn set_insurance_pool_low_threshold(env: Env, admin: Address, threshold: i128) {
@@ -11676,5 +11749,6 @@ mod test_quorum;
 mod test_savings_milestone_rewards;
 mod test_skip;
 mod test_snapshot;
+mod test_view_functions;
 mod test_waitlist;
 pub use events::*;
