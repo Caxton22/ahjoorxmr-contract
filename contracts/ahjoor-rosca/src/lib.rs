@@ -10811,6 +10811,15 @@ impl AhjoorContract {
     ) -> u32 {
         member.require_auth();
 
+        let members: Vec<Address> = env
+            .storage()
+            .instance()
+            .get(&DataKey::Members)
+            .expect("Not initialized");
+        if !members.contains(&member) {
+            panic_with_error!(&env, Error::NotAMember);
+        }
+
         if amount <= 0 {
             panic!("Loan amount must be positive");
         }
@@ -11779,6 +11788,7 @@ mod test;
 mod test_audit_trail;
 mod test_contrib_delegation;
 mod test_cosigner_guarantee;
+mod test_emergency_loan;
 mod test_emergency_reserve;
 mod test_group_freeze;
 mod test_group_split;
