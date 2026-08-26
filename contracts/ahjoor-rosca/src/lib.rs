@@ -3531,6 +3531,31 @@ impl AhjoorContract {
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
+    /// Returns the configured (min_seconds, max_seconds) bounds for round
+    /// duration updates (#752). Falls back to the same defaults enforced
+    /// internally by `update_round_duration` when unset.
+    pub fn get_round_duration_bounds(env: Env) -> (u64, u64) {
+        let min_dur: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey4::MinRoundDuration)
+            .unwrap_or(60);
+        let max_dur: u64 = env
+            .storage()
+            .instance()
+            .get(&DataKey4::MaxRoundDuration)
+            .unwrap_or(u64::MAX);
+        (min_dur, max_dur)
+    }
+
+    /// Returns the pending round duration change scheduled by
+    /// `update_round_duration`, if any (#752).
+    pub fn get_pending_round_duration(env: Env) -> Option<u64> {
+        env.storage()
+            .instance()
+            .get(&DataKey4::PendingRoundDuration)
+    }
+
     /// Admin manually penalises a specific defaulter from the current round's
     /// defaulters list. Transfers the penalty amount from the member to the
     /// contract and updates their default count and suspension status.
