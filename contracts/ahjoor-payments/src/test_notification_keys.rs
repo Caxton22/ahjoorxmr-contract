@@ -2,8 +2,8 @@
 
 use crate::{AhjoorPaymentsContract, AhjoorPaymentsContractClient};
 use soroban_sdk::{
-    testutils::{Address as _, Events, Ledger},
-    token, Address, Bytes, Env, String,
+    testutils::{Address as _, Events},
+    token, Address, Bytes, Env,
 };
 
 fn create_token_contract<'a>(e: &Env, admin: &Address) -> (Address, token::StellarAssetClient<'a>) {
@@ -56,7 +56,7 @@ fn test_register_notification_key() {
     assert_eq!(stored_key, Some(key.clone()));
 
     // Check that events were emitted - just check that we have some events
-    let events = env.events().all();
+    let _events = env.events().all();
     // For now, just check that the function worked by verifying the key is stored
     // The event emission can be tested separately
 }
@@ -135,7 +135,7 @@ fn test_max_size_key_accepted() {
 
 #[test]
 fn test_payment_events_include_notification_key() {
-    let (env, admin, customer, merchant, token, client) = setup_test_env();
+    let (env, _admin, customer, merchant, token, client) = setup_test_env();
 
     let notification_key = Bytes::from_array(&env, &[0xDE, 0xAD, 0xBE, 0xEF]);
     
@@ -163,7 +163,7 @@ fn test_payment_events_include_notification_key() {
 
 #[test]
 fn test_events_with_empty_notification_key() {
-    let (env, _admin, customer, merchant, token, client) = setup_test_env();
+    let (_env, _admin, customer, merchant, token, client) = setup_test_env();
 
     // Don't register any notification key - should use empty bytes
 

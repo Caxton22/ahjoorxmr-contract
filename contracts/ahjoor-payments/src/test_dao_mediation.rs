@@ -53,7 +53,7 @@ fn setup_with_payment() -> (
 
 #[test]
 fn test_configure_dao() {
-    let (env, client, admin, _customer, _merchant, _token, _payment_id) =
+    let (env, client, _admin, _customer, _merchant, _token, _payment_id) =
         setup_with_payment();
 
     let member_a = Address::generate(&env);
@@ -69,7 +69,7 @@ fn test_configure_dao() {
 
 #[test]
 fn test_escalate_to_dao() {
-    let (env, client, admin, customer, _merchant, _token, payment_id) =
+    let (env, client, _admin, customer, _merchant, _token, payment_id) =
         setup_with_payment();
 
     let mediator = Address::generate(&env);
@@ -121,7 +121,7 @@ fn test_cancel_dao_escalation_after_vote_panics() {
 
 #[test]
 fn test_dao_vote_and_execute_customer_wins() {
-    let (env, client, admin, customer, _merchant, token_client, payment_id) =
+    let (env, client, _admin, customer, _merchant, token_client, payment_id) =
         setup_with_payment();
 
     let mediator_a = Address::generate(&env);
@@ -153,7 +153,7 @@ fn test_dao_vote_and_execute_customer_wins() {
 
 #[test]
 fn test_dao_vote_and_execute_merchant_wins() {
-    let (env, client, admin, customer, merchant, _token, payment_id) =
+    let (env, client, _admin, customer, _merchant, _token, payment_id) =
         setup_with_payment();
 
     let mediator = Address::generate(&env);
@@ -173,7 +173,7 @@ fn test_dao_vote_and_execute_merchant_wins() {
 #[test]
 #[should_panic]
 fn test_dao_double_vote_rejected() {
-    let (env, client, admin, customer, _merchant, _token, payment_id) =
+    let (env, client, _admin, customer, _merchant, _token, payment_id) =
         setup_with_payment();
 
     let mediator = Address::generate(&env);
@@ -187,7 +187,7 @@ fn test_dao_double_vote_rejected() {
 #[test]
 #[should_panic]
 fn test_non_dao_member_vote_rejected() {
-    let (env, client, admin, customer, _merchant, _token, payment_id) =
+    let (env, client, _admin, customer, _merchant, _token, payment_id) =
         setup_with_payment();
 
     let mediator = Address::generate(&env);
@@ -201,7 +201,7 @@ fn test_non_dao_member_vote_rejected() {
 #[test]
 #[should_panic]
 fn test_execute_before_window_closes_panics() {
-    let (env, client, admin, customer, _merchant, _token, payment_id) =
+    let (env, client, _admin, customer, _merchant, _token, payment_id) =
         setup_with_payment();
 
     let mediator = Address::generate(&env);
@@ -288,7 +288,7 @@ fn test_double_escalation_rejected() {
 #[test]
 #[should_panic]
 fn test_double_verdict_execution_via_already_resolved_payment_rejected() {
-    let (env, client, admin, customer, _merchant, token_client, payment_id) =
+    let (env, client, _admin, customer, _merchant, _token_client, payment_id) =
         setup_with_payment();
 
     let mediator = Address::generate(&env);
