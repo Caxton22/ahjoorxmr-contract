@@ -325,8 +325,8 @@ fn test_removing_per_customer_override_falls_back_to_tier() {
     let p1 = client.create_payment(&buyer, &merchant, &5_000, &token, &None, &None, &None);
     client.complete_payment(&p1);
 
-    // Remove per-customer override by setting to 0
-    client.set_customer_spend_limit(&merchant, &buyer, &0i128, &3600u64);
+    // Remove per-customer override
+    client.remove_customer_spend_limit(&merchant, &buyer);
 
     // Now should fall back to tier limit; previous spend (5000) exceeds tier limit (1000)
     let p2 = client.create_payment(&buyer, &merchant, &100, &token, &None, &None, &None);
@@ -334,14 +334,15 @@ fn test_removing_per_customer_override_falls_back_to_tier() {
 }
 
 #[test]
-fn test_zero_tier_limit_blocks_all_payments() {
-    let (_env, client, _admin, merchant, buyer, token, _tac) = setup();
+fn test_zero_tier_limit_rejected() {
+    let (_env, client, _admin, merchant, _buyer, _token, _tac) = setup();
 
-    // Set tier limit to zero
-    client.set_buyer_tier(&merchant, &buyer, &BuyerTrustTierLevel::New);
-    client.set_tier_spending_limit(&merchant, &BuyerTrustTierLevel::New, &0i128, &3600u64);
-
-    // Any payment should fail with zero limit
-    let p1 = client.create_payment(&buyer, &merchant, &1, &token, &None, &None, &None);
-    assert!(client.try_complete_payment(&p1).is_err());
+    // Spend limits must be positive; a zero tier limit is rejected
+    let result = client.try_set_tier_spending_limit(
+        &merchant,
+        &BuyerTrustTierLevel::New,
+        &0i128,
+        &3600u64,
+    );
+    assert!(result.is_err(), "Zero tier limit should be rejected");
 }
