@@ -3616,6 +3616,15 @@ impl AhjoorContract {
             .extend_ttl(INSTANCE_LIFETIME_THRESHOLD, INSTANCE_BUMP_AMOUNT);
     }
 
+    /// Returns the currently configured co-signer grace window, in ledgers
+    /// (#747). Falls back to the same default used internally when unset.
+    pub fn get_co_signer_window(env: Env) -> u32 {
+        env.storage()
+            .instance()
+            .get(&DataKey4::CoSignerWindowLedgers)
+            .unwrap_or(0)
+    }
+
     /// Member requests a grace-period deferral of their pending penalty.
     /// Admin must approve; if within the grace window, the penalty is queued;
     /// otherwise it is applied immediately.

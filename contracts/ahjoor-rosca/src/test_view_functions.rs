@@ -228,3 +228,17 @@ fn test_get_quorum_for_type_custom_and_defaults() {
         5100
     );
 }
+
+// ─── #747: get_co_signer_window ────────────────────────────────────────────
+
+#[test]
+fn test_get_co_signer_window_defaults_and_reflects_set_value() {
+    let (_env, client, admin, _token_addr, _members) = setup_with_members(3, false, 0);
+
+    // No window configured yet -> falls back to the same default used
+    // internally (0).
+    assert_eq!(client.get_co_signer_window(), 0);
+
+    client.set_co_signer_window(&admin, &500u32);
+    assert_eq!(client.get_co_signer_window(), 500);
+}
